@@ -109,8 +109,10 @@ const SCHEMAS = {
 };
 
 window.onload = () => {
+    // تحميل أسماء الخدام لملء القائمة المنسدلة في شاشة الدخول
     loadServantsListForLogin();
 
+    // إبقاء اللوجو والشاشة ثابتة لمدة ثانيتين ونصف ثم التلاشي
     setTimeout(() => {
         const splash = document.getElementById('splashScreen');
         splash.style.opacity = '0';
@@ -118,12 +120,9 @@ window.onload = () => {
             splash.style.display = 'none';
         }, 800);
 
-        const saved = localStorage.getItem('church_servant');
-        if (saved) {
-            currentUser = JSON.parse(saved);
-            initApp();
-        }
-    }, 2200);
+        // التوقف عند نافذة تسجيل الدخول دائماً لإدخال كلمة السر
+        document.getElementById('loginScreen').classList.remove('hidden');
+    }, 2500);
 };
 
 async function loadServantsListForLogin() {
