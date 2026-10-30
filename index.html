@@ -13,26 +13,36 @@
 <!-- شاشة البداية البيضاء (Splash Screen) -->
 <div id="splashScreen">
     <div class="splash-logo-container">
-        <img id="splashLogoImg" src="logo.png" onerror="if(!this.tried){this.tried=true;this.src='ch%20logo.png';}" alt="Logo" class="splash-logo">
+        <img id="splashLogoImg" src="logo.png" onerror="if(!this.tried){this.tried=true;this.src='ch%20logo.png';}else{this.style.display='none';document.getElementById('fallbackEmblem').style.display='block';}" alt="Logo" class="splash-logo">
+        <div id="fallbackEmblem" style="display:none;" class="w-24 h-24 rounded-full bg-indigo-50 border-2 border-indigo-200 flex items-center justify-center text-indigo-700 text-3xl font-black mb-3">☩</div>
         <h1 class="splash-title">منظومة الخدمة والرعاية الكنسية</h1>
     </div>
 </div>
 
-<!-- شاشة تسجيل الدخول بخلفية بيضاء نقية -->
+<!-- نافذة تسجيل الدخول (قائمة منسدلة + إظهار كلمة المرور) -->
 <div id="loginScreen" class="fixed inset-0 bg-white/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
     <div class="bg-white rounded-3xl shadow-xl p-8 w-full max-w-md text-center border border-slate-200">
-        <img src="logo.png" onerror="if(!this.tried){this.tried=true;this.src='ch%20logo.png';}" alt="Logo" class="w-24 h-24 mx-auto object-contain mb-4 drop-shadow-sm">
+        <img src="logo.png" onerror="if(!this.tried){this.tried=true;this.src='ch%20logo.png';}else{this.src='https://cdn-icons-png.flaticon.com/512/2972/2972149.png';}" alt="Logo" class="w-20 h-20 mx-auto object-contain mb-3">
         <h2 class="text-2xl font-black text-slate-800 mb-1">بوابة الخدام</h2>
         <p class="text-xs text-slate-500 mb-6 font-bold">تسجيل الدخول لمنظومة الرعاية والخدمة</p>
         
         <form onsubmit="handleLogin(event)" class="space-y-4 text-right">
             <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1">اسم المستخدم</label>
-                <input type="text" id="loginUser" required value="admin" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-semibold">
+                <label class="block text-xs font-bold text-slate-600 mb-1">اختر اسم الخادم / المستخدم</label>
+                <div class="relative">
+                    <select id="loginUser" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-bold text-slate-700">
+                        <option value="admin">أبونا الكاهن / الأدمن (admin)</option>
+                    </select>
+                </div>
             </div>
             <div>
                 <label class="block text-xs font-bold text-slate-600 mb-1">كلمة المرور</label>
-                <input type="password" id="loginPass" required value="123456" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-semibold">
+                <div class="relative flex items-center">
+                    <input type="password" id="loginPass" required value="123456" class="w-full pr-4 pl-12 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-semibold">
+                    <button type="button" onclick="togglePasswordVisibility()" class="absolute left-3 text-slate-400 hover:text-indigo-600 transition p-1">
+                        <svg id="eyeIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    </button>
+                </div>
             </div>
             <button type="submit" id="loginBtn" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-md transition duration-200 text-sm mt-2">تسجيل الدخول</button>
             <p id="loginError" class="text-xs text-rose-600 font-bold hidden text-center"></p>
@@ -44,7 +54,7 @@
 <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
     <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-4">
         <div class="flex items-center gap-3">
-            <img src="logo.png" onerror="if(!this.tried){this.tried=true;this.src='ch%20logo.png';}" alt="Logo" class="w-11 h-11 object-contain rounded-full shadow-sm border border-slate-100">
+            <img src="logo.png" onerror="if(!this.tried){this.tried=true;this.src='ch%20logo.png';}else{this.src='https://cdn-icons-png.flaticon.com/512/2972/2972149.png';}" alt="Logo" class="w-11 h-11 object-contain rounded-full shadow-sm border border-slate-100">
             <div>
                 <h1 class="text-base font-black text-slate-800 leading-tight">منظومة الخدمة والرعاية الكنسية</h1>
                 <p class="text-xs text-slate-500 font-bold" id="userBadge"></p>
@@ -62,7 +72,7 @@
     <div id="dashboardView" class="block">
         <div class="text-center mb-10">
             <h2 class="text-3xl font-black text-slate-800 mb-2">لوحة التحكم المركزية</h2>
-            <p class="text-slate-500 font-bold text-sm">حدد القسم للمتابعة والتعديل</p>
+            <p class="text-slate-500 font-bold text-sm">حدد القسم للمتابعة والتسجيل</p>
         </div>
         <div id="dashboardGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-5xl mx-auto"></div>
     </div>
@@ -87,17 +97,17 @@
         <!-- لوحة الفلاتر والبحث المتقدمة لأعضاء الكنيسة -->
         <div id="namesFilterSection" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6 hidden">
             <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
-                <span class="text-xs font-black text-indigo-900">أدوات البحث والفرز المتقدم</span>
+                <span class="text-xs font-black text-indigo-900">أدوات البحث والفرز العائلي</span>
                 <button onclick="resetNamesFilters()" class="text-xs font-bold text-slate-500 hover:text-rose-600 transition">مسح الفلاتر</button>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                    <label class="filter-label">بحث برب الأسرة</label>
-                    <input type="text" id="filterFamilyHead" oninput="applyNamesFilter()" placeholder="اسم رب الأسرة..." class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
+                    <label class="filter-label text-indigo-700">🔍 بحث برب الأسرة (عائلة كاملة)</label>
+                    <input type="text" id="filterFamilyHead" oninput="applyNamesFilter()" placeholder="اسم رب الأسرة..." class="w-full px-3 py-2 bg-indigo-50/50 border border-indigo-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
                 <div>
-                    <label class="filter-label">بحث بالاسم ثلاثي</label>
-                    <input type="text" id="filterFullName" oninput="applyNamesFilter()" placeholder="اسم العضو ثلاثي..." class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
+                    <label class="filter-label text-emerald-700">👤 بحث بالاسم ثلاثي (بيانات الفرد)</label>
+                    <input type="text" id="filterFullName" oninput="applyNamesFilter()" placeholder="اسم العضو ثلاثي..." class="w-full px-3 py-2 bg-emerald-50/50 border border-emerald-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500">
                 </div>
                 <div>
                     <label class="filter-label">المنطقة / السكن</label>
@@ -153,37 +163,44 @@
             </div>
         </div>
 
-        <!-- حقل البحث البسيط لباقي الأقسام -->
+        <!-- حقل البحث لباقي الأقسام -->
         <div id="standardSearchContainer" class="relative w-full max-w-md mb-6 hidden">
             <input type="text" id="searchInput" oninput="renderStandardCards()" placeholder="بحث سريع في السجلات..." class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold shadow-sm">
         </div>
 
-        <!-- مؤشر التحميل -->
         <div id="loader" class="hidden text-center py-20">
-            <p class="text-slate-600 font-bold text-sm">جاري جلب البيانات من السجلات...</p>
+            <p class="text-slate-600 font-bold text-sm">جاري معالجة السجلات...</p>
         </div>
 
-        <!-- رسالة التوجيه لأعضاء الكنيسة -->
         <div id="namesPlaceholder" class="hidden text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
-            <h3 class="text-lg font-black text-slate-700 mb-1">حدد معايير الفرز أو ابحث عن عائلة</h3>
-            <p class="text-xs text-slate-500 font-bold max-w-md mx-auto">استخدم حقول البحث أو الفرز في الأعلى لعرض العائلات وأفرادها مجمعة بدقة.</p>
+            <h3 class="text-lg font-black text-slate-700 mb-1">ابحث باسم رب الأسرة لعرض العائلة كاملة</h3>
+            <p class="text-xs text-slate-500 font-bold max-w-md mx-auto">أو ابحث بالاسم ثلاثي لعرض بطاقة الفرد المفصلة بما فيها تاريخ آخر اعتراف.</p>
         </div>
 
-        <!-- حاوية نتائج أعضاء الكنيسة -->
-        <div id="familyResultsContainer" class="hidden flex-col gap-6"></div>
-
-        <!-- حاوية الكروت للأقسام الأخرى -->
+        <div id="familyResultsContainer" class="hidden flex flex-col gap-6"></div>
         <div id="standardCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </div>
 </main>
 
-<!-- نافذة الإدخال والتعديل -->
+<!-- نافذة الإدخال والتعديل (مع قاعدة العائلة أولاً) -->
 <div id="dataModal" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
     <div class="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
         <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
             <h3 id="modalTitle" class="text-base font-black text-slate-800"></h3>
             <button onclick="closeModal()" class="text-slate-400 hover:text-slate-700 transition w-8 h-8 rounded-full flex items-center justify-center bg-slate-200 font-bold">✕</button>
         </div>
+
+        <!-- محدد نوع الإضافة في شيت الأعضاء -->
+        <div id="memberTypeSelector" class="px-6 py-3 bg-amber-50 border-b border-amber-100 flex items-center gap-4 hidden">
+            <span class="text-xs font-black text-amber-900">نوع الإضافة:</span>
+            <label class="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
+                <input type="radio" name="addMode" value="new_head" onchange="toggleAddMode('new_head')" checked> تسجيل رب أسرة جديد
+            </label>
+            <label class="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
+                <input type="radio" name="addMode" value="add_member" onchange="toggleAddMode('add_member')"> إضافة فرد لأسرة قائمة
+            </label>
+        </div>
+
         <form id="recordForm" onsubmit="handleFormSubmit(event)" class="overflow-y-auto p-6 space-y-5 custom-scrollbar flex-grow bg-white">
             <input type="hidden" id="formAction">
             <input type="hidden" id="recordId">
