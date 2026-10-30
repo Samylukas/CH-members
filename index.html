@@ -4,40 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>منظومة الخدمة والرعاية الكنسية</title>
+    
+    <!-- مكتبة الأيقونات المحدثة والمؤمنة مع دعم الـ CDN المباشر -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        * { font-family: 'Cairo', sans-serif !important; }
-        body { background-color: #f1f5f9; }
-        .dashboard-card { border-radius: 14px; background: white; border: 2px solid transparent; transition: all 0.25s ease; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04); }
-        .dashboard-card:hover { transform: translateY(-4px); box-shadow: 0 12px 20px -3px rgba(0,0,0,0.08); }
-        .card-names { border-color: #10b981; } .card-names .card-icon { color: #10b981; }
-        .card-visitations { border-color: #ef4444; } .card-visitations .card-icon { color: #ef4444; }
-        .card-meetings { border-color: #f59e0b; } .card-meetings .card-icon { color: #f59e0b; }
-        .card-sunday { border-color: #3b82f6; } .card-sunday .card-icon { color: #3b82f6; }
-        .card-servants { border-color: #8b5cf6; } .card-servants .card-icon { color: #8b5cf6; }
-        .family-box { border-radius: 16px; background: white; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); margin-bottom: 2rem; overflow: hidden; }
-        .family-header { background: linear-gradient(to left, #eef2ff, #f8fafc); padding: 1rem 1.5rem; border-bottom: 2px solid #e0e7ff; display: flex; justify-content: space-between; align-items: center; }
-        .member-row { padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; transition: background 0.2s; }
-        .member-row:last-child { border-bottom: none; }
-        .member-row:hover { background-color: #f8fafc; }
-        .filter-label { font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem; display: block; }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-    </style>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="logo.png">
 </head>
 <body class="flex flex-col min-h-screen">
 
+<!-- شاشة البداية الدخانية (Splash Screen) -->
+<div id="splashScreen">
+    <div class="splash-logo-container">
+        <img src="logo.png" alt="Church Logo" class="splash-logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2972/2972149.png'">
+        <h1 class="splash-title">كنيسة السيدة العذراء والشهيد مارجرجس</h1>
+    </div>
+</div>
+
 <!-- شاشة تسجيل الدخول -->
 <div id="loginScreen" class="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4 backdrop-blur-md">
-    <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center border border-slate-100">
-        <div class="w-16 h-16 bg-indigo-50 text-indigo-700 rounded-full flex items-center justify-center mx-auto mb-4">
-            <i class="fa-solid fa-church text-3xl"></i>
-        </div>
+    <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md text-center border border-slate-100">
+        <img src="logo.png" alt="Logo" class="w-20 h-20 mx-auto object-contain mb-3 drop-shadow" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2972/2972149.png'">
         <h2 class="text-2xl font-black text-slate-800 mb-1">بوابة الخدام</h2>
         <p class="text-xs text-slate-500 mb-6 font-bold">تسجيل الدخول لمنظومة الرعاية والخدمة</p>
+        
         <form onsubmit="handleLogin(event)" class="space-y-4 text-right">
             <div>
                 <label class="block text-xs font-bold text-slate-600 mb-1">اسم المستخدم</label>
@@ -59,15 +50,13 @@
     </div>
 </div>
 
-<!-- الهيدر الرئيسي -->
+<!-- الهيدر الرئيسي للموقع -->
 <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-4">
+    <div class="max-w-7xl mx-auto px-4 py-2.5 flex flex-col sm:flex-row justify-between items-center gap-4">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-sm">
-                <i class="fa-solid fa-cross text-lg"></i>
-            </div>
+            <img src="logo.png" alt="Logo" class="w-10 h-10 object-contain rounded-full shadow-sm border border-slate-100" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2972/2972149.png'">
             <div>
-                <h1 class="text-base md:text-lg font-black text-slate-800 leading-tight">منظومة الخدمة والرعاية الكنسية</h1>
+                <h1 class="text-base font-black text-slate-800 leading-tight">منظومة الخدمة والرعاية الكنسية</h1>
                 <p class="text-xs text-slate-500 font-bold" id="userBadge"></p>
             </div>
         </div>
@@ -109,7 +98,7 @@
         <div id="namesFilterSection" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6 hidden">
             <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
                 <span class="text-xs font-black text-indigo-900 flex items-center gap-2"><i class="fa-solid fa-filter text-indigo-600"></i> أدوات البحث والفرز المتقدم</span>
-                <button onclick="resetNamesFilters()" class="text-xs font-bold text-slate-500 hover:text-rose-600 transition"><i class="fa-solid fa-eraser ml-1"></i> إعادة ضبط</button>
+                <button onclick="resetNamesFilters()" class="text-xs font-bold text-slate-500 hover:text-rose-600 transition"><i class="fa-solid fa-eraser ml-1"></i> مسح الفلاتر</button>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
@@ -121,7 +110,7 @@
                     <input type="text" id="filterFullName" oninput="applyNamesFilter()" placeholder="اسم العضو ثلاثي..." class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
                 <div>
-                    <label class="filter-label"><i class="fa-solid fa-location-dot ml-1 text-slate-400"></i> المنطقة / العنوان</label>
+                    <label class="filter-label"><i class="fa-solid fa-location-dot ml-1 text-slate-400"></i> المنطقة / السكن</label>
                     <select id="filterArea" onchange="applyNamesFilter()" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="">كل المناطق</option>
                     </select>
@@ -129,11 +118,11 @@
                 <div>
                     <label class="filter-label"><i class="fa-solid fa-hourglass-half ml-1 text-slate-400"></i> الفئة العمرية</label>
                     <select id="filterAgeGroup" onchange="applyNamesFilter()" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="">كل الفئات العمرية</option>
+                        <option value="">كل الأعمار</option>
                         <option value="children">أطفال (أقل من 12 سنة)</option>
                         <option value="prep">إعدادي (12 - 15 سنة)</option>
                         <option value="sec">ثانوي (15 - 18 سنة)</option>
-                        <option value="youth">شباب / جامعي (18 - 25 سنة)</option>
+                        <option value="youth">شباب وجامعي (18 - 25 سنة)</option>
                         <option value="adults">خريجين وأسر (25 - 50 سنة)</option>
                         <option value="seniors">كبار السن (أكثر من 50 سنة)</option>
                     </select>
@@ -141,7 +130,7 @@
                 <div>
                     <label class="filter-label"><i class="fa-solid fa-venus-mars ml-1 text-slate-400"></i> النوع</label>
                     <select id="filterGender" onchange="applyNamesFilter()" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="">الكل (ذكر وانثي)</option>
+                        <option value="">الكل</option>
                         <option value="ذكر">ذكر</option>
                         <option value="انثي">انثي</option>
                     </select>
@@ -150,7 +139,7 @@
                     <label class="filter-label"><i class="fa-solid fa-id-card ml-1 text-slate-400"></i> البطاقة الانتخابية</label>
                     <select id="filterElection" onchange="applyNamesFilter()" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="">الكل</option>
-                        <option value="يوجد">يوجد بطاقة انتخابية</option>
+                        <option value="يوجد">يوجد بطاقة</option>
                         <option value="لا يوجد">لا يوجد بطاقة</option>
                     </select>
                 </div>
@@ -180,30 +169,30 @@
             <input type="text" id="searchInput" oninput="renderStandardCards()" placeholder="بحث سريع في السجلات..." class="w-full pr-11 pl-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold shadow-sm">
         </div>
 
-        <!-- التحميل -->
+        <!-- مؤشر التحميل -->
         <div id="loader" class="hidden text-center py-20">
             <i class="fa-solid fa-circle-notch fa-spin text-5xl text-indigo-600 mb-4"></i>
             <p class="text-slate-600 font-bold text-sm">جاري جلب البيانات من السجلات...</p>
         </div>
 
-        <!-- رسالة التوجيه لأعضاء الكنيسة (عند عدم وجود بحث) -->
+        <!-- رسالة التوجيه لأعضاء الكنيسة -->
         <div id="namesPlaceholder" class="hidden text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
             <i class="fa-solid fa-users-viewfinder text-6xl mb-4 text-indigo-300"></i>
             <h3 class="text-lg font-black text-slate-700 mb-1">حدد معايير الفرز أو ابحث عن عائلة</h3>
-            <p class="text-xs text-slate-500 font-bold max-w-md mx-auto">استخدم الحقول في الأعلى للبحث برب الأسرة أو اسم العضو، أو اختر المنطقة والفئة العمرية لعرض النتائج مجمعة لكل أسرة.</p>
+            <p class="text-xs text-slate-500 font-bold max-w-md mx-auto">استخدم حقول البحث أو الفرز في الأعلى لعرض العائلات وأفرادها مجمعة بدقة.</p>
         </div>
 
-        <!-- حاوية عرض نتائج أعضاء الكنيسة (مجمعة عائلياً) -->
+        <!-- حاوية نتائج أعضاء الكنيسة (عائلات) -->
         <div id="familyResultsContainer" class="hidden flex-col gap-6"></div>
 
-        <!-- حاوية الكروت للأقسام الأخرى -->
+        <!-- حاوية الكروت لباقي الأقسام -->
         <div id="standardCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </div>
 </main>
 
 <!-- نافذة الإدخال والتعديل (Modal) -->
 <div id="dataModal" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
-    <div class="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
+    <div class="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
         <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
             <h3 id="modalTitle" class="text-base font-black text-slate-800 flex items-center gap-2"></h3>
             <button onclick="closeModal()" class="text-slate-400 hover:text-slate-700 transition w-8 h-8 rounded-full flex items-center justify-center bg-slate-200"><i class="fa-solid fa-xmark text-sm"></i></button>
@@ -220,566 +209,6 @@
     </div>
 </div>
 
-<script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbxUSj07z5nkCv88hrgob88-bB21SLs2OmK9-BbSSUu_4m2eirI8cBHCl-5xUv0cyTSZ6Q/exec";
-    let currentUser = null, currentTab = "", rawData = [];
-    const STAGE_GRADES = { "حضانة": ["بيبي كلاس", "أولى حضانة", "ثانية حضانة"], "ابتدائي": ["الصف الأول", "الصف الثاني", "الصف الثالث", "الصف الرابع", "الصف الخامس", "الصف السادس"], "إعدادي": ["الصف الأول الإعدادي", "الصف الثاني الإعدادي", "الصف الثالث الإعدادي"], "ثانوي": ["الصف الأول الثانوي", "الصف الثاني الثانوي", "الصف الثالث الثانوي"], "جامعي": ["الفرقة الأولى", "الفرقة الثانية", "الفرقة الثالثة", "الفرقة الرابعة", "بكالوريوس / تخرج"], "خريجين": ["خريج"] };
-    
-    const TABS_INFO = {
-        "Names": { label: "أعضاء الكنيسة", desc: "سجلات العائلات، الفرز، والبيانات الكنسية", icon: "fa-users", colorClass: "card-names", roles: ["Admin", "SundaySchool_Admin"] },
-        "Sunday_School": { label: "مدارس الأحد", desc: "إدارة الفصول، الحضور، والتسميع", icon: "fa-children", colorClass: "card-sunday", roles: ["Admin", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
-        "Visitations": { label: "سجل الافتقاد", desc: "متابعة الزيارات ومواعيد الافتقاد", icon: "fa-house-chimney-user", colorClass: "card-visitations", roles: ["Admin"] },
-        "Meetings_Attendance": { label: "حضور الاجتماعات", desc: "تسجيل حضور وغياب الاجتماعات", icon: "fa-clipboard-user", colorClass: "card-meetings", roles: ["Admin"] },
-        "Servants": { label: "إدارة الخدام", desc: "توزيع الصلاحيات والحسابات", icon: "fa-user-shield", colorClass: "card-servants", roles: ["Admin"] }
-    };
-
-    const SCHEMAS = {
-        "Names": [
-            { id: "اسم رب الاسرة", label: "اسم رب الأسرة", type: "text" },
-            { id: "الاسم ثلاثي", label: "الاسم ثلاثي", type: "text", required: true },
-            { id: "ذكر/انثي", label: "النوع", type: "select", options: ["", "ذكر", "انثي"], required: true },
-            { id: "صلة القرابة", label: "صلة القرابة", type: "select", options: ["", "زوج", "زوجة", "ابن", "ابنة", "والد", "والدة", "أخ", "أخت", "أخرى"] },
-            { id: "الحالة الاجتماعية", label: "الحالة الاجتماعية", type: "select", options: ["", "متزوج", "متزوجة", "اعزب", "انسة", "ارمل", "ارملة"] },
-            { id: "المرحلة", label: "المرحلة الدراسية", type: "stage_select", options: Object.keys(STAGE_GRADES) },
-            { id: "الصف", label: "الصف الدراسي", type: "grade_select" },
-            { id: "فصل مدارس الاحد", label: "فصل مدارس الأحد", type: "text" },
-            { id: "تليفون العمل/المحمول", label: "المحمول / الهاتف", type: "text" },
-            { id: "المنطقة", label: "المنطقة / السكن", type: "text" },
-            { id: "تاريخ الميلاد", label: "تاريخ الميلاد (DD/MM/YYYY)", type: "text" },
-            { id: "الرقم القومي", label: "الرقم القومي", type: "text" },
-            { id: "البطاقة الانتخابية", label: "البطاقة الانتخابية", type: "select", options: ["", "يوجد", "لا يوجد"] },
-            { id: "تاريخ الزواج", label: "تاريخ الزواج (DD/MM/YYYY)", type: "text" },
-            { id: "المؤهل", label: "المؤهل الدراسي", type: "text" },
-            { id: "المهنة/السنة الدراسية", label: "المهنة / العمل", type: "text" },
-            { id: "اب الاعتراف", label: "أب الاعتراف", type: "text" },
-            { id: "الخادم الروحي", label: "الخادم الروحي", type: "text" },
-            { id: "المواظبة على حضور القداس", label: "حضور القداس", type: "select", options: ["", "بانتظام", "أحياناً", "منقطع"] },
-            { id: "المواظبة على حضور الاجتماع", label: "حضور الاجتماع", type: "select", options: ["", "بانتظام", "أحياناً", "منقطع"] },
-            { id: "الرتبة الكنسية", label: "الرتبة الكنسية", type: "select", options: ["", "شعب", "إبصلتس", "أغنسطس", "إيبودياكون", "دياكون", "شماسة"] },
-            { id: "الموعد المناسب للافتقاد", label: "موعد الافتقاد المناسب", type: "text" },
-            { id: "ملاحظات", label: "ملاحظات عامة", type: "textarea", full: true }
-        ],
-        "Sunday_School": [
-            { id: "Stage", label: "المرحلة", type: "stage_select", options: Object.keys(STAGE_GRADES), required: true },
-            { id: "Grade", label: "الصف", type: "grade_select", required: true },
-            { id: "ClassName", label: "اسم الفصل", type: "text", required: true },
-            { id: "SessionDate", label: "تاريخ الدرس (DD/MM/YYYY)", type: "text", required: true },
-            { id: "ChildID", label: "كود المخدوم (ID)", type: "number" },
-            { id: "ChildName", label: "اسم الطفل", type: "text", required: true },
-            { id: "ServantName", label: "اسم الخادم", type: "text" },
-            { id: "Attendance", label: "الحضور", type: "select", options: ["حاضر", "غائب"] },
-            { id: "Memorization", label: "الحفظ", type: "select", options: ["ممتاز", "جيد", "ضعيف", "لم يحفظ"] },
-            { id: "Points", label: "النقاط", type: "number" },
-            { id: "Notes", label: "ملاحظات", type: "textarea", full: true }
-        ],
-        "Visitations": [
-            { id: "MemberID", label: "كود المخدوم", type: "number", required: true },
-            { id: "MemberName", label: "اسم المخدوم", type: "text", required: true },
-            { id: "VisitDate", label: "تاريخ الافتقاد (DD/MM/YYYY)", type: "text", required: true },
-            { id: "VisitorName", label: "اسم الخادم", type: "text", required: true },
-            { id: "VisitType", label: "نوع الافتقاد", type: "select", options: ["منزلي", "تليفوني", "كنسي", "أخرى"] },
-            { id: "FollowUpDate", label: "تاريخ المتابعة (DD/MM/YYYY)", type: "text" },
-            { id: "Notes", label: "تقرير وملاحظات", type: "textarea", full: true }
-        ],
-        "Meetings_Attendance": [
-            { id: "MeetingName", label: "اسم الاجتماع", type: "text", required: true },
-            { id: "MeetingDate", label: "التاريخ (DD/MM/YYYY)", type: "text", required: true },
-            { id: "MemberID", label: "كود العضو", type: "number" },
-            { id: "MemberName", label: "الاسم", type: "text", required: true },
-            { id: "Status", label: "الحالة", type: "select", options: ["حاضر", "معتذر", "غائب"] },
-            { id: "Notes", label: "ملاحظات", type: "textarea", full: true }
-        ],
-        "Servants": [
-            { id: "ServantName", label: "اسم الخادم", type: "text", required: true },
-            { id: "Username", label: "اسم المستخدم / الموبايل", type: "text", required: true },
-            { id: "Password", label: "كلمة المرور", type: "text", required: true },
-            { id: "Role", label: "الصلاحية", type: "select", options: ["Admin", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
-            { id: "AssignedStage", label: "المرحلة المسندة", type: "select", options: ["الكل", ...Object.keys(STAGE_GRADES)] },
-            { id: "AssignedGrade", label: "الصف المسند", type: "text" },
-            { id: "AssignedClass", label: "الفصل المسند", type: "text" },
-            { id: "Status", label: "الحالة", type: "select", options: ["نشط", "موقوف"] }
-        ]
-    };
-
-    window.onload = () => {
-        const saved = localStorage.getItem('church_servant');
-        if (saved) {
-            currentUser = JSON.parse(saved);
-            initApp();
-        }
-    };
-    
-    // تسجيل الدخول مع صمام أمان محلي (Fail-Safe)
-    async function handleLogin(e) {
-        e.preventDefault();
-        const btn = document.getElementById('loginBtn');
-        const err = document.getElementById('loginError');
-        const userVal = document.getElementById('loginUser').value.trim();
-        const passVal = document.getElementById('loginPass').value.trim();
-        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin ml-2"></i> جاري التحقق...`;
-        err.classList.add('hidden');
-
-        try {
-            const res = await fetch(API_URL, {
-                method: 'POST',
-                body: JSON.stringify({ action: 'login', data: { username: userVal, password: passVal } })
-            });
-            const data = await res.json();
-            if (data.status === "success") {
-                currentUser = data.user;
-                localStorage.setItem('church_servant', JSON.stringify(currentUser));
-                initApp();
-                return;
-            } else {
-                // إذا رفض الخادم، نتحقق محلياً لحساب الأدمن كإجراء طوارئ
-                if (userVal === "admin" && passVal === "123456") {
-                    loginAsFallbackAdmin();
-                    return;
-                }
-                err.innerText = data.message;
-                err.classList.remove('hidden');
-            }
-        } catch (error) {
-            // في حال حدوث أي خطأ بالاتصال بالباك اند، يدخل مباشرة إذا كان الحساب هو الأدمن الافتراضي
-            if (userVal === "admin" && passVal === "123456") {
-                loginAsFallbackAdmin();
-                return;
-            }
-            err.innerText = "تعذر الاتصال بالخادم، يرجى المحاولة ثانية.";
-            err.classList.remove('hidden');
-        } finally {
-            btn.innerText = "تسجيل الدخول";
-        }
-    }
-
-    function loginAsFallbackAdmin() {
-        currentUser = { ServantName: "أبونا الكاهن / الأدمن", Role: "Admin", AssignedStage: "الكل", AssignedGrade: "الكل", AssignedClass: "الكل" };
-        localStorage.setItem('church_servant', JSON.stringify(currentUser));
-        initApp();
-    }
-    
-    function logout() { localStorage.removeItem('church_servant'); location.reload(); }
-    
-    function initApp() {
-        document.getElementById('loginScreen').classList.add('hidden');
-        document.getElementById('userBadge').innerHTML = `<span>الخادم: <span class="font-black text-indigo-700">${currentUser.ServantName}</span></span> <span class="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded ml-2 font-mono text-[11px] font-bold">${currentUser.Role}</span>`;
-        buildDashboard();
-        showDashboard();
-    }
-    
-    function buildDashboard() {
-        const grid = document.getElementById('dashboardGrid');
-        grid.innerHTML = "";
-        Object.keys(TABS_INFO).forEach(key => {
-            const info = TABS_INFO[key];
-            if (info.roles.includes(currentUser.Role)) {
-                const card = document.createElement('div');
-                card.className = `dashboard-card ${info.colorClass} p-8 flex flex-col items-center justify-center text-center cursor-pointer min-h-[220px]`;
-                card.onclick = () => loadSection(key);
-                card.innerHTML = `<i class="fa-solid ${info.icon} text-6xl card-icon mb-4"></i><h3 class="text-xl font-black text-slate-800 mb-2">${info.label}</h3><p class="text-xs text-slate-500 font-bold">${info.desc}</p>`;
-                grid.appendChild(card);
-            }
-        });
-    }
-    
-    function showDashboard() {
-        document.getElementById('dataView').classList.add('hidden');
-        document.getElementById('dashboardView').classList.remove('hidden');
-        currentTab = "";
-    }
-    
-    function loadSection(sectionKey) {
-        currentTab = sectionKey;
-        document.getElementById('dashboardView').classList.add('hidden');
-        document.getElementById('dataView').classList.remove('hidden');
-        
-        const info = TABS_INFO[sectionKey];
-        document.getElementById('currentTabTitle').innerHTML = `<i class="fa-solid ${info.icon} text-indigo-600 ml-2"></i> ${info.label}`;
-        
-        if (currentTab === 'Names') {
-            document.getElementById('namesFilterSection').classList.remove('hidden');
-            document.getElementById('namesPlaceholder').classList.remove('hidden');
-            document.getElementById('standardSearchContainer').classList.add('hidden');
-            document.getElementById('standardCardsContainer').classList.add('hidden');
-            document.getElementById('familyResultsContainer').classList.remove('hidden');
-            resetNamesFilters();
-        } else {
-            document.getElementById('namesFilterSection').classList.add('hidden');
-            document.getElementById('namesPlaceholder').classList.add('hidden');
-            document.getElementById('standardSearchContainer').classList.remove('hidden');
-            document.getElementById('standardCardsContainer').classList.remove('hidden');
-            document.getElementById('familyResultsContainer').classList.add('hidden');
-            document.getElementById('searchInput').value = "";
-        }
-        
-        loadData();
-    }
-    
-    async function loadData(force = false) {
-        showLoader(true);
-        try {
-            const res = await (await fetch(`${API_URL}?sheet=${currentTab}`)).json();
-            if (res.status === "success") {
-                rawData = res.data;
-                if (currentTab === 'Names') {
-                    populateAreasDropdown();
-                    applyNamesFilter();
-                } else {
-                    renderStandardCards();
-                }
-            } else {
-                alert("خطأ: " + res.message);
-            }
-        } catch (err) {
-            alert("تعذر جلب البيانات");
-        } finally {
-            showLoader(false);
-        }
-    }
-
-    // استخراج المناطق الفريدة في قائمة المنطقة
-    function populateAreasDropdown() {
-        const areaSelect = document.getElementById('filterArea');
-        const areas = new Set();
-        rawData.forEach(item => {
-            const area = (item["المنطقة"] || item["محل العمل/الدراسة"] || "").trim();
-            if (area) areas.add(area);
-        });
-        areaSelect.innerHTML = `<option value="">كل المناطق (${areas.size})</option>` + 
-            Array.from(areas).sort().map(a => `<option value="${a}">${a}</option>`).join('');
-    }
-
-    // حساب العمر من تاريخ الميلاد
-    function calculateAge(dobStr, nationalId = "") {
-        let birthYear = 0;
-        if (dobStr) {
-            const match = String(dobStr).match(/\b(19\d\d|20\d\d)\b/);
-            if (match) birthYear = parseInt(match[1]);
-        }
-        // استخراج سنة الميلاد من الرقم القومي المصري إذا لم يتوفر التاريخ
-        if (!birthYear && nationalId && String(nationalId).length === 14) {
-            const century = nationalId[0] === '2' ? 1900 : 2000;
-            birthYear = century + parseInt(nationalId.substring(1, 3));
-        }
-        if (!birthYear) return null;
-        return 2026 - birthYear; // السنة الحالية 2026
-    }
-
-    function resetNamesFilters() {
-        document.getElementById('filterFamilyHead').value = "";
-        document.getElementById('filterFullName').value = "";
-        document.getElementById('filterArea').value = "";
-        document.getElementById('filterAgeGroup').value = "";
-        document.getElementById('filterGender').value = "";
-        document.getElementById('filterElection').value = "";
-        document.getElementById('filterMarital').value = "";
-        document.getElementById('familyResultsContainer').innerHTML = "";
-        document.getElementById('namesPlaceholder').classList.remove('hidden');
-        document.getElementById('recordCount').innerText = "0 سجل";
-    }
-
-    // دالة الفرز والبحث المتقدمة
-    function applyNamesFilter() {
-        const headQ = document.getElementById('filterFamilyHead').value.trim().toLowerCase();
-        const nameQ = document.getElementById('filterFullName').value.trim().toLowerCase();
-        const areaQ = document.getElementById('filterArea').value.trim();
-        const ageGroupQ = document.getElementById('filterAgeGroup').value;
-        const genderQ = document.getElementById('filterGender').value;
-        const electionQ = document.getElementById('filterElection').value;
-        const maritalQ = document.getElementById('filterMarital').value;
-
-        const hasActiveFilter = headQ || nameQ || areaQ || ageGroupQ || genderQ || electionQ || maritalQ;
-
-        if (!hasActiveFilter) {
-            document.getElementById('familyResultsContainer').innerHTML = "";
-            document.getElementById('namesPlaceholder').classList.remove('hidden');
-            document.getElementById('recordCount').innerText = "0 سجل";
-            return;
-        }
-
-        document.getElementById('namesPlaceholder').classList.add('hidden');
-
-        // أولاً: تصفية الأفراد المطابقين للشروط
-        const matchedMembers = rawData.filter(item => {
-            if (genderQ && item["ذكر/انثي"] !== genderQ) return false;
-            if (electionQ && (item["البطاقة الانتخابية"] || "").trim() !== electionQ) return false;
-            if (maritalQ && (item["الحالة الاجتماعية"] || "").trim() !== maritalQ) return false;
-            if (areaQ) {
-                const itemArea = (item["المنطقة"] || item["محل العمل/الدراسة"] || "").trim();
-                if (itemArea !== areaQ) return false;
-            }
-            if (ageGroupQ) {
-                const age = calculateAge(item["تاريخ الميلاد"], item["الرقم القومي"]);
-                if (age === null) return false;
-                if (ageGroupQ === "children" && age >= 12) return false;
-                if (ageGroupQ === "prep" && (age < 12 || age > 15)) return false;
-                if (ageGroupQ === "sec" && (age < 15 || age > 18)) return false;
-                if (ageGroupQ === "youth" && (age < 18 || age > 25)) return false;
-                if (ageGroupQ === "adults" && (age < 25 || age > 50)) return false;
-                if (ageGroupQ === "seniors" && age <= 50) return false;
-            }
-            if (headQ) {
-                const h = String(item["اسم رب الاسرة"] || "").toLowerCase();
-                if (!h.includes(headQ)) return false;
-            }
-            if (nameQ) {
-                const n = String(item["الاسم ثلاثي"] || "").toLowerCase();
-                if (!n.includes(nameQ)) return false;
-            }
-            return true;
-        });
-
-        // ثانياً: تجميع العائلات
-        // إذا كان البحث بالاسم أو برب الأسرة، نجلب باقي أفراد الأسرة لنفس رب الأسرة
-        let targetHeads = new Set();
-        matchedMembers.forEach(m => {
-            if (m["اسم رب الاسرة"]) targetHeads.add(m["اسم رب الاسرة"]);
-        });
-
-        const container = document.getElementById('familyResultsContainer');
-        container.innerHTML = "";
-
-        let totalDisplayed = 0;
-        let familiesCount = 0;
-
-        targetHeads.forEach(headName => {
-            // جميع أفراد عائلة هذا الرب
-            const allFamilyMembers = rawData.filter(r => r["اسم رب الاسرة"] === headName);
-            
-            // تصفية أفراد العائلة لعرض المطابقين للفلاتر المحددة (أو تمييزهم)
-            familiesCount++;
-            const famDiv = document.createElement('div');
-            famDiv.className = "family-box";
-
-            let headerHtml = `
-                <div class="family-header">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
-                            <i class="fa-solid fa-house-user"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-sm font-black text-slate-800">عائلة: ${headName}</h3>
-                            <p class="text-[11px] font-bold text-slate-500">إجمالي المقيدين بالأسرة: ${allFamilyMembers.length} أفراد</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            let membersHtml = `<div class="divide-y divide-slate-100">`;
-
-            allFamilyMembers.forEach(member => {
-                const idVal = member[Object.keys(member)[0]];
-                const isMatched = matchedMembers.some(m => m[Object.keys(m)[0]] === idVal);
-                
-                // إذا كنا نستخدم فلاتر دقيقة كالعمر أو النوع، نبرز الفرد المطابق
-                const rowBg = isMatched ? "bg-white" : "bg-slate-50/60 opacity-60";
-                totalDisplayed++;
-
-                const age = calculateAge(member["تاريخ الميلاد"], member["الرقم القومي"]);
-                const ageText = age !== null ? `${age} سنة` : "-";
-                const genderBadge = member["ذكر/انثي"] === "ذكر" 
-                    ? `<span class="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-[11px] font-bold">ذكر</span>`
-                    : `<span class="bg-pink-50 text-pink-700 border border-pink-200 px-2 py-0.5 rounded text-[11px] font-bold">انثي</span>`;
-
-                membersHtml += `
-                    <div class="member-row ${rowBg} flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                        <div class="flex items-start gap-3">
-                            <span class="text-xs font-mono font-bold text-slate-400 mt-1">#${idVal}</span>
-                            <div>
-                                <div class="flex items-center gap-2 mb-1">
-                                    <h4 class="text-sm font-black text-slate-800">${member["الاسم ثلاثي"] || "-"}</h4>
-                                    <span class="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-bold">${member["صلة القرابة"] || "عضو"}</span>
-                                    ${genderBadge}
-                                    <span class="text-[11px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded font-bold">${member["الحالة الاجتماعية"] || "-"}</span>
-                                </div>
-                                <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 font-semibold">
-                                    <span><i class="fa-solid fa-cake-candles text-slate-400 ml-1"></i>العمر: <strong class="text-slate-700">${ageText}</strong></span>
-                                    <span><i class="fa-solid fa-phone text-slate-400 ml-1"></i>${member["تليفون العمل/المحمول"] || "-"}</span>
-                                    <span><i class="fa-solid fa-id-card text-slate-400 ml-1"></i>بطاقة انتخابية: <strong class="${member["البطاقة الانتخابية"]==='يوجد'?'text-emerald-600':'text-rose-600'}">${member["البطاقة الانتخابية"] || "-"}</strong></span>
-                                    <span><i class="fa-solid fa-cross text-slate-400 ml-1"></i>أب الاعتراف: ${member["اب الاعتراف"] || "-"}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-2 w-full lg:w-auto justify-end border-t lg:border-t-0 pt-2 lg:pt-0">
-                            <button onclick="editRecord(${idVal})" class="text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg transition"><i class="fa-regular fa-pen-to-square ml-1"></i>تعديل</button>
-                            ${currentUser.Role === "Admin" ? `<button onclick="deleteRecord(${idVal})" class="text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1.5 rounded-lg transition"><i class="fa-regular fa-trash-can ml-1"></i>حذف</button>` : ''}
-                        </div>
-                    </div>
-                `;
-            });
-
-            membersHtml += `</div>`;
-            famDiv.innerHTML = headerHtml + membersHtml;
-            container.appendChild(famDiv);
-        });
-
-        document.getElementById('recordCount').innerText = `${matchedMembers.length} مطابق (${familiesCount} أسرة)`;
-
-        if (familiesCount === 0) {
-            container.innerHTML = `<div class="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300 text-slate-400 font-bold"><i class="fa-regular fa-face-frown text-5xl mb-3 text-slate-300"></i><br>لم يتم العثور على أفراد أو أسر مطابقة للفلاتر المحددة</div>`;
-        }
-    }
-
-    // عرض الكروت في باقي الأقسام
-    function renderStandardCards() {
-        if (currentTab === 'Names') return;
-        const query = document.getElementById('searchInput').value.trim().toLowerCase();
-        const container = document.getElementById('standardCardsContainer');
-        container.innerHTML = "";
-
-        let filtered = rawData.filter(item => {
-            if (currentTab === "Sunday_School") {
-                if (currentUser.Role === "Stage_Leader" && currentUser.AssignedStage !== "الكل" && item["Stage"] !== currentUser.AssignedStage) return false;
-                if (currentUser.Role === "Class_Servant" && ((currentUser.AssignedStage !== "الكل" && item["Stage"] !== currentUser.AssignedStage) || (currentUser.AssignedClass !== "الكل" && item["ClassName"] !== currentUser.AssignedClass))) return false;
-            }
-            return Object.values(item).some(val => String(val).toLowerCase().includes(query));
-        });
-
-        document.getElementById('recordCount').innerText = `${filtered.length} سجل`;
-        if (!filtered.length) {
-            container.innerHTML = `<div class="col-span-full text-center py-16 text-slate-400 font-bold bg-white rounded-2xl border border-dashed border-slate-300">لا توجد سجلات مطابقة</div>`;
-            return;
-        }
-
-        filtered.forEach(item => {
-            const idVal = item[Object.keys(item)[0]];
-            const card = document.createElement('div');
-            card.className = "bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hover:shadow-md transition flex flex-col justify-between";
-            let details = "", title = item["ChildName"] || item["ServantName"] || item["MemberName"] || "سجل";
-
-            if (currentTab === "Sunday_School") {
-                details = `<p class="text-xs text-slate-600 mb-2"><span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-bold">${item["Stage"]}</span> ${item["Grade"]} (${item["ClassName"]})</p><div class="flex justify-between text-xs text-slate-500 font-semibold"><p><i class="fa-regular fa-calendar ml-1 text-slate-400"></i>${item["SessionDate"]}</p><p class="font-bold ${item["Attendance"]==='حاضر'?'text-emerald-600':'text-rose-600'}">${item["Attendance"]}</p></div>`;
-            } else if (currentTab === "Servants") {
-                details = `<p class="text-xs text-slate-600 mb-1 font-bold">الصلاحية: <span class="text-indigo-700">${item["Role"]}</span></p><p class="text-xs text-slate-500 font-semibold">النطاق: ${item["AssignedStage"]} - ${item["AssignedGrade"]}</p>`;
-            } else if (currentTab === "Visitations") {
-                details = `<p class="text-xs text-slate-600 mb-1 font-semibold"><i class="fa-solid fa-user-tie text-slate-400 ml-1"></i>الخادم: ${item["VisitorName"]}</p><p class="text-xs text-slate-500"><i class="fa-regular fa-calendar text-slate-400 ml-1"></i>تاريخ الافتقاد: ${item["VisitDate"]}</p>`;
-            } else if (currentTab === "Meetings_Attendance") {
-                details = `<p class="text-xs text-slate-600 mb-1 font-semibold">${item["MeetingName"]}</p><p class="text-xs text-slate-500"><i class="fa-regular fa-calendar text-slate-400 ml-1"></i>التاريخ: ${item["MeetingDate"]}</p>`;
-            }
-
-            card.innerHTML = `
-                <div>
-                    <div class="flex justify-between items-start mb-3">
-                        <h4 class="font-black text-sm text-slate-800 truncate">${title}</h4>
-                        <span class="text-[10px] font-mono font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded">#${idVal}</span>
-                    </div>
-                    <div class="mb-4">${details}</div>
-                </div>
-                <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
-                    <button onclick="editRecord(${idVal})" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2.5 py-1.5 rounded-lg transition">تعديل</button>
-                    ${currentUser.Role === "Admin" ? `<button onclick="deleteRecord(${idVal})" class="text-xs font-bold text-rose-600 hover:text-rose-800 bg-rose-50 px-2.5 py-1.5 rounded-lg transition">حذف</button>` : ''}
-                </div>
-            `;
-            container.appendChild(card);
-        });
-    }
-
-    function updateGradeDropdown(stg, grd="") {
-        const sel = document.querySelector('select[name="الصف"], select[name="Grade"], select[name="AssignedGrade"]');
-        if (!sel) return;
-        const arr = STAGE_GRADES[stg] || [];
-        sel.innerHTML = `<option value="">اختر الصف...</option><option value="الكل">الكل</option>` + arr.map(g => `<option value="${g}" ${g===grd?'selected':''}>${g}</option>`).join('');
-    }
-
-    function handleGenderChange(v) {
-        const rSel = document.querySelector('select[name="صلة القرابة"]'), mSel = document.querySelector('select[name="الحالة الاجتماعية"]');
-        if (rSel) {
-            Array.from(rSel.options).forEach(o => {
-                if (v==="ذكر") o.disabled = ["زوجة","ابنة","والدة","أخت"].includes(o.value);
-                else if (v==="انثي") o.disabled = ["زوج","ابن","والد","أخ"].includes(o.value);
-                else o.disabled = false;
-            });
-        }
-        if (mSel) {
-            Array.from(mSel.options).forEach(o => {
-                if (v==="ذكر") o.disabled = ["متزوجة","انسة","ارملة"].includes(o.value);
-                else if (v==="انثي") o.disabled = ["متزوج","اعزب","ارمل"].includes(o.value);
-                else o.disabled = false;
-            });
-        }
-    }
-
-    function openModal(action, data={}) {
-        document.getElementById('formAction').value = action;
-        document.getElementById('recordId').value = action === 'update' ? data[Object.keys(data)[0]] : "";
-        document.getElementById('modalTitle').innerHTML = action === 'add' ? `<i class="fa-solid fa-plus-circle text-emerald-600 ml-2"></i> إضافة سجل جديد` : `<i class="fa-solid fa-pen text-indigo-600 ml-2"></i> تعديل السجل`;
-        const fCont = document.getElementById('formFields');
-        fCont.innerHTML = "";
-        const sc = SCHEMAS[currentTab] || [];
-        sc.forEach(f => {
-            const val = data[f.id] || "";
-            const w = document.createElement('div');
-            if (f.full) w.className = "md:col-span-2 lg:col-span-3";
-            let inpH = "";
-            const cls = "w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs transition";
-            if (f.type === "stage_select") {
-                inpH = `<select name="${f.id}" onchange="updateGradeDropdown(this.value)" class="${cls}" ${f.required?'required':''}><option value="">اختر المرحلة...</option><option value="الكل">الكل</option>${f.options.map(o => `<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('')}</select>`;
-            } else if (f.type === "grade_select") {
-                inpH = `<select name="${f.id}" class="${cls}" ${f.required?'required':''}><option value="">اختر الصف...</option></select>`;
-            } else if (f.type === "select") {
-                const ex = f.id === "ذكر/انثي" ? `onchange="handleGenderChange(this.value)"` : "";
-                inpH = `<select name="${f.id}" class="${cls}" ${f.required?'required':''} ${ex}>${f.options.map(o => `<option value="${o}" ${val===o?'selected':''}>${o || "---"}</option>`).join('')}</select>`;
-            } else if (f.type === "textarea") {
-                inpH = `<textarea name="${f.id}" rows="2" class="${cls}">${val}</textarea>`;
-            } else {
-                inpH = `<input type="${f.type}" name="${f.id}" value="${val}" ${f.required?'required':''} class="${cls}">`;
-            }
-            w.innerHTML = `<label class="block font-bold mb-1 text-slate-700 text-xs">${f.label} ${f.required?'<span class="text-rose-500">*</span>':''}</label>${inpH}`;
-            fCont.appendChild(w);
-        });
-        const stg = data["المرحلة"] || data["Stage"] || data["AssignedStage"] || "";
-        const grd = data["الصف"] || data["Grade"] || data["AssignedGrade"] || "";
-        if (stg) updateGradeDropdown(stg, grd);
-        const gen = data["ذكر/انثي"] || "";
-        if (gen) handleGenderChange(gen);
-        document.getElementById('dataModal').classList.remove('hidden');
-    }
-
-    function closeModal() { document.getElementById('dataModal').classList.add('hidden'); }
-
-    async function handleFormSubmit(e) {
-        e.preventDefault();
-        const action = document.getElementById('formAction').value;
-        const fd = new FormData(e.target);
-        const payload = {};
-        fd.forEach((v, k) => { if (v.trim()) payload[k] = v; });
-        if (action === "update") payload[Object.keys(rawData[0])[0]] = Number(document.getElementById('recordId').value);
-        const btn = document.getElementById('saveBtn');
-        btn.disabled = true;
-        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin ml-2"></i> جاري الحفظ...`;
-        try {
-            const res = await (await fetch(API_URL, { method: 'POST', body: JSON.stringify({ sheet: currentTab, action: action, data: payload }) })).json();
-            if (res.status === "success") {
-                closeModal();
-                await loadData();
-            } else alert("خطأ: " + res.message);
-        } catch (err) {
-            alert("حدث خطأ أثناء الحفظ.");
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = `حفظ السجل`;
-        }
-    }
-
-    function editRecord(id) { const item = rawData.find(r => r[Object.keys(r)[0]] == id); if (item) openModal('update', item); }
-    async function deleteRecord(id) {
-        if (!confirm(`تحذير: هل أنت متأكد من حذف السجل رقم #${id} نهائياً؟`)) return;
-        showLoader(true);
-        try {
-            await fetch(API_URL, { method: 'POST', body: JSON.stringify({ sheet: currentTab, action: "delete", data: { [Object.keys(rawData[0])[0]]: id } }) });
-            await loadData();
-        } catch (err) { alert("فشل الحذف"); } finally { showLoader(false); }
-    }
-
-    function showLoader(s) {
-        document.getElementById('loader').classList.toggle('hidden', !s);
-        if (currentTab === 'Names') {
-            document.getElementById('familyResultsContainer').classList.toggle('hidden', s);
-        } else {
-            document.getElementById('standardCardsContainer').classList.toggle('hidden', s);
-        }
-    }
-</script>
+<script src="app.js"></script>
 </body>
 </html>
