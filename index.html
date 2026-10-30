@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>منظومة الخدمة والرعاية الكنسية</title>
+    <!-- تحميل اللوجو مبكراً وبأعلى أولوية -->
+    <link rel="preload" as="image" href="logo.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/png" href="logo.png">
@@ -13,15 +15,15 @@
 <!-- شاشة البداية البيضاء الدخانية -->
 <div id="splashScreen">
     <div class="splash-logo-container">
-        <img id="splashLogoImg" src="logo.png?v=2" alt="Logo" class="splash-logo" onerror="handleLogoFallback(this)">
-        <h1 class="splash-title">منظومة الخدمة والرعاية الكنسية</h1>
+        <img id="splashLogoImg" src="logo.png" alt="Logo" class="splash-logo">
+        <h1 id="splashTitleText" class="splash-title">منظومة الخدمة والرعاية الكنسية</h1>
     </div>
 </div>
 
 <!-- نافذة تسجيل الدخول -->
-<div id="loginScreen" class="fixed inset-0 bg-white/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+<div id="loginScreen" class="fixed inset-0 bg-white/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm hidden">
     <div class="bg-white rounded-3xl shadow-xl p-8 w-full max-w-md text-center border border-slate-200">
-        <img src="logo.png?v=2" alt="Logo" class="w-20 h-20 mx-auto object-contain mb-3" onerror="handleLogoFallback(this)">
+        <img src="logo.png" alt="Logo" class="max-w-[160px] max-h-[90px] mx-auto object-contain mb-4">
         
         <h2 class="text-2xl font-black text-slate-800 mb-1">بوابة الخدام</h2>
         <p class="text-xs text-slate-500 mb-6 font-bold">تسجيل الدخول لمنظومة الرعاية والخدمة</p>
@@ -53,9 +55,9 @@
 
 <!-- الهيدر العلوي -->
 <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-4">
+    <div class="max-w-7xl mx-auto px-4 py-2.5 flex flex-col sm:flex-row justify-between items-center gap-4">
         <div class="flex items-center gap-3">
-            <img src="logo.png?v=2" alt="Logo" class="w-11 h-11 object-contain rounded-full shadow-sm border border-slate-100" onerror="handleLogoFallback(this)">
+            <img src="logo.png" alt="Logo" class="max-w-[120px] max-h-[45px] object-contain">
             <div>
                 <h1 class="text-base font-black text-slate-800 leading-tight">منظومة الخدمة والرعاية الكنسية</h1>
                 <p class="text-xs text-slate-500 font-bold" id="userBadge"></p>
