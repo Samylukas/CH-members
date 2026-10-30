@@ -4,71 +4,61 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>منظومة الخدمة والرعاية الكنسية</title>
-    
-    <!-- مكتبة الأيقونات المحدثة والمؤمنة مع دعم الـ CDN المباشر -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="logo.png">
 </head>
-<body class="flex flex-col min-h-screen">
+<body class="flex flex-col min-h-screen bg-slate-50">
 
-<!-- شاشة البداية الدخانية (Splash Screen) -->
+<!-- شاشة البداية البيضاء (Splash Screen) -->
 <div id="splashScreen">
     <div class="splash-logo-container">
-        <img src="logo.png" alt="Church Logo" class="splash-logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2972/2972149.png'">
-        <h1 class="splash-title">كنيسة السيدة العذراء والشهيد مارجرجس</h1>
+        <img id="splashLogoImg" src="logo.png" onerror="if(!this.tried){this.tried=true;this.src='ch%20logo.png';}" alt="Logo" class="splash-logo">
+        <h1 class="splash-title">منظومة الخدمة والرعاية الكنسية</h1>
     </div>
 </div>
 
-<!-- شاشة تسجيل الدخول -->
-<div id="loginScreen" class="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4 backdrop-blur-md">
-    <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md text-center border border-slate-100">
-        <img src="logo.png" alt="Logo" class="w-20 h-20 mx-auto object-contain mb-3 drop-shadow" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2972/2972149.png'">
+<!-- شاشة تسجيل الدخول بخلفية بيضاء نقية -->
+<div id="loginScreen" class="fixed inset-0 bg-white/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-white rounded-3xl shadow-xl p-8 w-full max-w-md text-center border border-slate-200">
+        <img src="logo.png" onerror="if(!this.tried){this.tried=true;this.src='ch%20logo.png';}" alt="Logo" class="w-24 h-24 mx-auto object-contain mb-4 drop-shadow-sm">
         <h2 class="text-2xl font-black text-slate-800 mb-1">بوابة الخدام</h2>
         <p class="text-xs text-slate-500 mb-6 font-bold">تسجيل الدخول لمنظومة الرعاية والخدمة</p>
         
         <form onsubmit="handleLogin(event)" class="space-y-4 text-right">
             <div>
                 <label class="block text-xs font-bold text-slate-600 mb-1">اسم المستخدم</label>
-                <div class="relative">
-                    <i class="fa-solid fa-user absolute right-3.5 top-3.5 text-slate-400"></i>
-                    <input type="text" id="loginUser" required value="admin" class="w-full pr-10 pl-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-semibold">
-                </div>
+                <input type="text" id="loginUser" required value="admin" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-semibold">
             </div>
             <div>
                 <label class="block text-xs font-bold text-slate-600 mb-1">كلمة المرور</label>
-                <div class="relative">
-                    <i class="fa-solid fa-lock absolute right-3.5 top-3.5 text-slate-400"></i>
-                    <input type="password" id="loginPass" required value="123456" class="w-full pr-10 pl-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-semibold">
-                </div>
+                <input type="password" id="loginPass" required value="123456" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-semibold">
             </div>
-            <button type="submit" id="loginBtn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition duration-200 text-sm mt-2">تسجيل الدخول</button>
+            <button type="submit" id="loginBtn" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-md transition duration-200 text-sm mt-2">تسجيل الدخول</button>
             <p id="loginError" class="text-xs text-rose-600 font-bold hidden text-center"></p>
         </form>
     </div>
 </div>
 
-<!-- الهيدر الرئيسي للموقع -->
+<!-- الهيدر الرئيسي -->
 <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-    <div class="max-w-7xl mx-auto px-4 py-2.5 flex flex-col sm:flex-row justify-between items-center gap-4">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-4">
         <div class="flex items-center gap-3">
-            <img src="logo.png" alt="Logo" class="w-10 h-10 object-contain rounded-full shadow-sm border border-slate-100" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2972/2972149.png'">
+            <img src="logo.png" onerror="if(!this.tried){this.tried=true;this.src='ch%20logo.png';}" alt="Logo" class="w-11 h-11 object-contain rounded-full shadow-sm border border-slate-100">
             <div>
                 <h1 class="text-base font-black text-slate-800 leading-tight">منظومة الخدمة والرعاية الكنسية</h1>
                 <p class="text-xs text-slate-500 font-bold" id="userBadge"></p>
             </div>
         </div>
         <div class="flex items-center gap-2">
-            <button onclick="showDashboard()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5"><i class="fa-solid fa-house"></i> الرئيسية</button>
-            <button onclick="logout()" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5"><i class="fa-solid fa-arrow-right-from-bracket"></i> خروج</button>
+            <button onclick="showDashboard()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold transition">الرئيسية</button>
+            <button onclick="logout()" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-4 py-2 rounded-xl text-xs font-bold transition">خروج</button>
         </div>
     </div>
 </header>
 
 <main class="flex-grow w-full max-w-7xl mx-auto px-4 py-8">
-    <!-- لوحة التحكم الرئيسية (Dashboard) -->
+    <!-- لوحة التحكم الرئيسية -->
     <div id="dashboardView" class="block">
         <div class="text-center mb-10">
             <h2 class="text-3xl font-black text-slate-800 mb-2">لوحة التحكم المركزية</h2>
@@ -81,15 +71,15 @@
     <div id="dataView" class="hidden">
         <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
             <div class="flex items-center gap-3 w-full md:w-auto">
-                <h2 id="currentTabTitle" class="text-2xl font-black text-slate-800 flex items-center gap-2"></h2>
+                <h2 id="currentTabTitle" class="text-2xl font-black text-slate-800"></h2>
                 <span id="recordCount" class="bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-1 rounded-lg font-bold text-xs">0 سجل</span>
             </div>
             <div class="flex items-center gap-2 w-full md:w-auto justify-end">
-                <button onclick="openModal('add')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-2">
-                    <i class="fa-solid fa-plus"></i> إضافة سجل جديد
+                <button onclick="openModal('add')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition">
+                    + إضافة سجل جديد
                 </button>
                 <button onclick="loadData(true)" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2.5 rounded-xl font-bold text-xs transition">
-                    <i class="fa-solid fa-rotate"></i> تحديث
+                    تحديث
                 </button>
             </div>
         </div>
@@ -97,26 +87,26 @@
         <!-- لوحة الفلاتر والبحث المتقدمة لأعضاء الكنيسة -->
         <div id="namesFilterSection" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6 hidden">
             <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
-                <span class="text-xs font-black text-indigo-900 flex items-center gap-2"><i class="fa-solid fa-filter text-indigo-600"></i> أدوات البحث والفرز المتقدم</span>
-                <button onclick="resetNamesFilters()" class="text-xs font-bold text-slate-500 hover:text-rose-600 transition"><i class="fa-solid fa-eraser ml-1"></i> مسح الفلاتر</button>
+                <span class="text-xs font-black text-indigo-900">أدوات البحث والفرز المتقدم</span>
+                <button onclick="resetNamesFilters()" class="text-xs font-bold text-slate-500 hover:text-rose-600 transition">مسح الفلاتر</button>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                    <label class="filter-label"><i class="fa-solid fa-people-roof ml-1 text-slate-400"></i> بحث برب الأسرة</label>
+                    <label class="filter-label">بحث برب الأسرة</label>
                     <input type="text" id="filterFamilyHead" oninput="applyNamesFilter()" placeholder="اسم رب الأسرة..." class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
                 <div>
-                    <label class="filter-label"><i class="fa-solid fa-user ml-1 text-slate-400"></i> بحث بالاسم ثلاثي</label>
+                    <label class="filter-label">بحث بالاسم ثلاثي</label>
                     <input type="text" id="filterFullName" oninput="applyNamesFilter()" placeholder="اسم العضو ثلاثي..." class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
                 <div>
-                    <label class="filter-label"><i class="fa-solid fa-location-dot ml-1 text-slate-400"></i> المنطقة / السكن</label>
+                    <label class="filter-label">المنطقة / السكن</label>
                     <select id="filterArea" onchange="applyNamesFilter()" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="">كل المناطق</option>
                     </select>
                 </div>
                 <div>
-                    <label class="filter-label"><i class="fa-solid fa-hourglass-half ml-1 text-slate-400"></i> الفئة العمرية</label>
+                    <label class="filter-label">الفئة العمرية</label>
                     <select id="filterAgeGroup" onchange="applyNamesFilter()" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="">كل الأعمار</option>
                         <option value="children">أطفال (أقل من 12 سنة)</option>
@@ -128,7 +118,7 @@
                     </select>
                 </div>
                 <div>
-                    <label class="filter-label"><i class="fa-solid fa-venus-mars ml-1 text-slate-400"></i> النوع</label>
+                    <label class="filter-label">النوع</label>
                     <select id="filterGender" onchange="applyNamesFilter()" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="">الكل</option>
                         <option value="ذكر">ذكر</option>
@@ -136,7 +126,7 @@
                     </select>
                 </div>
                 <div>
-                    <label class="filter-label"><i class="fa-solid fa-id-card ml-1 text-slate-400"></i> البطاقة الانتخابية</label>
+                    <label class="filter-label">البطاقة الانتخابية</label>
                     <select id="filterElection" onchange="applyNamesFilter()" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="">الكل</option>
                         <option value="يوجد">يوجد بطاقة</option>
@@ -144,7 +134,7 @@
                     </select>
                 </div>
                 <div>
-                    <label class="filter-label"><i class="fa-solid fa-heart ml-1 text-slate-400"></i> الحالة الاجتماعية</label>
+                    <label class="filter-label">الحالة الاجتماعية</label>
                     <select id="filterMarital" onchange="applyNamesFilter()" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="">كل الحالات</option>
                         <option value="متزوج">متزوج</option>
@@ -156,46 +146,43 @@
                     </select>
                 </div>
                 <div class="flex items-end">
-                    <button onclick="applyNamesFilter()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
-                        <i class="fa-solid fa-magnifying-glass"></i> تطبيق الفرز
+                    <button onclick="applyNamesFilter()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm">
+                        تطبيق الفرز
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- حقل البحث البسيط للأقسام الأخرى -->
+        <!-- حقل البحث البسيط لباقي الأقسام -->
         <div id="standardSearchContainer" class="relative w-full max-w-md mb-6 hidden">
-            <i class="fa-solid fa-magnifying-glass absolute right-4 top-3.5 text-slate-400"></i>
-            <input type="text" id="searchInput" oninput="renderStandardCards()" placeholder="بحث سريع في السجلات..." class="w-full pr-11 pl-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold shadow-sm">
+            <input type="text" id="searchInput" oninput="renderStandardCards()" placeholder="بحث سريع في السجلات..." class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold shadow-sm">
         </div>
 
         <!-- مؤشر التحميل -->
         <div id="loader" class="hidden text-center py-20">
-            <i class="fa-solid fa-circle-notch fa-spin text-5xl text-indigo-600 mb-4"></i>
             <p class="text-slate-600 font-bold text-sm">جاري جلب البيانات من السجلات...</p>
         </div>
 
         <!-- رسالة التوجيه لأعضاء الكنيسة -->
         <div id="namesPlaceholder" class="hidden text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
-            <i class="fa-solid fa-users-viewfinder text-6xl mb-4 text-indigo-300"></i>
             <h3 class="text-lg font-black text-slate-700 mb-1">حدد معايير الفرز أو ابحث عن عائلة</h3>
             <p class="text-xs text-slate-500 font-bold max-w-md mx-auto">استخدم حقول البحث أو الفرز في الأعلى لعرض العائلات وأفرادها مجمعة بدقة.</p>
         </div>
 
-        <!-- حاوية نتائج أعضاء الكنيسة (عائلات) -->
+        <!-- حاوية نتائج أعضاء الكنيسة -->
         <div id="familyResultsContainer" class="hidden flex-col gap-6"></div>
 
-        <!-- حاوية الكروت لباقي الأقسام -->
+        <!-- حاوية الكروت للأقسام الأخرى -->
         <div id="standardCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </div>
 </main>
 
-<!-- نافذة الإدخال والتعديل (Modal) -->
+<!-- نافذة الإدخال والتعديل -->
 <div id="dataModal" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
     <div class="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
         <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-            <h3 id="modalTitle" class="text-base font-black text-slate-800 flex items-center gap-2"></h3>
-            <button onclick="closeModal()" class="text-slate-400 hover:text-slate-700 transition w-8 h-8 rounded-full flex items-center justify-center bg-slate-200"><i class="fa-solid fa-xmark text-sm"></i></button>
+            <h3 id="modalTitle" class="text-base font-black text-slate-800"></h3>
+            <button onclick="closeModal()" class="text-slate-400 hover:text-slate-700 transition w-8 h-8 rounded-full flex items-center justify-center bg-slate-200 font-bold">✕</button>
         </div>
         <form id="recordForm" onsubmit="handleFormSubmit(event)" class="overflow-y-auto p-6 space-y-5 custom-scrollbar flex-grow bg-white">
             <input type="hidden" id="formAction">
@@ -203,7 +190,7 @@
             <div id="formFields" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
             <div class="pt-5 border-t border-slate-100 flex justify-end gap-3">
                 <button type="button" onclick="closeModal()" class="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs">إلغاء</button>
-                <button type="submit" id="saveBtn" class="px-7 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition flex items-center gap-2">حفظ السجل</button>
+                <button type="submit" id="saveBtn" class="px-7 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition">حفظ السجل</button>
             </div>
         </form>
     </div>
