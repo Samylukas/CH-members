@@ -6,14 +6,6 @@ let rawData = [];
 let backendAreas = [];
 let visitationsData = [];
 
-// بديل آمن للوجو في حال تعذر تحميل الصورة
-function handleLogoFallback(img) {
-    if (!img.dataset.failedOnce) {
-        img.dataset.failedOnce = "1";
-        img.src = "ch%20logo.png";
-    }
-}
-
 const ICONS = {
     users: `<svg class="w-12 h-12 inline-block text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>`,
     children: `<svg class="w-12 h-12 inline-block text-blue-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`,
@@ -108,21 +100,45 @@ const SCHEMAS = {
     ]
 };
 
+// التحكم الذكي في توقيت شاشة السبلاش: الانتظار حتى اكتمال تحميل الصورة فعلياً
 window.onload = () => {
-    // تحميل أسماء الخدام لملء القائمة المنسدلة في شاشة الدخول
     loadServantsListForLogin();
 
-    // إبقاء اللوجو والشاشة ثابتة لمدة ثانيتين ونصف ثم التلاشي
-    setTimeout(() => {
-        const splash = document.getElementById('splashScreen');
-        splash.style.opacity = '0';
-        setTimeout(() => {
-            splash.style.display = 'none';
-        }, 800);
+    const splashImg = document.getElementById('splashLogoImg');
+    const splashTitle = document.getElementById('splashTitleText');
+    const splashScreen = document.getElementById('splashScreen');
 
-        // التوقف عند نافذة تسجيل الدخول دائماً لإدخال كلمة السر
-        document.getElementById('loginScreen').classList.remove('hidden');
-    }, 2500);
+    function startSplashSequence() {
+        // تشغيل الأنيميشن فقط بعد أن تكون الصورة جاهزة 100%
+        splashImg.classList.add('animate-start');
+        splashTitle.classList.add('animate-start');
+
+        // الانتظار لمدة 2.8 ثانية ليشاهد المستخدم اللوجو كاملاً ثم يتلاشى
+        setTimeout(() => {
+            splashScreen.style.opacity = '0';
+            setTimeout(() => {
+                splashScreen.style.display = 'none';
+                document.getElementById('loginScreen').classList.remove('hidden');
+            }, 800);
+        }, 2800);
+    }
+
+    if (splashImg.complete && splashImg.naturalHeight !== 0) {
+        startSplashSequence();
+    } else {
+        splashImg.onload = startSplashSequence;
+        splashImg.onerror = () => {
+            // محاولة ثانية بمسار بديل إن لزم الأمر
+            if (!splashImg.dataset.tried) {
+                splashImg.dataset.tried = "1";
+                splashImg.src = "ch%20logo.png";
+                splashImg.onload = startSplashSequence;
+                splashImg.onerror = startSplashSequence;
+            } else {
+                startSplashSequence();
+            }
+        };
+    }
 };
 
 async function loadServantsListForLogin() {
@@ -169,7 +185,6 @@ async function handleLogin(e) {
         const data = await res.json();
         if (data.status === "success") {
             currentUser = data.user;
-            localStorage.setItem('church_servant', JSON.stringify(currentUser));
             initApp();
             return;
         } else {
@@ -194,12 +209,10 @@ async function handleLogin(e) {
 
 function loginAsFallbackAdmin() {
     currentUser = { ServantName: "أبونا الكاهن / الأدمن", Role: "Admin", AssignedStage: "الكل", AssignedGrade: "الكل", AssignedClass: "الكل" };
-    localStorage.setItem('church_servant', JSON.stringify(currentUser));
     initApp();
 }
 
 function logout() {
-    localStorage.removeItem('church_servant');
     location.reload();
 }
 
@@ -278,7 +291,7 @@ async function loadData(force = false) {
         const res = await (await fetch(`${API_URL}?sheet=${currentTab}`)).json();
         if (res.status === "success") {
             rawData = res.data;
-            backendAreas = res.areas || []; // المناطق الحصرية القادمة من شيت Family name
+            backendAreas = res.areas || [];
             if (currentTab === 'Names') {
                 populateAreasDropdown();
                 applyNamesFilter();
@@ -295,12 +308,10 @@ async function loadData(force = false) {
     }
 }
 
-// ملء قائمة المناطق حصرياً من شيت Family name
 function populateAreasDropdown() {
     const areaSelect = document.getElementById('filterArea');
     let areas = new Set(backendAreas);
     
-    // إذا لم يرسلها الباك اند، نستخرجها حصرياً من حقل المنطقة المرتبط
     if (areas.size === 0) {
         rawData.forEach(item => {
             const a = (item["المنطقة"] || "").trim();
@@ -387,7 +398,7 @@ function applyNamesFilter() {
     const container = document.getElementById('familyResultsContainer');
     container.innerHTML = "";
 
-    // 1. بحث بالاسم ثلاثي فقط: بطاقة الفرد المخصصة
+    // 1. بحث بالاسم ثلاثي فقط
     if (nameQ && !headQ) {
         const matched = rawData.filter(item => String(item["الاسم ثلاثي"] || "").toLowerCase().includes(nameQ));
         document.getElementById('recordCount').innerText = `${matched.length} فرد`;
@@ -456,7 +467,7 @@ function applyNamesFilter() {
         return;
     }
 
-    // 2. البحث برب الأسرة أو الفلاتر الأخرى: عرض العائلات كاملة بالمنطقة الحصرية
+    // 2. البحث برب الأسرة أو الفلاتر الأخرى
     let targetHeads = new Set();
 
     rawData.forEach(item => {
