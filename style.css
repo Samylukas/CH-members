@@ -9,7 +9,7 @@ body {
     color: #1e293b;
 }
 
-/* ================= شاشة البداية البيضاء الدخانية ================= */
+/* ================= شاشة البداية ================= */
 #splashScreen {
     position: fixed;
     inset: 0;
@@ -27,60 +27,71 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    padding: 1rem;
 }
 
+/* إبقاء اللوجو مخفياً لحين اكتمال تنزيله، ثم إظهاره بدون قص دائري */
 .splash-logo {
-    width: 110px;
-    height: 110px;
+    max-width: 260px;
+    max-height: 150px;
+    width: auto;
+    height: auto;
     object-fit: contain;
-    border-radius: 50%;
-    filter: drop-shadow(0 8px 16px rgba(0,0,0,0.06));
-    animation: stayThenSmoke 2.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    opacity: 0;
+    filter: drop-shadow(0 10px 20px rgba(0,0,0,0.06));
+}
+
+/* تبدأ الحركة فقط بعد انتهاء التحميل */
+.splash-logo.animate-start {
+    animation: stayThenSmoke 3.2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
 
 .splash-title {
     color: #1e293b;
-    font-size: 1.35rem;
+    font-size: 1.4rem;
     font-weight: 900;
     margin-top: 1.5rem;
-    animation: fadeTextWhite 2.6s ease-in-out forwards;
+    opacity: 0;
 }
 
-/* ثبات تام لمدة ثانيتين ثم تلاشي دخاني */
+.splash-title.animate-start {
+    animation: fadeTextWhite 3s ease-in-out forwards;
+}
+
 @keyframes stayThenSmoke {
     0% {
-        transform: scale(0.5);
+        transform: scale(0.7);
         opacity: 0;
         filter: blur(0px);
     }
-    15% {
+    20% {
         transform: scale(1);
         opacity: 1;
         filter: blur(0px);
     }
     75% {
-        /* ثبات واضح ومستقر لمدة ثانيتين كاملتين */
+        /* ثبات واضح ومستقر لأكثر من ثانيتين */
         transform: scale(1);
         opacity: 1;
         filter: blur(0px);
     }
     90% {
-        transform: scale(1.3);
+        transform: scale(1.2);
         opacity: 0.7;
-        filter: blur(4px);
+        filter: blur(3px);
     }
     100% {
-        transform: scale(2.2);
+        transform: scale(1.8);
         opacity: 0;
-        filter: blur(20px);
+        filter: blur(16px);
     }
 }
 
 @keyframes fadeTextWhite {
-    0% { opacity: 0; transform: translateY(10px); }
-    15% { opacity: 1; transform: translateY(0); }
+    0% { opacity: 0; transform: translateY(12px); }
+    20% { opacity: 1; transform: translateY(0); }
     75% { opacity: 1; filter: blur(0px); }
-    100% { opacity: 0; filter: blur(12px); transform: translateY(-10px); }
+    100% { opacity: 0; filter: blur(10px); transform: translateY(-8px); }
 }
 
 /* ================= كروت لوحة التحكم ================= */
