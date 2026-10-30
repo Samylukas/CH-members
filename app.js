@@ -741,11 +741,12 @@ async function handleFormSubmit(e) {
     const payload = {};
     fd.forEach((v, k) => { if (v.trim()) payload[k] = v; });
 
-    // التأكد من قاعدة العائلة
     if (currentTab === 'Names' && !payload["اسم رب الاسرة"]) {
-        alert("خطأ: لا يمكن حفظ العضو بدون تحديد اسم رب الأسرة!");
+        alert("خطأ: يجب تحديد اسم رب الأسرة!");
         return;
     }
+
+    const isNewFam = document.querySelector('input[name="addMode"]:checked')?.value === 'new_head';
 
     if (action === "update") payload[Object.keys(rawData[0])[0]] = Number(document.getElementById('recordId').value);
     const btn = document.getElementById('saveBtn');
@@ -753,7 +754,16 @@ async function handleFormSubmit(e) {
     btn.innerHTML = `جاري الحفظ...`;
 
     try {
-        const res = await (await fetch(API_URL, { method: 'POST', body: JSON.stringify({ sheet: currentTab, action: action, data: payload }) })).json();
+        const res = await (await fetch(API_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ 
+                sheet: currentTab, 
+                action: action, 
+                isNewFamily: isNewFam,
+                data: payload 
+            }) 
+        })).json();
+
         if (res.status === "success") {
             closeModal();
             await loadData();
@@ -765,7 +775,6 @@ async function handleFormSubmit(e) {
         btn.innerHTML = `حفظ السجل`;
     }
 }
-
 function editRecord(id) { const item = rawData.find(r => r[Object.keys(r)[0]] == id); if (item) openModal('update', item); }
 
 async function deleteRecord(id) {
