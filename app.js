@@ -3,7 +3,16 @@ const API_URL = "https://script.google.com/macros/s/AKfycbxUSj07z5nkCv88hrgob88-
 let currentUser = null;
 let currentTab = "";
 let rawData = [];
-let visitationsData = []; // لتخزين سجلات الافتقاد وحساب تاريخ آخر افتقاد للأسرة
+let backendAreas = [];
+let visitationsData = [];
+
+// بديل آمن للوجو في حال تعذر تحميل الصورة
+function handleLogoFallback(img) {
+    if (!img.dataset.failedOnce) {
+        img.dataset.failedOnce = "1";
+        img.src = "ch%20logo.png";
+    }
+}
 
 const ICONS = {
     users: `<svg class="w-12 h-12 inline-block text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>`,
@@ -23,7 +32,7 @@ const STAGE_GRADES = {
 };
 
 const TABS_INFO = {
-    "Names": { label: "أعضاء الكنيسة", desc: "سجلات العائلات والفرز المتقدم", svg: ICONS.users, colorClass: "card-names", roles: ["Admin", "SundaySchool_Admin"] },
+    "Names": { label: "أعضاء الكنيسة", desc: "سجلات العائلات والفرز السكني الحصري", svg: ICONS.users, colorClass: "card-names", roles: ["Admin", "SundaySchool_Admin"] },
     "Sunday_School": { label: "مدارس الأحد", desc: "إدارة الفصول، الحضور، والتسميع", svg: ICONS.children, colorClass: "card-sunday", roles: ["Admin", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
     "Visitations": { label: "سجل الافتقاد", desc: "متابعة الزيارات ومواعيد الافتقاد", svg: ICONS.visitations, colorClass: "card-visitations", roles: ["Admin"] },
     "Meetings_Attendance": { label: "حضور الاجتماعات", desc: "تسجيل حضور وغياب الاجتماعات", svg: ICONS.meetings, colorClass: "card-meetings", roles: ["Admin"] },
@@ -34,18 +43,13 @@ const SCHEMAS = {
     "Names": [
         { id: "اسم رب الاسرة", label: "اسم رب الأسرة", type: "family_head_select", required: true },
         { id: "الاسم ثلاثي", label: "الاسم ثلاثي", type: "text", required: true },
-        { id: "صلة القرابة", label: "صلة القرابة", type: "select", options: ["", "زوج", "زوجة", "ابن", "ابنة", "والد", "والدة", "أخ", "أخت", "أخرى"] },
         { id: "ذكر/انثي", label: "النوع", type: "select", options: ["", "ذكر", "انثي"], required: true },
+        { id: "صلة القرابة", label: "صلة القرابة", type: "select", options: ["", "زوج", "زوجة", "ابن", "ابنة", "والد", "والدة", "أخ", "أخت", "أخرى"] },
         { id: "الحالة الاجتماعية", label: "الحالة الاجتماعية", type: "select", options: ["", "متزوج", "متزوجة", "اعزب", "انسة", "ارمل", "ارملة"] },
-        { id: "المنطقة", label: "المنطقة", type: "text", required: true },
-        { id: "اسم الشارع", label: "اسم الشارع", type: "text" },
-        { id: "العنوان رقم المنزل", label: "رقم المنزل / العمارة", type: "text" },
-        { id: "الدور", label: "الدور", type: "text" },
-        { id: "شقة", label: "رقم الشقة", type: "text" },
         { id: "المرحلة", label: "المرحلة الدراسية", type: "stage_select", options: Object.keys(STAGE_GRADES) },
         { id: "الصف", label: "الصف الدراسي", type: "grade_select" },
         { id: "مدارس الأحد", label: "مدارس الأحد", type: "select", options: ["", "مشترك", "غير مشترك"] },
-        { id: "أنهي مدارس الأحد", label: "أنهي مدارس الأحد (الكنيسة)", type: "text" },
+        { id: "أنهي مدارس الأحد", label: "أنهي مدارس الأحد (الكنيسة / الفصل)", type: "text" },
         { id: "تليفون العمل/المحمول", label: "المحمول / الهاتف", type: "text" },
         { id: "تاريخ الميلاد", label: "تاريخ الميلاد (DD/MM/YYYY)", type: "text" },
         { id: "الرقم القومي", label: "الرقم القومي", type: "text" },
@@ -55,7 +59,9 @@ const SCHEMAS = {
         { id: "تاريخ الزواج", label: "تاريخ الزواج (DD/MM/YYYY)", type: "text" },
         { id: "المؤهل", label: "المؤهل الدراسي", type: "text" },
         { id: "المهنة/السنة الدراسية", label: "المهنة / العمل", type: "text" },
-        { id: "محل العمل/الدراسة", label: "محل العمل / الدراسة", type: "text" },
+        { id: "الخادم الروحي", label: "الخادم الروحي", type: "text" },
+        { id: "المواظبة على حضور القداس", label: "حضور القداس", type: "select", options: ["", "بانتظام", "أحياناً", "منقطع"] },
+        { id: "المواظبة على حضور الاجتماع", label: "حضور الاجتماع", type: "select", options: ["", "بانتظام", "أحياناً", "منقطع"] },
         { id: "الرتبة الكنسية", label: "الرتبة الكنسية", type: "select", options: ["", "شعب", "إبصلتس", "أغنسطس", "إيبودياكون", "دياكون", "شماسة"] },
         { id: "الموعد المناسب للافتقاد", label: "موعد الافتقاد المناسب", type: "text" },
         { id: "ملاحظات", label: "ملاحظات عامة", type: "textarea", full: true }
@@ -103,7 +109,6 @@ const SCHEMAS = {
 };
 
 window.onload = () => {
-    // جلب قائمة الخدام لملء القائمة المنسدلة في نافذة الدخول
     loadServantsListForLogin();
 
     setTimeout(() => {
@@ -121,7 +126,6 @@ window.onload = () => {
     }, 2200);
 };
 
-// تحميل الخدام لملء الـ Select
 async function loadServantsListForLogin() {
     try {
         const res = await (await fetch(`${API_URL}?sheet=Servants`)).json();
@@ -134,12 +138,9 @@ async function loadServantsListForLogin() {
                 }
             });
         }
-    } catch(e) {
-        console.log("Using default admin");
-    }
+    } catch(e) {}
 }
 
-// إظهار وإخفاء كلمة المرور
 function togglePasswordVisibility() {
     const input = document.getElementById('loginPass');
     const eye = document.getElementById('eyeIcon');
@@ -250,7 +251,6 @@ function loadSection(sectionKey) {
         document.getElementById('standardCardsContainer').classList.add('hidden');
         document.getElementById('familyResultsContainer').classList.remove('hidden');
         resetNamesFilters();
-        // تحميل بيانات الافتقاد مسبقاً لعرض تاريخ آخر افتقاد مع العائلة
         loadVisitationsCache();
     } else {
         document.getElementById('namesFilterSection').classList.add('hidden');
@@ -279,6 +279,7 @@ async function loadData(force = false) {
         const res = await (await fetch(`${API_URL}?sheet=${currentTab}`)).json();
         if (res.status === "success") {
             rawData = res.data;
+            backendAreas = res.areas || []; // المناطق الحصرية القادمة من شيت Family name
             if (currentTab === 'Names') {
                 populateAreasDropdown();
                 applyNamesFilter();
@@ -295,14 +296,20 @@ async function loadData(force = false) {
     }
 }
 
+// ملء قائمة المناطق حصرياً من شيت Family name
 function populateAreasDropdown() {
     const areaSelect = document.getElementById('filterArea');
-    const areas = new Set();
-    rawData.forEach(item => {
-        const area = (item["المنطقة"] || item["محل العمل/الدراسة"] || "").trim();
-        if (area) areas.add(area);
-    });
-    areaSelect.innerHTML = `<option value="">كل المناطق (${areas.size})</option>` + 
+    let areas = new Set(backendAreas);
+    
+    // إذا لم يرسلها الباك اند، نستخرجها حصرياً من حقل المنطقة المرتبط
+    if (areas.size === 0) {
+        rawData.forEach(item => {
+            const a = (item["المنطقة"] || "").trim();
+            if (a) areas.add(a);
+        });
+    }
+
+    areaSelect.innerHTML = `<option value="">كل المناطق السكنية (${areas.size})</option>` + 
         Array.from(areas).sort().map(a => `<option value="${a}">${a}</option>`).join('');
 }
 
@@ -320,7 +327,6 @@ function calculateAge(dobStr, nationalId = "") {
     return 2026 - birthYear;
 }
 
-// استخراج تاريخ آخر افتقاد للأسرة
 function getLastFamilyVisitDate(familyMembers) {
     if (!visitationsData || visitationsData.length === 0) return "لا يوجد سجل";
     const memberNames = familyMembers.map(m => m["الاسم ثلاثي"]);
@@ -332,13 +338,7 @@ function getLastFamilyVisitDate(familyMembers) {
 
     if (familyVisits.length === 0) return "لم يُفتقد بعد";
 
-    // جلب أحدث تاريخ
-    familyVisits.sort((a, b) => {
-        const dateA = parseDateForSort(a.VisitDate);
-        const dateB = parseDateForSort(b.VisitDate);
-        return dateB - dateA;
-    });
-
+    familyVisits.sort((a, b) => parseDateForSort(b.VisitDate) - parseDateForSort(a.VisitDate));
     return familyVisits[0].VisitDate || "لم يُفتقد بعد";
 }
 
@@ -359,12 +359,12 @@ function resetNamesFilters() {
     document.getElementById('filterGender').value = "";
     document.getElementById('filterElection').value = "";
     document.getElementById('filterMarital').value = "";
+    document.getElementById('filterSundaySchool').value = "";
     document.getElementById('familyResultsContainer').innerHTML = "";
     document.getElementById('namesPlaceholder').classList.remove('hidden');
     document.getElementById('recordCount').innerText = "0 سجل";
 }
 
-// الفرز والعرض بناءً على القاعدة (عائلة vs فرد)
 function applyNamesFilter() {
     const headQ = document.getElementById('filterFamilyHead').value.trim().toLowerCase();
     const nameQ = document.getElementById('filterFullName').value.trim().toLowerCase();
@@ -373,8 +373,9 @@ function applyNamesFilter() {
     const genderQ = document.getElementById('filterGender').value;
     const electionQ = document.getElementById('filterElection').value;
     const maritalQ = document.getElementById('filterMarital').value;
+    const ssQ = document.getElementById('filterSundaySchool').value;
 
-    const hasActiveFilter = headQ || nameQ || areaQ || ageGroupQ || genderQ || electionQ || maritalQ;
+    const hasActiveFilter = headQ || nameQ || areaQ || ageGroupQ || genderQ || electionQ || maritalQ || ssQ;
 
     if (!hasActiveFilter) {
         document.getElementById('familyResultsContainer').innerHTML = "";
@@ -387,7 +388,7 @@ function applyNamesFilter() {
     const container = document.getElementById('familyResultsContainer');
     container.innerHTML = "";
 
-    // 1. إذا كان البحث بالاسم ثلاثي فقط: عرض بطاقة الفرد المخصصة مع تاريخ آخر اعتراف
+    // 1. بحث بالاسم ثلاثي فقط: بطاقة الفرد المخصصة
     if (nameQ && !headQ) {
         const matched = rawData.filter(item => String(item["الاسم ثلاثي"] || "").toLowerCase().includes(nameQ));
         document.getElementById('recordCount').innerText = `${matched.length} فرد`;
@@ -425,6 +426,10 @@ function applyNamesFilter() {
                         <span class="block text-slate-400 text-[10px] mb-1">📅 تاريخ آخر اعتراف</span>
                         <strong class="text-amber-800 text-sm">${member["تاريخ اخر اعتراف"] || "لم يسجل بعد"}</strong>
                     </div>
+                    <div class="bg-blue-50/50 p-2.5 rounded-xl border border-blue-100">
+                        <span class="block text-slate-400 text-[10px] mb-1">📍 المنطقة السكنية</span>
+                        <strong class="text-blue-900">${member["المنطقة"] || "-"}</strong>
+                    </div>
                     <div class="bg-slate-50 p-2.5 rounded-xl border">
                         <span class="block text-slate-400 text-[10px] mb-1">📱 المحمول</span>
                         <strong class="text-slate-800">${member["تليفون العمل/المحمول"] || "-"}</strong>
@@ -434,16 +439,12 @@ function applyNamesFilter() {
                         <strong class="text-slate-800">${age ? age + ' سنة' : '-'}</strong>
                     </div>
                     <div class="bg-slate-50 p-2.5 rounded-xl border">
-                        <span class="block text-slate-400 text-[10px] mb-1">الرقم القومي</span>
-                        <strong class="text-slate-800 font-mono">${member["الرقم القومي"] || "-"}</strong>
-                    </div>
-                    <div class="bg-slate-50 p-2.5 rounded-xl border">
                         <span class="block text-slate-400 text-[10px] mb-1">المرحلة والصف</span>
                         <strong class="text-slate-800">${member["المرحلة"] || "-"} - ${member["الصف"] || "-"}</strong>
                     </div>
                     <div class="bg-slate-50 p-2.5 rounded-xl border">
-                        <span class="block text-slate-400 text-[10px] mb-1">فصل مدارس الأحد</span>
-                        <strong class="text-slate-800">${member["فصل مدارس الاحد"] || "-"}</strong>
+                        <span class="block text-slate-400 text-[10px] mb-1">مدارس الأحد</span>
+                        <strong class="text-slate-800">${member["مدارس الأحد"] || "-"} (${member["أنهي مدارس الأحد"] || "غير محدد"})</strong>
                     </div>
                     <div class="bg-slate-50 p-2.5 rounded-xl border">
                         <span class="block text-slate-400 text-[10px] mb-1">الحالة الاجتماعية</span>
@@ -456,15 +457,16 @@ function applyNamesFilter() {
         return;
     }
 
-    // 2. البحث برب الأسرة أو الفلاتر الأخرى: عرض العائلة كاملة مع بياناتها الرئيسية
+    // 2. البحث برب الأسرة أو الفلاتر الأخرى: عرض العائلات كاملة بالمنطقة الحصرية
     let targetHeads = new Set();
 
     rawData.forEach(item => {
         if (headQ && !String(item["اسم رب الاسرة"] || "").toLowerCase().includes(headQ)) return;
-        if (areaQ && (item["المنطقة"] || item["محل العمل/الدراسة"] || "").trim() !== areaQ) return;
+        if (areaQ && (item["المنطقة"] || "").trim() !== areaQ) return;
         if (genderQ && item["ذكر/انثي"] !== genderQ) return;
         if (electionQ && (item["البطاقة الانتخابية"] || "").trim() !== electionQ) return;
         if (maritalQ && (item["الحالة الاجتماعية"] || "").trim() !== maritalQ) return;
+        if (ssQ && (item["مدارس الأحد"] || "").trim() !== ssQ) return;
 
         if (item["اسم رب الاسرة"]) {
             targetHeads.add(item["اسم رب الاسرة"]);
@@ -479,14 +481,17 @@ function applyNamesFilter() {
         familiesCount++;
         totalMembersCount += familyMembers.length;
 
-        // استخراج بيانات الأسرة العامة
         const headMember = familyMembers.find(m => m["الاسم ثلاثي"] === headName) || familyMembers[0];
-        const familyArea = headMember["المنطقة"] || headMember["محل العمل/الدراسة"] || "غير محدد";
-        const familyPhone = headMember["تليفون العمل/المحمول"] || "-";
+        const familyArea = headMember["المنطقة"] || "غير محدد";
+        const familyStreet = headMember["اسم الشارع"] || "";
+        const familyHouse = headMember["رقم المنزل"] || "";
+        const familyPhone = headMember["هاتف الاسرة"] || headMember["تليفون العمل/المحمول"] || "-";
         const lastVisitDate = getLastFamilyVisitDate(familyMembers);
 
         const famDiv = document.createElement('div');
         famDiv.className = "family-box";
+
+        let addressDetails = [familyArea, familyStreet, familyHouse].filter(Boolean).join(" - ");
 
         let headerHtml = `
             <div class="family-header">
@@ -497,8 +502,8 @@ function applyNamesFilter() {
                     <div>
                         <h3 class="text-base font-black text-slate-800">أسرة: ${headName}</h3>
                         <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600 font-bold mt-1">
-                            <span>📍 العنوان: <strong class="text-indigo-800">${familyArea}</strong></span>
-                            <span>📞 هاتف رب الأسرة: <strong class="text-indigo-800 font-mono">${familyPhone}</strong></span>
+                            <span>📍 المنطقة السكنية: <strong class="text-blue-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">${addressDetails || "غير محددة"}</strong></span>
+                            <span>📞 هاتف الأسرة: <strong class="text-indigo-800 font-mono">${familyPhone}</strong></span>
                             <span>🗓 تاريخ آخر افتقاد: <strong class="text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">${lastVisitDate}</strong></span>
                             <span class="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded text-[11px] font-bold">أفراد الأسرة: ${familyMembers.length}</span>
                         </div>
@@ -533,6 +538,7 @@ function applyNamesFilter() {
                                 <span>المحمول: ${member["تليفون العمل/المحمول"] || "-"}</span>
                                 <span>آخر اعتراف: <strong class="text-indigo-600">${member["تاريخ اخر اعتراف"] || "-"}</strong> (${member["اب الاعتراف"] || "-"})</span>
                                 <span>المرحلة: ${member["المرحلة"] || "-"} (${member["الصف"] || "-"})</span>
+                                <span>مدارس الأحد: ${member["مدارس الأحد"] || "-"}</span>
                             </div>
                         </div>
                     </div>
@@ -610,7 +616,6 @@ function renderStandardCards() {
     });
 }
 
-// تبديل نمط الإضافة: رب أسرة جديد أم فرد لأسرة قائمة
 function toggleAddMode(mode) {
     const headFieldWrapper = document.getElementById('wrapper_اسم_رب_الاسرة');
     const nameInput = document.querySelector('input[name="الاسم ثلاثي"]');
@@ -629,7 +634,6 @@ function toggleAddMode(mode) {
         }
         if (relationSelect) relationSelect.value = "زوج";
     } else {
-        // حصر قائمة أرباب الأسر الحاليين
         const heads = new Set();
         rawData.forEach(r => { if (r["اسم رب الاسرة"]) heads.add(r["اسم رب الاسرة"]); });
 
@@ -641,11 +645,11 @@ function toggleAddMode(mode) {
         }
 
         headFieldWrapper.innerHTML = `
-            <label class="block font-bold mb-1 text-slate-700 text-xs">اختر رب الأسرة التابع له <span class="text-rose-500">*</span></label>
-            <select name="اسم رب الاسرة" required class="w-full p-2.5 bg-slate-50 border border-indigo-300 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-indigo-500">
-                <option value="">-- اضغط للاختيار من العائلات القائمة --</option>
-                ${Array.from(heads).sort().map(h => `<option value="${h}">${h}</option>`).join('')}
-            </select>
+            <label class="block font-bold mb-1 text-slate-700 text-xs">اكتب وابحث عن اسم رب الأسرة <span class="text-rose-500">*</span></label>
+            <input type="text" name="اسم رب الاسرة" list="familyHeadsList" required placeholder="ابدأ بالكتابة لاختيار الأسرة..." class="w-full p-2.5 bg-slate-50 border border-indigo-300 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+            <datalist id="familyHeadsList">
+                ${Array.from(heads).sort().map(h => `<option value="${h}">`).join('')}
+            </datalist>
         `;
         if (nameInput) nameInput.oninput = null;
     }
@@ -742,11 +746,9 @@ async function handleFormSubmit(e) {
     fd.forEach((v, k) => { if (v.trim()) payload[k] = v; });
 
     if (currentTab === 'Names' && !payload["اسم رب الاسرة"]) {
-        alert("خطأ: يجب تحديد اسم رب الأسرة!");
+        alert("خطأ: لا يمكن حفظ العضو بدون تحديد اسم رب الأسرة!");
         return;
     }
-
-    const isNewFam = document.querySelector('input[name="addMode"]:checked')?.value === 'new_head';
 
     if (action === "update") payload[Object.keys(rawData[0])[0]] = Number(document.getElementById('recordId').value);
     const btn = document.getElementById('saveBtn');
@@ -754,16 +756,7 @@ async function handleFormSubmit(e) {
     btn.innerHTML = `جاري الحفظ...`;
 
     try {
-        const res = await (await fetch(API_URL, { 
-            method: 'POST', 
-            body: JSON.stringify({ 
-                sheet: currentTab, 
-                action: action, 
-                isNewFamily: isNewFam,
-                data: payload 
-            }) 
-        })).json();
-
+        const res = await (await fetch(API_URL, { method: 'POST', body: JSON.stringify({ sheet: currentTab, action: action, data: payload }) })).json();
         if (res.status === "success") {
             closeModal();
             await loadData();
@@ -775,6 +768,7 @@ async function handleFormSubmit(e) {
         btn.innerHTML = `حفظ السجل`;
     }
 }
+
 function editRecord(id) { const item = rawData.find(r => r[Object.keys(r)[0]] == id); if (item) openModal('update', item); }
 
 async function deleteRecord(id) {
