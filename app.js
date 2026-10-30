@@ -4,6 +4,15 @@ let currentUser = null;
 let currentTab = "";
 let rawData = [];
 
+// أيقونات SVG نقية لمنع ظهور المربعات الفارغة نهائياً
+const ICONS = {
+    users: `<svg class="w-12 h-12 inline-block" fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>`,
+    children: `<svg class="w-12 h-12 inline-block" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`,
+    visitations: `<svg class="w-12 h-12 inline-block" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>`,
+    meetings: `<svg class="w-12 h-12 inline-block" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>`,
+    servants: `<svg class="w-12 h-12 inline-block" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>`
+};
+
 const STAGE_GRADES = { 
     "حضانة": ["بيبي كلاس", "أولى حضانة", "ثانية حضانة"], 
     "ابتدائي": ["الصف الأول", "الصف الثاني", "الصف الثالث", "الصف الرابع", "الصف الخامس", "الصف السادس"], 
@@ -14,11 +23,11 @@ const STAGE_GRADES = {
 };
 
 const TABS_INFO = {
-    "Names": { label: "أعضاء الكنيسة", desc: "سجلات العائلات، الفرز، والبيانات الكنسية", icon: "fa-users", colorClass: "card-names", roles: ["Admin", "SundaySchool_Admin"] },
-    "Sunday_School": { label: "مدارس الأحد", desc: "إدارة الفصول، الحضور، والتسميع", icon: "fa-children", colorClass: "card-sunday", roles: ["Admin", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
-    "Visitations": { label: "سجل الافتقاد", desc: "متابعة الزيارات ومواعيد الافتقاد", icon: "fa-house-chimney-user", colorClass: "card-visitations", roles: ["Admin"] },
-    "Meetings_Attendance": { label: "حضور الاجتماعات", desc: "تسجيل حضور وغياب الاجتماعات", icon: "fa-clipboard-user", colorClass: "card-meetings", roles: ["Admin"] },
-    "Servants": { label: "إدارة الخدام", desc: "توزيع الصلاحيات والحسابات", icon: "fa-user-shield", colorClass: "card-servants", roles: ["Admin"] }
+    "Names": { label: "أعضاء الكنيسة", desc: "سجلات العائلات والفرز المتقدم", svg: ICONS.users, colorClass: "card-names", roles: ["Admin", "SundaySchool_Admin"] },
+    "Sunday_School": { label: "مدارس الأحد", desc: "إدارة الفصول، الحضور، والتسميع", svg: ICONS.children, colorClass: "card-sunday", roles: ["Admin", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
+    "Visitations": { label: "سجل الافتقاد", desc: "متابعة الزيارات ومواعيد الافتقاد", svg: ICONS.visitations, colorClass: "card-visitations", roles: ["Admin"] },
+    "Meetings_Attendance": { label: "حضور الاجتماعات", desc: "تسجيل حضور وغياب الاجتماعات", svg: ICONS.meetings, colorClass: "card-meetings", roles: ["Admin"] },
+    "Servants": { label: "إدارة الخدام", desc: "توزيع الصلاحيات والحسابات", svg: ICONS.servants, colorClass: "card-servants", roles: ["Admin"] }
 };
 
 const SCHEMAS = {
@@ -89,7 +98,6 @@ const SCHEMAS = {
     ]
 };
 
-// بدء تشغيل السبلاش سكرين وإدارة الجلسة
 window.onload = () => {
     setTimeout(() => {
         const splash = document.getElementById('splashScreen');
@@ -103,17 +111,16 @@ window.onload = () => {
             currentUser = JSON.parse(saved);
             initApp();
         }
-    }, 2400); // يستمر أنيميشن الدخان 2.4 ثانية ثم يختفي
+    }, 2400);
 };
 
-// تسجيل الدخول مع صمام أمان محلي (Fail-Safe)
 async function handleLogin(e) {
     e.preventDefault();
     const btn = document.getElementById('loginBtn');
     const err = document.getElementById('loginError');
     const userVal = document.getElementById('loginUser').value.trim();
     const passVal = document.getElementById('loginPass').value.trim();
-    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin ml-2"></i> جاري التحقق...`;
+    btn.innerHTML = `جاري التحقق...`;
     err.classList.add('hidden');
 
     try {
@@ -160,7 +167,7 @@ function logout() {
 
 function initApp() {
     document.getElementById('loginScreen').classList.add('hidden');
-    document.getElementById('userBadge').innerHTML = `<span>الخادم: <span class="font-black text-indigo-700">${currentUser.ServantName}</span></span> <span class="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded ml-2 font-mono text-[11px] font-bold">${currentUser.Role}</span>`;
+    document.getElementById('userBadge').innerHTML = `<span>الخادم: <span class="font-black text-indigo-700">${currentUser.ServantName}</span></span> <span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded ml-2 font-mono text-[11px] font-bold border border-indigo-200">${currentUser.Role}</span>`;
     buildDashboard();
     showDashboard();
 }
@@ -172,9 +179,13 @@ function buildDashboard() {
         const info = TABS_INFO[key];
         if (info.roles.includes(currentUser.Role)) {
             const card = document.createElement('div');
-            card.className = `dashboard-card ${info.colorClass} p-8 flex flex-col items-center justify-center text-center cursor-pointer min-h-[220px]`;
+            card.className = `dashboard-card ${info.colorClass} p-8 flex flex-col items-center justify-center text-center cursor-pointer min-h-[200px]`;
             card.onclick = () => loadSection(key);
-            card.innerHTML = `<i class="fa-solid ${info.icon} text-6xl card-icon mb-4"></i><h3 class="text-xl font-black text-slate-800 mb-2">${info.label}</h3><p class="text-xs text-slate-500 font-bold">${info.desc}</p>`;
+            card.innerHTML = `
+                <div class="mb-4">${info.svg}</div>
+                <h3 class="text-xl font-black text-slate-800 mb-2">${info.label}</h3>
+                <p class="text-xs text-slate-500 font-bold">${info.desc}</p>
+            `;
             grid.appendChild(card);
         }
     });
@@ -192,7 +203,7 @@ function loadSection(sectionKey) {
     document.getElementById('dataView').classList.remove('hidden');
     
     const info = TABS_INFO[sectionKey];
-    document.getElementById('currentTabTitle').innerHTML = `<i class="fa-solid ${info.icon} text-indigo-600 ml-2"></i> ${info.label}`;
+    document.getElementById('currentTabTitle').innerHTML = `${info.label}`;
     
     if (currentTab === 'Names') {
         document.getElementById('namesFilterSection').classList.remove('hidden');
@@ -342,8 +353,8 @@ function applyNamesFilter() {
         let headerHtml = `
             <div class="family-header">
                 <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
-                        <i class="fa-solid fa-house-user"></i>
+                    <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold">
+                        🏠
                     </div>
                     <div>
                         <h3 class="text-sm font-black text-slate-800">عائلة: ${headName}</h3>
@@ -379,17 +390,17 @@ function applyNamesFilter() {
                                 <span class="text-[11px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded font-bold">${member["الحالة الاجتماعية"] || "-"}</span>
                             </div>
                             <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 font-semibold">
-                                <span><i class="fa-solid fa-cake-candles text-slate-400 ml-1"></i>العمر: <strong class="text-slate-700">${ageText}</strong></span>
-                                <span><i class="fa-solid fa-phone text-slate-400 ml-1"></i>${member["تليفون العمل/المحمول"] || "-"}</span>
-                                <span><i class="fa-solid fa-id-card text-slate-400 ml-1"></i>بطاقة انتخابية: <strong class="${member["البطاقة الانتخابية"]==='يوجد'?'text-emerald-600':'text-rose-600'}">${member["البطاقة الانتخابية"] || "-"}</strong></span>
-                                <span><i class="fa-solid fa-cross text-slate-400 ml-1"></i>أب الاعتراف: ${member["اب الاعتراف"] || "-"}</span>
+                                <span>العمر: <strong class="text-slate-700">${ageText}</strong></span>
+                                <span>المحمول: ${member["تليفون العمل/المحمول"] || "-"}</span>
+                                <span>بطاقة انتخابية: <strong class="${member["البطاقة الانتخابية"]==='يوجد'?'text-emerald-600':'text-rose-600'}">${member["البطاقة الانتخابية"] || "-"}</strong></span>
+                                <span>أب الاعتراف: ${member["اب الاعتراف"] || "-"}</span>
                             </div>
                         </div>
                     </div>
 
                     <div class="flex items-center gap-2 w-full lg:w-auto justify-end border-t lg:border-t-0 pt-2 lg:pt-0">
-                        <button onclick="editRecord(${idVal})" class="text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg transition"><i class="fa-regular fa-pen-to-square ml-1"></i>تعديل</button>
-                        ${currentUser.Role === "Admin" ? `<button onclick="deleteRecord(${idVal})" class="text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1.5 rounded-lg transition"><i class="fa-regular fa-trash-can ml-1"></i>حذف</button>` : ''}
+                        <button onclick="editRecord(${idVal})" class="text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg transition">تعديل</button>
+                        ${currentUser.Role === "Admin" ? `<button onclick="deleteRecord(${idVal})" class="text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1.5 rounded-lg transition">حذف</button>` : ''}
                     </div>
                 </div>
             `;
@@ -403,7 +414,7 @@ function applyNamesFilter() {
     document.getElementById('recordCount').innerText = `${matchedMembers.length} مطابق (${familiesCount} أسرة)`;
 
     if (familiesCount === 0) {
-        container.innerHTML = `<div class="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300 text-slate-400 font-bold"><i class="fa-regular fa-face-frown text-5xl mb-3 text-slate-300"></i><br>لم يتم العثور على أفراد أو أسر مطابقة للفلاتر المحددة</div>`;
+        container.innerHTML = `<div class="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300 text-slate-400 font-bold">لم يتم العثور على أفراد أو أسر مطابقة للفلاتر المحددة</div>`;
     }
 }
 
@@ -434,13 +445,13 @@ function renderStandardCards() {
         let details = "", title = item["ChildName"] || item["ServantName"] || item["MemberName"] || "سجل";
 
         if (currentTab === "Sunday_School") {
-            details = `<p class="text-xs text-slate-600 mb-2"><span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-bold">${item["Stage"]}</span> ${item["Grade"]} (${item["ClassName"]})</p><div class="flex justify-between text-xs text-slate-500 font-semibold"><p><i class="fa-regular fa-calendar ml-1 text-slate-400"></i>${item["SessionDate"]}</p><p class="font-bold ${item["Attendance"]==='حاضر'?'text-emerald-600':'text-rose-600'}">${item["Attendance"]}</p></div>`;
+            details = `<p class="text-xs text-slate-600 mb-2"><span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-bold">${item["Stage"]}</span> ${item["Grade"]} (${item["ClassName"]})</p><div class="flex justify-between text-xs text-slate-500 font-semibold"><p>تاريخ: ${item["SessionDate"]}</p><p class="font-bold ${item["Attendance"]==='حاضر'?'text-emerald-600':'text-rose-600'}">${item["Attendance"]}</p></div>`;
         } else if (currentTab === "Servants") {
             details = `<p class="text-xs text-slate-600 mb-1 font-bold">الصلاحية: <span class="text-indigo-700">${item["Role"]}</span></p><p class="text-xs text-slate-500 font-semibold">النطاق: ${item["AssignedStage"]} - ${item["AssignedGrade"]}</p>`;
         } else if (currentTab === "Visitations") {
-            details = `<p class="text-xs text-slate-600 mb-1 font-semibold"><i class="fa-solid fa-user-tie text-slate-400 ml-1"></i>الخادم: ${item["VisitorName"]}</p><p class="text-xs text-slate-500"><i class="fa-regular fa-calendar text-slate-400 ml-1"></i>تاريخ الافتقاد: ${item["VisitDate"]}</p>`;
+            details = `<p class="text-xs text-slate-600 mb-1 font-semibold">الخادم: ${item["VisitorName"]}</p><p class="text-xs text-slate-500">تاريخ الافتقاد: ${item["VisitDate"]}</p>`;
         } else if (currentTab === "Meetings_Attendance") {
-            details = `<p class="text-xs text-slate-600 mb-1 font-semibold">${item["MeetingName"]}</p><p class="text-xs text-slate-500"><i class="fa-regular fa-calendar text-slate-400 ml-1"></i>التاريخ: ${item["MeetingDate"]}</p>`;
+            details = `<p class="text-xs text-slate-600 mb-1 font-semibold">${item["MeetingName"]}</p><p class="text-xs text-slate-500">التاريخ: ${item["MeetingDate"]}</p>`;
         }
 
         card.innerHTML = `
@@ -488,7 +499,7 @@ function handleGenderChange(v) {
 function openModal(action, data={}) {
     document.getElementById('formAction').value = action;
     document.getElementById('recordId').value = action === 'update' ? data[Object.keys(data)[0]] : "";
-    document.getElementById('modalTitle').innerHTML = action === 'add' ? `<i class="fa-solid fa-plus-circle text-emerald-600 ml-2"></i> إضافة سجل جديد` : `<i class="fa-solid fa-pen text-indigo-600 ml-2"></i> تعديل السجل`;
+    document.getElementById('modalTitle').innerHTML = action === 'add' ? `إضافة سجل جديد` : `تعديل السجل`;
     const fCont = document.getElementById('formFields');
     fCont.innerHTML = "";
     const sc = SCHEMAS[currentTab] || [];
@@ -532,7 +543,7 @@ async function handleFormSubmit(e) {
     if (action === "update") payload[Object.keys(rawData[0])[0]] = Number(document.getElementById('recordId').value);
     const btn = document.getElementById('saveBtn');
     btn.disabled = true;
-    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin ml-2"></i> جاري الحفظ...`;
+    btn.innerHTML = `جاري الحفظ...`;
     try {
         const res = await (await fetch(API_URL, { method: 'POST', body: JSON.stringify({ sheet: currentTab, action: action, data: payload }) })).json();
         if (res.status === "success") {
