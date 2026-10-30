@@ -12,33 +12,29 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-
       - name: Set up Java JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: 'temurin'
           java-version: '17'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Prepare Web Directory
         run: |
           mkdir -p www
           cp index.html style.css app.js www/
-          # نسخ اللوجو سواء كان اسمه logo.png أو ch logo.png
           cp logo.png www/ 2>/dev/null || true
-          cp "ch logo.png" www/ 2>/dev/null || true
+          cp "ch logo.png" www/logo.png 2>/dev/null || true
           cp manifest.json www/ 2>/dev/null || true
 
-      - name: Install Capacitor CLI
+      - name: Install Dependencies & Setup Capacitor
         run: |
           npm init -y
-          npm install @capacitor/core @capacitor/cli @capacitor/android
-
-      - name: Initialize Capacitor App
-        run: |
+          npm install @capacitor/core@latest @capacitor/cli@latest @capacitor/android@latest
           npx cap init "ChurchApp" "com.church.management" --web-dir "www"
           npx cap add android
           npx cap sync android
@@ -47,7 +43,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon --no-parallel -Dorg.gradle.vfs.watch=false
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
