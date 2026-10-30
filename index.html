@@ -10,20 +10,18 @@
 </head>
 <body class="flex flex-col min-h-screen bg-slate-50">
 
-<!-- شاشة البداية البيضاء الدخانية (Splash Screen) -->
+<!-- شاشة البداية البيضاء الدخانية -->
 <div id="splashScreen">
     <div class="splash-logo-container">
-        <img id="splashLogoImg" src="logo.png" onerror="if(!this.tried){this.tried=true;this.src='ch%20logo.png';}else{this.style.display='none';document.getElementById('fallbackEmblem').style.display='flex';}" alt="Logo" class="splash-logo">
-        <div id="fallbackEmblem" style="display:none;" class="w-24 h-24 rounded-full bg-indigo-50 border-2 border-indigo-200 items-center justify-center text-indigo-700 text-4xl font-black mb-3">☩</div>
+        <img id="splashLogoImg" src="logo.png?v=2" alt="Logo" class="splash-logo" onerror="handleLogoFallback(this)">
         <h1 class="splash-title">منظومة الخدمة والرعاية الكنسية</h1>
     </div>
 </div>
 
-<!-- نافذة تسجيل الدخول (كلمة مرور فارغة + قائمة منسدلة + إظهار وإخفاء) -->
+<!-- نافذة تسجيل الدخول -->
 <div id="loginScreen" class="fixed inset-0 bg-white/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
     <div class="bg-white rounded-3xl shadow-xl p-8 w-full max-w-md text-center border border-slate-200">
-        <img id="loginLogoImg" src="logo.png" onerror="if(!this.tried){this.tried=true;this.src='ch%20logo.png';}else{this.style.display='none';document.getElementById('fallbackEmblemLogin').style.display='flex';}" alt="Logo" class="w-20 h-20 mx-auto object-contain mb-3">
-        <div id="fallbackEmblemLogin" style="display:none;" class="w-20 h-20 mx-auto rounded-full bg-indigo-50 border-2 border-indigo-200 items-center justify-center text-indigo-700 text-3xl font-black mb-3">☩</div>
+        <img src="logo.png?v=2" alt="Logo" class="w-20 h-20 mx-auto object-contain mb-3" onerror="handleLogoFallback(this)">
         
         <h2 class="text-2xl font-black text-slate-800 mb-1">بوابة الخدام</h2>
         <p class="text-xs text-slate-500 mb-6 font-bold">تسجيل الدخول لمنظومة الرعاية والخدمة</p>
@@ -57,8 +55,7 @@
 <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
     <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-4">
         <div class="flex items-center gap-3">
-            <img src="logo.png" onerror="if(!this.tried){this.tried=true;this.src='ch%20logo.png';}else{this.style.display='none';document.getElementById('fallbackEmblemHeader').style.display='flex';}" alt="Logo" class="w-11 h-11 object-contain rounded-full shadow-sm border border-slate-100">
-            <div id="fallbackEmblemHeader" style="display:none;" class="w-11 h-11 rounded-full bg-indigo-50 border border-indigo-200 items-center justify-center text-indigo-700 text-xl font-black">☩</div>
+            <img src="logo.png?v=2" alt="Logo" class="w-11 h-11 object-contain rounded-full shadow-sm border border-slate-100" onerror="handleLogoFallback(this)">
             <div>
                 <h1 class="text-base font-black text-slate-800 leading-tight">منظومة الخدمة والرعاية الكنسية</h1>
                 <p class="text-xs text-slate-500 font-bold" id="userBadge"></p>
@@ -72,7 +69,6 @@
 </header>
 
 <main class="flex-grow w-full max-w-7xl mx-auto px-4 py-8">
-    <!-- لوحة التحكم الرئيسية (Dashboard) -->
     <div id="dashboardView" class="block">
         <div class="text-center mb-10">
             <h2 class="text-3xl font-black text-slate-800 mb-2">لوحة التحكم المركزية</h2>
@@ -81,7 +77,6 @@
         <div id="dashboardGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-5xl mx-auto"></div>
     </div>
 
-    <!-- واجهة عرض البيانات والفرز -->
     <div id="dataView" class="hidden">
         <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
             <div class="flex items-center gap-3 w-full md:w-auto">
@@ -114,9 +109,9 @@
                     <input type="text" id="filterFullName" oninput="applyNamesFilter()" placeholder="اكتب اسم العضو ثلاثي..." class="w-full px-3 py-2 bg-emerald-50/50 border border-emerald-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500">
                 </div>
                 <div>
-                    <label class="filter-label">المنطقة</label>
-                    <select id="filterArea" onchange="applyNamesFilter()" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="">كل المناطق</option>
+                    <label class="filter-label text-blue-700 font-extrabold">المنطقة (من شيت Family name)</label>
+                    <select id="filterArea" onchange="applyNamesFilter()" class="w-full px-3 py-2 bg-blue-50/40 border border-blue-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">كل المناطق السكنية</option>
                     </select>
                 </div>
                 <div>
@@ -175,11 +170,11 @@
         </div>
 
         <div id="loader" class="hidden text-center py-20">
-            <p class="text-slate-600 font-bold text-sm">جاري جلب البيانات...</p>
+            <p class="text-slate-600 font-bold text-sm">جاري جلب البيانات من السجلات...</p>
         </div>
 
         <div id="namesPlaceholder" class="hidden text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
-            <h3 class="text-lg font-black text-slate-700 mb-1">ابحث باسم رب الأسرة أو اسم العضو</h3>
+            <h3 class="text-lg font-black text-slate-700 mb-1">ابحث باسم رب الأسرة أو اختر المنطقة السكنية</h3>
             <p class="text-xs text-slate-500 font-bold max-w-md mx-auto">سيتم تجميع بيانات العائلة بالكامل أو عرض بطاقة الفرد المفصلة بما فيها آخر اعتراف وآخر افتقاد.</p>
         </div>
 
@@ -188,7 +183,7 @@
     </div>
 </main>
 
-<!-- نافذة الإدخال والتعديل مع قاعدة العائلة أولاً -->
+<!-- نافذة الإدخال والتعديل -->
 <div id="dataModal" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
     <div class="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
         <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
