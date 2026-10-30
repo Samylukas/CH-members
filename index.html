@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منظومة الرعاية والخدمة الكنسية</title>
+    <!-- Tailwind CSS & Google Fonts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Cairo', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- شريط العنوان العلوي -->
+    <header class="bg-indigo-900 text-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-church text-3xl text-amber-400"></i>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-extrabold">منظومة الخدمة والرعاية</h1>
+                    <p class="text-xs text-indigo-200">إدارة المخدومين، الافتقاد، الاجتماعات، ومدارس الأحد</p>
+                </div>
+            </div>
+            
+            <!-- أزرار التبويبات -->
+            <nav class="flex flex-wrap gap-2 text-sm font-semibold">
+                <button onclick="switchTab('Names')" id="tab-Names" class="tab-btn px-4 py-2 rounded-lg bg-indigo-700 text-white shadow transition">
+                    <i class="fa-solid fa-users ml-1"></i> المخدومين
+                </button>
+                <button onclick="switchTab('Visitations')" id="tab-Visitations" class="tab-btn px-4 py-2 rounded-lg bg-indigo-800/60 hover:bg-indigo-700 text-indigo-200 transition">
+                    <i class="fa-solid fa-house-chimney-user ml-1"></i> الافتقاد
+                </button>
+                <button onclick="switchTab('Meetings_Attendance')" id="tab-Meetings_Attendance" class="tab-btn px-4 py-2 rounded-lg bg-indigo-800/60 hover:bg-indigo-700 text-indigo-200 transition">
+                    <i class="fa-solid fa-clipboard-user ml-1"></i> الاجتماعات
+                </button>
+                <button onclick="switchTab('Sunday_School')" id="tab-Sunday_School" class="tab-btn px-4 py-2 rounded-lg bg-indigo-800/60 hover:bg-indigo-700 text-indigo-200 transition">
+                    <i class="fa-solid fa-children ml-1"></i> مدارس الأحد
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full">
+        <!-- شريط الإجراءات والبحث -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+            <div class="relative w-full md:w-96">
+                <i class="fa-solid fa-magnifying-glass absolute right-3 top-3.5 text-slate-400"></i>
+                <input type="text" id="searchInput" oninput="renderCards()" placeholder="بحث سريع في السجلات..." 
+                       class="w-full pr-10 pl-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+            </div>
+            
+            <div class="flex items-center gap-3 w-full md:w-auto justify-end">
+                <span id="recordCount" class="text-xs bg-slate-100 text-slate-600 px-3 py-2 rounded-lg font-bold border">0 سجل</span>
+                <button onclick="openModal('add')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg font-bold text-sm shadow flex items-center gap-2 transition">
+                    <i class="fa-solid fa-plus"></i> إضافة جديد
+                </button>
+                <button onclick="loadData()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-2 rounded-lg text-sm transition">
+                    <i class="fa-solid fa-rotate"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- حالة التحميل -->
+        <div id="loader" class="hidden text-center py-20">
+            <i class="fa-solid fa-circle-notch fa-spin text-4xl text-indigo-600 mb-3"></i>
+            <p class="text-slate-600 font-semibold">جاري معالجة البيانات من قاعدة البيانات...</p>
+        </div>
+
+        <!-- شبكة الكروت -->
+        <div id="cardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </main>
+
+    <!-- Modal (إدخال وتعديل البيانات) -->
+    <div id="dataModal" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl">
+            <div class="px-6 py-4 border-b flex justify-between items-center bg-slate-50 rounded-t-2xl">
+                <h3 id="modalTitle" class="text-lg font-bold text-indigo-900">إضافة سجل</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <form id="recordForm" onsubmit="handleFormSubmit(event)" class="overflow-y-auto p-6 space-y-4">
+                <input type="hidden" id="formAction">
+                <input type="hidden" id="recordId">
+                <div id="formFields" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm"></div>
+
+                <div class="pt-4 border-t flex justify-end gap-3">
+                    <button type="button" onclick="closeModal()" class="px-5 py-2 rounded-lg border text-slate-600 hover:bg-slate-100 font-semibold">إلغاء</button>
+                    <button type="submit" id="saveBtn" class="px-6 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow">حفظ السجل</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // رابط الويب اب الخاص بك
+        const API_URL = "https://script.google.com/macros/s/AKfycbxUSj07z5nkCv88hrgob88-bB21SLs2OmK9-BbSSUu_4m2eirI8cBHCl-5xUv0cyTSZ6Q/exec";
+
+        let currentTab = "Names";
+        let rawData = [];
+
+        // تعريف حقول كل جدول
+        const SCHEMAS = {
+            "Names": [
+                { id: "اسم رب الاسرة", label: "اسم رب الأسرة", type: "text" },
+                { id: "الاسم ثلاثي", label: "الاسم ثلاثي", type: "text", required: true },
+                { id: "تليفون العمل/المحمول", label: "المحمول / الهاتف", type: "text" },
+                { id: "ذكر/انثي", label: "النوع", type: "select", options: ["ذكر", "انثي"] },
+                { id: "صلة القرابة", label: "صلة القرابة", type: "text" },
+                { id: "الحالة الاجتماعية", label: "الحالة الاجتماعية", type: "text" },
+                { id: "تاريخ الميلاد", label: "تاريخ الميلاد (DD/MM/YYYY)", type: "text" },
+                { id: "تاريخ الزواج", label: "تاريخ الزواج (DD/MM/YYYY)", type: "text" },
+                { id: "الرقم القومي", label: "الرقم القومي", type: "text" },
+                { id: "المهنة/السنة الدراسية", label: "المهنة / الدراسة", type: "text" },
+                { id: "اب الاعتراف", label: "أب الاعتراف", type: "text" },
+                { id: "الخادم الروحي", label: "الخادم الروحي", type: "text" },
+                { id: "الموعد المناسب للافتقاد", label: "موعد الافتقاد المناسب", type: "text" },
+                { id: "ملاحظات", label: "ملاحظات", type: "textarea", full: true }
+            ],
+            "Visitations": [
+                { id: "MemberID", label: "كود المخدوم (ID)", type: "number", required: true },
+                { id: "MemberName", label: "اسم المخدوم", type: "text", required: true },
+                { id: "VisitDate", label: "تاريخ الافتقاد (DD/MM/YYYY)", type: "text", required: true },
+                { id: "VisitorName", label: "اسم الخادم", type: "text", required: true },
+                { id: "VisitType", label: "نوع الافتقاد", type: "select", options: ["منزلي", "تليفوني", "كنسي"] },
+                { id: "FollowUpDate", label: "تاريخ المتابعة (DD/MM/YYYY)", type: "text" },
+                { id: "Notes", label: "تقرير الافتقاد", type: "textarea", full: true }
+            ],
+            "Meetings_Attendance": [
+                { id: "MeetingName", label: "اسم الاجتماع", type: "text", required: true },
+                { id: "MeetingDate", label: "تاريخ الاجتماع (DD/MM/YYYY)", type: "text", required: true },
+                { id: "MemberID", label: "كود العضو (ID)", type: "number" },
+                { id: "MemberName", label: "اسم العضو", type: "text", required: true },
+                { id: "Status", label: "الحالة", type: "select", options: ["حاضر", "معتذر", "غائب"] },
+                { id: "Notes", label: "ملاحظات", type: "text", full: true }
+            ],
+            "Sunday_School": [
+                { id: "Stage", label: "المرحلة / الفصل", type: "text", required: true },
+                { id: "SessionDate", label: "تاريخ الدرس (DD/MM/YYYY)", type: "text", required: true },
+                { id: "ChildID", label: "كود الطفل (ID)", type: "number" },
+                { id: "ChildName", label: "اسم الطفل", type: "text", required: true },
+                { id: "ServantName", label: "خادم الفصل", type: "text" },
+                { id: "Attendance", label: "حضور / غياب", type: "select", options: ["حاضر", "غائب"] },
+                { id: "Memorization", label: "حفظ الآية والدرس", type: "select", options: ["ممتاز", "جيد", "لم يحفظ"] },
+                { id: "Points", label: "النقاط", type: "number" },
+                { id: "Notes", label: "ملاحظات", type: "text", full: true }
+            ]
+        };
+
+        // تبديل التبويب
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn px-4 py-2 rounded-lg bg-indigo-800/60 hover:bg-indigo-700 text-indigo-200 transition";
+            });
+            document.getElementById(`tab-${tab}`).className = "tab-btn px-4 py-2 rounded-lg bg-indigo-700 text-white shadow transition";
+            loadData();
+        }
+
+        // جلب البيانات من Google Apps Script
+        async function loadData() {
+            showLoader(true);
+            try {
+                const response = await fetch(`${API_URL}?sheet=${currentTab}`);
+                const res = await response.json();
+                if (res.status === "success") {
+                    rawData = res.data;
+                    renderCards();
+                } else {
+                    alert("خطأ: " + res.message);
+                }
+            } catch (err) {
+                console.error(err);
+                alert("تعذر الاتصال بقاعدة البيانات.");
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        // عرض الكروت مع فلترة البحث
+        function renderCards() {
+            const query = document.getElementById('searchInput').value.trim().toLowerCase();
+            const container = document.getElementById('cardsContainer');
+            container.innerHTML = "";
+
+            const filtered = rawData.filter(item => {
+                return Object.values(item).some(val => String(val).toLowerCase().includes(query));
+            });
+
+            document.getElementById('recordCount').innerText = `${filtered.length} سجل`;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 font-semibold"><i class="fa-regular fa-folder-open text-4xl mb-2"></i><br>لا توجد بيانات مطابقة</div>`;
+                return;
+            }
+
+            filtered.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-xl p-5 shadow-sm border border-slate-200 hover:shadow-md transition flex flex-col justify-between";
+                
+                let bodyHtml = "";
+                let title = "";
+                let badge = "";
+                const idKey = Object.keys(item)[0]; // المعرف الأول
+                const idVal = item[idKey];
+
+                if (currentTab === "Names") {
+                    title = item["الاسم ثلاثي"] || "بدون اسم";
+                    badge = `<span class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-2.5 py-0.5 rounded-full font-bold">${item["ذكر/انثي"] || "مخدوم"}</span>`;
+                    bodyHtml = `
+                        <p class="text-xs text-slate-500 mb-2"><i class="fa-solid fa-people-roof ml-1 text-slate-400"></i>رب الأسرة: ${item["اسم رب الاسرة"] || "-"}</p>
+                        <p class="text-xs text-slate-600 mb-1"><i class="fa-solid fa-phone ml-1 text-slate-400"></i>${item["تليفون العمل/المحمول"] || "-"}</p>
+                        <p class="text-xs text-slate-600 mb-1"><i class="fa-solid fa-cake-candles ml-1 text-slate-400"></i>الميلاد: ${item["تاريخ الميلاد"] || "-"}</p>
+                        <p class="text-xs text-slate-600 mb-1"><i class="fa-solid fa-cross ml-1 text-slate-400"></i>أب الاعتراف: ${item["اب الاعتراف"] || "-"}</p>
+                    `;
+                } else if (currentTab === "Visitations") {
+                    title = item["MemberName"] || "افتقاد";
+                    badge = `<span class="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-bold">${item["VisitType"] || "زيارة"}</span>`;
+                    bodyHtml = `
+                        <p class="text-xs text-slate-600 mb-1"><i class="fa-regular fa-calendar ml-1 text-slate-400"></i>تاريخ الافتقاد: ${item["VisitDate"] || "-"}</p>
+                        <p class="text-xs text-slate-600 mb-1"><i class="fa-solid fa-user-tie ml-1 text-slate-400"></i>الخادم: ${item["VisitorName"] || "-"}</p>
+                        <p class="text-xs text-slate-500 mt-2 bg-slate-50 p-2 rounded border border-dashed">${item["Notes"] || "لا توجد ملاحظات"}</p>
+                    `;
+                } else if (currentTab === "Meetings_Attendance") {
+                    title = item["MemberName"] || "عضو";
+                    badge = `<span class="text-xs ${item["Status"] === "حاضر" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"} border px-2 py-0.5 rounded-full font-bold">${item["Status"] || "حالة"}</span>`;
+                    bodyHtml = `
+                        <p class="text-xs text-slate-600 mb-1"><i class="fa-solid fa-users-rectangle ml-1 text-slate-400"></i>${item["MeetingName"] || "-"}</p>
+                        <p class="text-xs text-slate-600 mb-1"><i class="fa-regular fa-calendar ml-1 text-slate-400"></i>التاريخ: ${item["MeetingDate"] || "-"}</p>
+                    `;
+                } else if (currentTab === "Sunday_School") {
+                    title = item["ChildName"] || "طفل";
+                    badge = `<span class="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full font-bold">${item["Stage"] || "مرحلة"}</span>`;
+                    bodyHtml = `
+                        <p class="text-xs text-slate-600 mb-1"><i class="fa-regular fa-calendar ml-1 text-slate-400"></i>التاريخ: ${item["SessionDate"] || "-"}</p>
+                        <p class="text-xs text-slate-600 mb-1"><i class="fa-solid fa-star text-amber-500 ml-1"></i>النقاط: ${item["Points"] || "0"} | التسميع: ${item["Memorization"] || "-"}</p>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start gap-2 mb-3">
+                            <div>
+                                <span class="text-[10px] text-slate-400 block font-mono">#${idVal}</span>
+                                <h3 class="font-bold text-slate-800 text-base">${title}</h3>
+                            </div>
+                            ${badge}
+                        </div>
+                        <div class="space-y-1 mb-4">
+                            ${bodyHtml}
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                        <button onclick="editRecord(${idVal})" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 rounded-md hover:bg-indigo-50 transition">
+                            <i class="fa-regular fa-pen-to-square ml-1"></i> تعديل
+                        </button>
+                        <button onclick="deleteRecord(${idVal})" class="text-xs font-semibold text-rose-600 hover:text-rose-800 px-2.5 py-1.5 rounded-md hover:bg-rose-50 transition">
+                            <i class="fa-regular fa-trash-can ml-1"></i> حذف
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // فتح نافذة الإضافة / التعديل
+        function openModal(action, data = {}) {
+            document.getElementById('formAction').value = action;
+            document.getElementById('modalTitle').innerText = action === 'add' ? `إضافة إلى ${currentTab}` : `تعديل سجل #${data[Object.keys(data)[0]]}`;
+            document.getElementById('recordId').value = action === 'update' ? data[Object.keys(data)[0]] : "";
+
+            const fieldsContainer = document.getElementById('formFields');
+            fieldsContainer.innerHTML = "";
+
+            const schema = SCHEMAS[currentTab] || [];
+            schema.forEach(field => {
+                const val = data[field.id] || "";
+                const wrapper = document.createElement('div');
+                if (field.full) wrapper.className = "md:col-span-2";
+
+                let inputHtml = "";
+                if (field.type === "select") {
+                    inputHtml = `
+                        <select name="${field.id}" class="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">
+                            ${field.options.map(opt => `<option value="${opt}" ${val === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                        </select>
+                    `;
+                } else if (field.type === "textarea") {
+                    inputHtml = `<textarea name="${field.id}" rows="2" class="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">${val}</textarea>`;
+                } else {
+                    inputHtml = `<input type="${field.type}" name="${field.id}" value="${val}" ${field.required ? 'required' : ''} class="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">`;
+                }
+
+                wrapper.innerHTML = `
+                    <label class="block font-semibold mb-1 text-slate-700">${field.label} ${field.required ? '<span class="text-red-500">*</span>' : ''}</label>
+                    ${inputHtml}
+                `;
+                fieldsContainer.appendChild(wrapper);
+            });
+
+            document.getElementById('dataModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('dataModal').classList.add('hidden');
+        }
+
+        // إرسال البيانات للإضافة أو التعديل
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const action = document.getElementById('formAction').value;
+            const form = e.target;
+            const formData = new FormData(form);
+            const payloadData = {};
+
+            formData.forEach((value, key) => {
+                if (value.trim() !== "") payloadData[key] = value;
+            });
+
+            if (action === "update") {
+                const schema = SCHEMAS[currentTab];
+                const idKey = schema[0].id === "ID" ? "ID" : Object.keys(rawData[0])[0];
+                payloadData[idKey] = Number(document.getElementById('recordId').value);
+            }
+
+            const payload = {
+                sheet: currentTab,
+                action: action,
+                data: payloadData
+            };
+
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true;
+            btn.innerText = "جاري الحفظ...";
+
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (result.status === "success") {
+                    closeModal();
+                    loadData();
+                } else {
+                    alert("خطأ: " + result.message);
+                }
+            } catch (err) {
+                alert("حدث خطأ أثناء الاتصال بالخادم.");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "حفظ السجل";
+            }
+        }
+
+        // تحضير وتعديل سجل
+        function editRecord(id) {
+            const schema = SCHEMAS[currentTab];
+            const item = rawData.find(r => r[Object.keys(r)[0]] == id);
+            if (item) {
+                openModal('update', item);
+            }
+        }
+
+        // حذف سجل
+        async function deleteRecord(id) {
+            if (!confirm(`هل أنت متأكد من رغبتك في حذف السجل رقم #${id} نهائياً؟`)) return;
+
+            showLoader(true);
+            try {
+                const idKey = Object.keys(rawData[0])[0];
+                const payload = {
+                    sheet: currentTab,
+                    action: "delete",
+                    data: { [idKey]: id }
+                };
+
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (result.status === "success") {
+                    loadData();
+                } else {
+                    alert("خطأ في الحذف: " + result.message);
+                }
+            } catch (err) {
+                alert("حدث خطأ أثناء الحذف.");
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        function showLoader(show) {
+            document.getElementById('loader').classList.toggle('hidden', !show);
+            document.getElementById('cardsContainer').classList.toggle('hidden', show);
+        }
+
+        // بدء التحميل عند فتح الصفحة
+        window.onload = () => loadData();
+    </script>
+</body>
+</html>
