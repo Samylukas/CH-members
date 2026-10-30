@@ -1,0 +1,46 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Set up Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Install Capacitor CLI
+        run: |
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+
+      - name: Initialize Capacitor App
+        run: |
+          npx cap init "ChurchApp" "com.church.management" --web-dir "."
+          npx cap add android
+
+      - name: Build Android Debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Church-Management-App
+          path: android/app/build/outputs/apk/debug/app-debug.apk
