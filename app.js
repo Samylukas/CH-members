@@ -1020,3 +1020,208 @@ window.addEventListener('scroll', () => {
         bottomBtn.classList.add('opacity-100', 'pointer-events-auto');
     }
 });
+// =========================================================================
+// منظومة الطباعة الرسمية (Printing Engine)
+// =========================================================================
+
+// ضبط بيانات الترويسة الرسمية المطبوعة
+function setupPrintHeader(reportTitle) {
+    document.getElementById('printReportTitle').innerText = reportTitle;
+    document.getElementById('printServantName').innerText = currentUser ? `${currentUser.ServantName} (${currentUser.Role})` : "الأدمن";
+    const now = new Date();
+    document.getElementById('printCurrentDate').innerText = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
+}
+
+// 1. طباعة نتائج الفرز التراكمي
+function printFilteredResults() {
+    const areaVal = document.getElementById('filterArea')?.value || "كل المناطق";
+    const ageVal = document.getElementById('filterAgeGroup')?.options[document.getElementById('filterAgeGroup')?.selectedIndex]?.text || "كل الأعمار";
+    const statusVal = document.getElementById('filterDeceased')?.options[document.getElementById('filterDeceased')?.selectedIndex]?.text || "الأحياء";
+    
+    setupPrintHeader(`بيان فرز السجلات الكنسية: [${areaVal} - ${ageVal} - ${statusVal}]`);
+    window.print();
+}
+
+// 2. طباعة كشف أرباب الأسر والدليل الأبجدي
+function printRosterDirectory() {
+    setupPrintHeader(`دليل أرباب الأسر والعائلات المرتب أبجدياً (حرف: ${selectedLetter})`);
+    // فتح جميع القوائم المنسدلة تلقائياً لكي تُطبع كاملة على الورق
+    expandAllFamilies(true);
+    setTimeout(() => {
+        window.print();
+    }, 300);
+}
+
+// 3. فتح نافذة اختيار فصل مدارس الأحد
+function openSundaySchoolPrintModal() {
+    const modal = document.getElementById('ssPrintModal');
+    const stageSel = document.getElementById('ssPrintStage');
+    
+    // ضبط المراحل حسب صلاحية الخادم
+    stageSel.innerHTML = `<option value="">اختر المرحلة...</option>` + 
+        Object.keys(STAGE_GRADES).map(s => `<option value="${s}">${s}</option>`).join('');
+
+    if (currentUser.Role === "Stage_Leader" || currentUser.Role === "Class_Servant") {
+        if (currentUser.AssignedStage && currentUser.AssignedStage !== "الكل") {
+            stageSel.value = currentUser.AssignedStage;
+            stageSel.disabled = true;
+            updatePrintGradesDropdown(currentUser.AssignedStage);
+            if (currentUser.AssignedGrade && currentUser.AssignedGrade !== "الكل") {
+                document.getElementById('ssPrintGrade').value = currentUser.AssignedGrade;
+            }
+            if (currentUser.AssignedClass && currentUser.AssignedClass !== "الكل") {
+                document.getElementById('ssPrintClass').value = currentUser.AssignedClass;
+            }
+        }
+    } else {
+        stageSel.disabled = false;
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function closeSundaySchoolPrintModal() {
+    document.getElementById('ssPrintModal').classList.add('hidden');
+}
+
+function updatePrintGradesDropdown(stage) {
+    const grdSel = document.getElementById('ssPrintGrade');
+    const grades = STAGE_GRADES[stage] || [];
+    grdSel.innerHTML = `<option value="">كل الصفوف</option>` + grades.map(g => `<option value="${g}">${g}</option>`).join('');
+}
+
+// 4. توليد جدول كشف الحضور والغياب الأسبوعي للفصل والطباعة
+async function generateAndPrintClassRoster() {
+    const stage = document.getElementById('ssPrintStage').value;
+    const grade = document.getElementById('ssPrintGrade').value;
+    const className = document.getElementById('ssPrintClass').value.trim();
+
+    if (!stage) {
+        alert("يرجى اختيار المرحلة الدراسية أولاً!");
+        return;
+    }
+
+    // جلب بيانات الأعضاء من شيت Names إذا لم تكن محملة
+    let membersList = rawData;
+    if (currentTab !== 'Names') {
+        const res = await (await fetch(`${API_URL}?sheet=Names`)).json();
+        if (res.status === "success") membersList = res.data;
+    }
+
+    // تصفية أطفال هذا الفصل والمرحلة (مع استبعاد المتوفين)
+    const classKids = membersList.filter(item => {
+        if (isMemberDeceased(item)) return false;
+        if (item["المرحلة"] !== stage) return false;
+        if (grade && item["الصف"] !== grade) return false;
+        if (className && !String(item["فصل مدارس الاحد"] || "").includes(className)) return false;
+        return true;
+    }).sort((a, b) => String(a["الاسم ثلاثي"]).localeCompare(String(b["الاسم ثلاثي"]), 'ar'));
+
+    if (classKids.length === 0) {
+        alert("لم يتم العثور على مخدومين مسجلين بهذه المواصفات!");
+        return;
+    }
+
+    closeSundaySchoolPrintModal();
+
+    // بناء التقرير المخصص للطباعة
+    setupPrintHeader(`كشف حضور وغياب مدارس الأحد - مرحلة: ${stage} ${grade ? '| ' + grade : ''} ${className ? '| فصل: ' + className : ''}`);
+    
+    const printArea = document.getElementById('printContainer');
+    printArea.innerHTML = `
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th style="width: 30px;">م</th>
+                    <th style="width: 190px;">اسم المخدوم ثلاثي</th>
+                    <th style="width: 90px;">المحمول</th>
+                    <th style="width: 60px;">السن</th>
+                    <th style="width: 80px;">الجمعة ( 1 )<br><span style="font-size: 8pt; font-weight: normal;">حضور / تسميع</span></th>
+                    <th style="width: 80px;">الجمعة ( 2 )<br><span style="font-size: 8pt; font-weight: normal;">حضور / تسميع</span></th>
+                    <th style="width: 80px;">الجمعة ( 3 )<br><span style="font-size: 8pt; font-weight: normal;">حضور / تسميع</span></th>
+                    <th style="width: 80px;">الجمعة ( 4 )<br><span style="font-size: 8pt; font-weight: normal;">حضور / تسميع</span></th>
+                    <th>ملاحظات الافتقاد</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${classKids.map((kid, idx) => {
+                    const age = calculateAge(kid["تاريخ الميلاد"], kid["الرقم القومي"]);
+                    return `
+                        <tr>
+                            <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
+                            <td style="font-weight: bold;">${kid["الاسم ثلاثي"]}</td>
+                            <td style="font-family: monospace;">${kid["تليفون العمل/المحمول"] || "-"}</td>
+                            <td style="text-align: center;">${age ? age + ' سنة' : '-'}</td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+        <div style="margin-top: 25px; display: flex; justify-content: space-between; font-weight: bold; font-size: 10pt;" class="print-only">
+            <p>توقيع خادم الفصل: .........................</p>
+            <p>توقيع أمين المرحلة: .........................</p>
+            <p>أمين عام الخدمة: .........................</p>
+        </div>
+    `;
+
+    // إخفاء المحتوى العادي مؤقتاً أثناء طباعة كشف الفصل
+    const mainRoster = document.getElementById('namesRosterSection');
+    const mainCards = document.getElementById('standardCardsContainer');
+    if (mainRoster) mainRoster.classList.add('no-print');
+    if (mainCards) mainCards.classList.add('no-print');
+
+    setTimeout(() => {
+        window.print();
+        printArea.innerHTML = "";
+        if (mainRoster) mainRoster.classList.remove('no-print');
+        if (mainCards) mainCards.classList.remove('no-print');
+    }, 300);
+}
+
+// إظهار وإخفاء أزرار الطباعة تلقائياً بحسب التبويب النشط
+const originalLoadSection = loadSection;
+loadSection = function(sectionKey) {
+    originalLoadSection(sectionKey);
+    
+    const btnSS = document.getElementById('btnPrintSundaySchool');
+    const btnFiltered = document.getElementById('btnPrintFiltered');
+    const btnRoster = document.getElementById('btnPrintRoster');
+
+    if (sectionKey === 'Sunday_School') {
+        btnSS.classList.remove('hidden');
+        btnFiltered.classList.add('hidden');
+        btnRoster.classList.add('hidden');
+    } else if (sectionKey === 'Names') {
+        btnSS.classList.add('hidden');
+        if (currentNamesView === 'roster') {
+            btnRoster.classList.remove('hidden');
+            btnFiltered.classList.add('hidden');
+        } else {
+            btnFiltered.classList.remove('hidden');
+            btnRoster.classList.add('hidden');
+        }
+    } else {
+        btnSS.classList.add('hidden');
+        btnFiltered.classList.add('hidden');
+        btnRoster.classList.add('hidden');
+    }
+};
+
+const originalSwitchNamesView = switchNamesView;
+switchNamesView = function(viewName) {
+    originalSwitchNamesView(viewName);
+    const btnFiltered = document.getElementById('btnPrintFiltered');
+    const btnRoster = document.getElementById('btnPrintRoster');
+    if (viewName === 'roster') {
+        btnRoster.classList.remove('hidden');
+        btnFiltered.classList.add('hidden');
+    } else {
+        btnFiltered.classList.remove('hidden');
+        btnRoster.classList.add('hidden');
+    }
+};
