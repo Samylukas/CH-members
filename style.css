@@ -9,89 +9,25 @@ body {
     color: #1e293b;
 }
 
-/* ================= شاشة البداية ================= */
+/* ================= شاشة البداية فيديو ================= */
 #splashScreen {
     position: fixed;
     inset: 0;
-    background-color: #ffffff;
+    background-color: #ffffff; /* يمكنك جعلها #000000 إذا كانت خلفية الفيديو سوداء */
     z-index: 100;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    transition: opacity 0.8s ease-out, visibility 0.8s ease-out;
+    overflow: hidden;
+    transition: opacity 0.7s ease-out, visibility 0.7s ease-out;
 }
 
-.splash-logo-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-}
-
-/* إبقاء اللوجو مخفياً لحين اكتمال تنزيله، ثم إظهاره بدون قص دائري */
-.splash-logo {
-    max-width: 260px;
-    max-height: 150px;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-    opacity: 0;
-    filter: drop-shadow(0 10px 20px rgba(0,0,0,0.06));
-}
-
-/* تبدأ الحركة فقط بعد انتهاء التحميل */
-.splash-logo.animate-start {
-    animation: stayThenSmoke 3.2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-}
-
-.splash-title {
-    color: #1e293b;
-    font-size: 1.4rem;
-    font-weight: 900;
-    margin-top: 1.5rem;
-    opacity: 0;
-}
-
-.splash-title.animate-start {
-    animation: fadeTextWhite 3s ease-in-out forwards;
-}
-
-@keyframes stayThenSmoke {
-    0% {
-        transform: scale(0.7);
-        opacity: 0;
-        filter: blur(0px);
-    }
-    20% {
-        transform: scale(1);
-        opacity: 1;
-        filter: blur(0px);
-    }
-    75% {
-        /* ثبات واضح ومستقر لأكثر من ثانيتين */
-        transform: scale(1);
-        opacity: 1;
-        filter: blur(0px);
-    }
-    90% {
-        transform: scale(1.2);
-        opacity: 0.7;
-        filter: blur(3px);
-    }
-    100% {
-        transform: scale(1.8);
-        opacity: 0;
-        filter: blur(16px);
-    }
-}
-
-@keyframes fadeTextWhite {
-    0% { opacity: 0; transform: translateY(12px); }
-    20% { opacity: 1; transform: translateY(0); }
-    75% { opacity: 1; filter: blur(0px); }
-    100% { opacity: 0; filter: blur(10px); transform: translateY(-8px); }
+.splash-video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* يجعل الفيديو كاملاً ظاهراً دون قص أطرافه */
+    max-width: 100vw;
+    max-height: 100vh;
 }
 
 /* ================= كروت لوحة التحكم ================= */
