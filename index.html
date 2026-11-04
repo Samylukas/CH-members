@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>منظومة الخدمة والرعاية الكنسية</title>
-    <!-- تحميل اللوجو مبكراً وبأعلى أولوية -->
     <link rel="preload" as="image" href="logo.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
@@ -12,14 +11,12 @@
 </head>
 <body class="flex flex-col min-h-screen bg-slate-50">
 
-<!-- شاشة البداية فيديو (Splash Screen) -->
+<!-- شاشة البداية -->
 <div id="splashScreen">
-    <video id="splashVideo" autoplay muted playsinline preload="auto" class="splash-video">
-        <source src="intro.mp4" type="video/mp4">
-    </video>
-    <button onclick="endSplash()" class="absolute bottom-6 left-6 text-xs bg-slate-900/60 hover:bg-slate-900 text-white px-3.5 py-1.5 rounded-full backdrop-blur-sm transition z-10 font-bold">
-        تخطي ✕
-    </button>
+    <div class="splash-logo-container">
+        <img id="splashLogoImg" src="logo.png" alt="Logo" class="splash-logo">
+        <h1 id="splashTitleText" class="splash-title">منظومة الخدمة والرعاية الكنسية</h1>
+    </div>
 </div>
 
 <!-- نافذة تسجيل الدخول -->
@@ -81,18 +78,17 @@
         <div id="dashboardGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-5xl mx-auto"></div>
     </div>
 
-  <!-- واجهة عرض البيانات والفرز -->
     <div id="dataView" class="hidden">
         
         <!-- الترويسة المخصصة للطباعة فقط (تظهر على الورق) -->
         <div id="churchPrintHeader" class="hidden print:flex print-header">
             <div class="text-right">
-                <h2 class="text-base font-black">كنيسة السيدة العذراء والشهيد مارجرجس</h2>
-                <p class="text-xs font-bold text-slate-600">منظومة الخدمة والرعاية الكنسية</p>
-                <p id="printReportTitle" class="text-sm font-black text-indigo-900 mt-1"></p>
+                <h2 class="text-lg font-black text-slate-900 leading-tight mb-0.5">كنيسة العذراء مريم والشهيدة بربارة</h2>
+                <p class="text-[10px] font-bold text-slate-600">منظومة الخدمة والرعاية الكنسية</p>
+                <p id="printReportTitle" class="text-xs font-black text-indigo-900 mt-1"></p>
             </div>
-            <img src="logo.png" alt="Logo" class="w-16 h-16 object-contain">
-            <div class="text-left text-xs font-bold text-slate-500">
+            <img src="logo.png" alt="Logo" class="max-w-[70px] max-h-[60px] object-contain">
+            <div class="text-left text-[10px] font-bold text-slate-600">
                 <p>تاريخ الطباعة: <span id="printCurrentDate"></span></p>
                 <p>المشرف: <span id="printServantName"></span></p>
             </div>
@@ -104,7 +100,6 @@
                 <span id="recordCount" class="bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-1 rounded-lg font-bold text-xs">0 سجل</span>
             </div>
             
-            <!-- أزرار التبديل في قسم أعضاء الكنيسة -->
             <div id="namesViewSwitcher" class="flex items-center gap-2 bg-slate-200/80 p-1 rounded-xl hidden">
                 <button id="btnViewRoster" onclick="switchNamesView('roster')" class="px-4 py-2 rounded-lg text-xs font-black transition bg-white text-indigo-700 shadow-sm">
                     🗂️ كشف أرباب الأسر (أبجدياً)
@@ -115,21 +110,15 @@
             </div>
 
             <div class="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
-                <!-- زر الطباعة الذكي لقسم مدارس الأحد -->
                 <button id="btnPrintSundaySchool" onclick="openSundaySchoolPrintModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">
                     🖨️ طباعة كشف الفصل
                 </button>
-
-                <!-- زر طباعة نتائج الفرز التراكمي -->
                 <button id="btnPrintFiltered" onclick="printFilteredResults()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">
                     🖨️ طباعة النتائج
                 </button>
-
-                <!-- زر طباعة كشف أرباب الأسر -->
                 <button id="btnPrintRoster" onclick="printRosterDirectory()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">
                     🖨️ طباعة الدليل الأبجدي
                 </button>
-
                 <button onclick="openModal('add')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5">
                     <span>+</span> إضافة سجل جديد
                 </button>
@@ -139,10 +128,9 @@
             </div>
         </div>
 
-        <!-- ================= 1. واجهة كشف أرباب الأسر الأبجدي ================= -->
+        <!-- كشف أرباب الأسر الأبجدي -->
         <div id="namesRosterSection" class="hidden space-y-4">
-            <!-- شريط البحث السريع والفلترة بالحروف -->
-            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm no-print">
                 <div class="flex flex-col md:flex-row gap-3 items-center justify-between mb-3">
                     <div class="relative w-full md:w-96">
                         <input type="text" id="rosterSearchInput" oninput="filterRoster()" placeholder="ابحث مباشرة في كشف أرباب الأسر..." class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold">
@@ -152,32 +140,25 @@
                         <button onclick="expandAllFamilies(false)" class="text-[11px] font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg hover:bg-slate-200 transition">طي الكل ▴</button>
                     </div>
                 </div>
-                <!-- شريط الحروف الأبجدية -->
                 <div id="alphabetBar" class="flex flex-wrap gap-1 pt-2 border-t border-slate-100 justify-center sm:justify-start"></div>
             </div>
-
-            <!-- حاوية عرض كروت أرباب الأسر وقوائم أفرادهم -->
-            <div id="rosterCardsContainer" class="space-y-4"></div>
+            <div id="rosterCardsContainer" class="space-y-4 print:space-y-1"></div>
         </div>
 
-        <!-- ================= 2. واجهة البحث والفرز التراكمي ================= -->
-        <div id="namesFilterSection" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6 hidden">
+        <!-- فلاتر الفرز لأعضاء الكنيسة -->
+        <div id="namesFilterSection" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6 hidden no-print">
             <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
-                <span class="text-xs font-black text-indigo-900 flex items-center gap-2">
-                    <svg class="w-4 h-4 text-indigo-600 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
-                    أدوات الفرز المتقدم
-                </span>
+                <span class="text-xs font-black text-indigo-900">أدوات البحث والفرز التراكمي</span>
                 <button onclick="resetNamesFilters()" class="text-xs font-bold text-slate-500 hover:text-rose-600 transition">مسح الفلاتر</button>
             </div>
-            
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                     <label class="filter-label text-indigo-700">🔍 بحث برب الأسرة</label>
-                    <input type="text" id="filterFamilyHead" oninput="applyNamesFilter()" placeholder="اسم رب الأسرة..." class="w-full px-3 py-2 bg-indigo-50/40 border border-indigo-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input type="text" id="filterFamilyHead" oninput="applyNamesFilter()" placeholder="اكتب اسم رب الأسرة..." class="w-full px-3 py-2 bg-indigo-50/40 border border-indigo-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
                 <div>
                     <label class="filter-label text-emerald-700">👤 بحث بالاسم ثلاثي</label>
-                    <input type="text" id="filterFullName" oninput="applyNamesFilter()" placeholder="اسم العضو ثلاثي..." class="w-full px-3 py-2 bg-emerald-50/40 border border-emerald-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500">
+                    <input type="text" id="filterFullName" oninput="applyNamesFilter()" placeholder="اكتب اسم العضو ثلاثي..." class="w-full px-3 py-2 bg-emerald-50/40 border border-emerald-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500">
                 </div>
                 <div>
                     <label class="filter-label text-blue-700 font-extrabold">المنطقة السكنية</label>
@@ -206,6 +187,14 @@
                     </select>
                 </div>
                 <div>
+                    <label class="filter-label">البطاقة الانتخابية</label>
+                    <select id="filterElection" onchange="applyNamesFilter()" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">الكل</option>
+                        <option value="يوجد">يوجد بطاقة</option>
+                        <option value="لا يوجد">لا يوجد بطاقة</option>
+                    </select>
+                </div>
+                <div>
                     <label class="filter-label">الحالة الاجتماعية</label>
                     <select id="filterMarital" onchange="applyNamesFilter()" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="">كل الحالات</option>
@@ -215,14 +204,6 @@
                         <option value="انسة">انسة</option>
                         <option value="ارمل">ارمل</option>
                         <option value="ارملة">ارملة</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="filter-label">البطاقة الانتخابية</label>
-                    <select id="filterElection" onchange="applyNamesFilter()" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="">الكل</option>
-                        <option value="يوجد">يوجد بطاقة</option>
-                        <option value="لا يوجد">لا يوجد بطاقة</option>
                     </select>
                 </div>
                 <div>
@@ -236,71 +217,24 @@
             </div>
         </div>
 
-        <!-- حقل البحث لباقي الأقسام -->
-        <div id="standardSearchContainer" class="relative w-full max-w-md mb-6 hidden">
+        <div id="standardSearchContainer" class="relative w-full max-w-md mb-6 hidden no-print">
             <input type="text" id="searchInput" oninput="renderStandardCards()" placeholder="بحث سريع في السجلات..." class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold shadow-sm">
         </div>
 
-        <div id="loader" class="hidden text-center py-20">
+        <div id="loader" class="hidden text-center py-20 no-print">
             <p class="text-slate-600 font-bold text-sm">جاري جلب البيانات من السجلات...</p>
         </div>
 
-        <div id="namesPlaceholder" class="hidden text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
+        <div id="namesPlaceholder" class="hidden text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300 no-print">
             <h3 class="text-lg font-black text-slate-700 mb-1">حدد شروط الفرز لعرض النتائج</h3>
             <p class="text-xs text-slate-500 font-bold max-w-md mx-auto">أو انتقل إلى "كشف أرباب الأسر" لتصفح العائلات بالكامل مرتبة أبجدياً.</p>
         </div>
 
-        <div id="familyResultsContainer" class="hidden flex flex-col gap-4"></div>
-        <div id="standardCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-    </div>
-
-        <div id="standardSearchContainer" class="relative w-full max-w-md mb-6 hidden">
-            <input type="text" id="searchInput" oninput="renderStandardCards()" placeholder="بحث سريع في السجلات..." class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold shadow-sm">
-        </div>
-
-        <div id="loader" class="hidden text-center py-20">
-            <p class="text-slate-600 font-bold text-sm">جاري جلب البيانات من السجلات...</p>
-        </div>
-
-        <div id="namesPlaceholder" class="hidden text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
-            <h3 class="text-lg font-black text-slate-700 mb-1">ابحث باسم رب الأسرة أو اختر المنطقة السكنية</h3>
-            <p class="text-xs text-slate-500 font-bold max-w-md mx-auto">سيتم تجميع بيانات العائلة بالكامل أو عرض بطاقة الفرد المفصلة بما فيها آخر اعتراف وآخر افتقاد.</p>
-        </div>
-
-        <div id="familyResultsContainer" class="hidden flex flex-col gap-6"></div>
-        <div id="standardCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        <div id="familyResultsContainer" class="hidden flex-col gap-4 print:gap-1 print:flex"></div>
+        <div id="standardCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 print:gap-2 print:grid-cols-1"></div>
     </div>
 </main>
 
-<!-- نافذة الإدخال والتعديل -->
-<div id="dataModal" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
-    <div class="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
-        <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-            <h3 id="modalTitle" class="text-base font-black text-slate-800"></h3>
-            <button onclick="closeModal()" class="text-slate-400 hover:text-slate-700 transition w-8 h-8 rounded-full flex items-center justify-center bg-slate-200 font-bold">✕</button>
-        </div>
-
-        <div id="memberTypeSelector" class="px-6 py-3 bg-amber-50 border-b border-amber-100 flex items-center gap-4 hidden">
-            <span class="text-xs font-black text-amber-900">نوع الإضافة:</span>
-            <label class="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
-                <input type="radio" name="addMode" value="new_head" onchange="toggleAddMode('new_head')" checked> تسجيل رب أسرة جديد
-            </label>
-            <label class="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
-                <input type="radio" name="addMode" value="add_member" onchange="toggleAddMode('add_member')"> إضافة فرد لأسرة قائمة
-            </label>
-        </div>
-
-        <form id="recordForm" onsubmit="handleFormSubmit(event)" class="overflow-y-auto p-6 space-y-5 custom-scrollbar flex-grow bg-white">
-            <input type="hidden" id="formAction">
-            <input type="hidden" id="recordId">
-            <div id="formFields" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
-            <div class="pt-5 border-t border-slate-100 flex justify-end gap-3">
-                <button type="button" onclick="closeModal()" class="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs">إلغاء</button>
-                <button type="submit" id="saveBtn" class="px-7 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition">حفظ السجل</button>
-            </div>
-        </form>
-    </div>
-</div>
 <!-- نافذة تحديد فصل مدارس الأحد لتوليد كشف الحضور والغياب المطبوع -->
 <div id="ssPrintModal" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm no-print">
     <div class="bg-white rounded-3xl w-full max-w-lg p-6 shadow-2xl border border-slate-100 text-right">
@@ -332,20 +266,49 @@
 
 <!-- حاوية مؤقتة للطباعة المخصصة -->
 <div id="printContainer" class="hidden print:block"></div>
-<script src="app.js"></script>
-    <!-- أزرار التمرير السريع المودرن (الركن الأيسر) -->
-<div class="fixed bottom-8 left-6 flex flex-col gap-3 z-50">
-    <!-- زر الصعود للأعلى -->
+
+<!-- نافذة الإدخال والتعديل -->
+<div id="dataModal" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm no-print">
+    <div class="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
+        <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+            <h3 id="modalTitle" class="text-base font-black text-slate-800"></h3>
+            <button onclick="closeModal()" class="text-slate-400 hover:text-slate-700 transition w-8 h-8 rounded-full flex items-center justify-center bg-slate-200 font-bold">✕</button>
+        </div>
+
+        <div id="memberTypeSelector" class="px-6 py-3 bg-amber-50 border-b border-amber-100 flex items-center gap-4 hidden">
+            <span class="text-xs font-black text-amber-900">نوع الإضافة:</span>
+            <label class="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
+                <input type="radio" name="addMode" value="new_head" onchange="toggleAddMode('new_head')" checked> تسجيل رب أسرة جديد
+            </label>
+            <label class="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
+                <input type="radio" name="addMode" value="add_member" onchange="toggleAddMode('add_member')"> إضافة فرد لأسرة قائمة
+            </label>
+        </div>
+
+        <form id="recordForm" onsubmit="handleFormSubmit(event)" class="overflow-y-auto p-6 space-y-5 custom-scrollbar flex-grow bg-white">
+            <input type="hidden" id="formAction">
+            <input type="hidden" id="recordId">
+            <div id="formFields" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+            <div class="pt-5 border-t border-slate-100 flex justify-end gap-3">
+                <button type="button" onclick="closeModal()" class="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs">إلغاء</button>
+                <button type="submit" id="saveBtn" class="px-7 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition">حفظ السجل</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- أزرار التمرير السريع -->
+<div class="fixed bottom-8 left-6 flex flex-col gap-3 z-50 no-print">
     <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" id="scrollTopBtn" title="أعلى الصفحة" 
         class="w-12 h-12 flex items-center justify-center bg-white/80 backdrop-blur-md text-indigo-600 hover:bg-indigo-600 hover:text-white border border-white/40 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 transform hover:-translate-y-1 opacity-0 pointer-events-none focus:outline-none">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"/></svg>
     </button>
-    
-    <!-- زر النزول للأسفل -->
     <button onclick="window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})" id="scrollBottomBtn" title="أسفل الصفحة" 
         class="w-12 h-12 flex items-center justify-center bg-white/80 backdrop-blur-md text-indigo-600 hover:bg-indigo-600 hover:text-white border border-white/40 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 transform hover:translate-y-1 focus:outline-none">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
     </button>
 </div>
+
+<script src="app.js"></script>
 </body>
 </html>
