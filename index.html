@@ -12,12 +12,14 @@
 </head>
 <body class="flex flex-col min-h-screen bg-slate-50">
 
-<!-- شاشة البداية البيضاء الدخانية -->
+<!-- شاشة البداية فيديو (Splash Screen) -->
 <div id="splashScreen">
-    <div class="splash-logo-container">
-        <img id="splashLogoImg" src="logo.png" alt="Logo" class="splash-logo">
-        <h1 id="splashTitleText" class="splash-title">منظومة الخدمة والرعاية الكنسية</h1>
-    </div>
+    <video id="splashVideo" autoplay muted playsinline preload="auto" class="splash-video">
+        <source src="intro.mp4" type="video/mp4">
+    </video>
+    <button onclick="endSplash()" class="absolute bottom-6 left-6 text-xs bg-slate-900/60 hover:bg-slate-900 text-white px-3.5 py-1.5 rounded-full backdrop-blur-sm transition z-10 font-bold">
+        تخطي ✕
+    </button>
 </div>
 
 <!-- نافذة تسجيل الدخول -->
