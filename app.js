@@ -24,7 +24,7 @@ const STAGE_GRADES = {
 };
 
 const TABS_INFO = {
-    "Names": { label: "أعضاء الكنيسة", desc: "سجلات العائلات والفرز السكني الحصري", svg: ICONS.users, colorClass: "card-names", roles: ["Admin", "SundaySchool_Admin"] },
+    "Names": { label: "أعضاء الكنيسة", desc: "سجلات العائلات، الفرز السكني، وسجل المنتقلين", svg: ICONS.users, colorClass: "card-names", roles: ["Admin", "SundaySchool_Admin"] },
     "Sunday_School": { label: "مدارس الأحد", desc: "إدارة الفصول، الحضور، والتسميع", svg: ICONS.children, colorClass: "card-sunday", roles: ["Admin", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
     "Visitations": { label: "سجل الافتقاد", desc: "متابعة الزيارات ومواعيد الافتقاد", svg: ICONS.visitations, colorClass: "card-visitations", roles: ["Admin"] },
     "Meetings_Attendance": { label: "حضور الاجتماعات", desc: "تسجيل حضور وغياب الاجتماعات", svg: ICONS.meetings, colorClass: "card-meetings", roles: ["Admin"] },
@@ -35,6 +35,8 @@ const SCHEMAS = {
     "Names": [
         { id: "اسم رب الاسرة", label: "اسم رب الأسرة", type: "family_head_select", required: true },
         { id: "الاسم ثلاثي", label: "الاسم ثلاثي", type: "text", required: true },
+        { id: "حالة القيد", label: "حالة القيد الكنسي", type: "select", options: ["على قيد الحياة", "منتقل (متوفى)"], required: true },
+        { id: "تاريخ الوفاة", label: "تاريخ الوفاة (DD/MM/YYYY)", type: "text" },
         { id: "ذكر/انثي", label: "النوع", type: "select", options: ["", "ذكر", "انثي"], required: true },
         { id: "صلة القرابة", label: "صلة القرابة", type: "select", options: ["", "زوج", "زوجة", "ابن", "ابنة", "والد", "والدة", "أخ", "أخت", "أخرى"] },
         { id: "الحالة الاجتماعية", label: "الحالة الاجتماعية", type: "select", options: ["", "متزوج", "متزوجة", "اعزب", "انسة", "ارمل", "ارملة"] },
@@ -100,7 +102,6 @@ const SCHEMAS = {
     ]
 };
 
-// دالة إغلاق شاشة السبلاش والانتقال لتسجيل الدخول
 function endSplash() {
     const splash = document.getElementById('splashScreen');
     if (!splash || splash.style.display === 'none') return;
@@ -116,21 +117,11 @@ window.onload = () => {
 
     const video = document.getElementById('splashVideo');
     if (video) {
-        // عند انتهاء تشغيل الفيديو، تنتقل الشاشة تلقائياً للوجين
-        video.onended = () => {
-            endSplash();
-        };
-
-        // محاولة بدء التشغيل التلقائي
-        video.play().catch(() => {
-            // صمام أمان في حال منع المتصفح التشغيل التلقائي
-            setTimeout(endSplash, 3000);
-        });
-
-        // صمام أمان أقصى (مثلاً 10 ثوانٍ) في حال تعذر تشغيل ملف الفيديو
-        setTimeout(endSplash, 10000);
+        video.onended = endSplash;
+        video.play().catch(() => setTimeout(endSplash, 3000));
+        setTimeout(endSplash, 9000);
     } else {
-        setTimeout(endSplash, 2000);
+        setTimeout(endSplash, 1500);
     }
 };
 
@@ -316,18 +307,42 @@ function populateAreasDropdown() {
         Array.from(areas).sort().map(a => `<option value="${a}">${a}</option>`).join('');
 }
 
+// دقة استخراج وتحديد العمر استناداً لسنة 2026
 function calculateAge(dobStr, nationalId = "") {
-    let birthYear = 0;
+    const currentYear = 2026;
+    
+    // فحص الرقم القومي المصري (14 رقماً)
+    const nid = String(nationalId || "").trim();
+    if (nid.length === 14 && /^\d+$/.test(nid)) {
+        const firstDigit = nid[0];
+        if (firstDigit === '2' || firstDigit === '3') {
+            const century = firstDigit === '2' ? 1900 : 2000;
+            const birthY = century + parseInt(nid.substring(1, 3), 10);
+            if (birthY > 1900 && birthY <= currentYear) {
+                return currentYear - birthY;
+            }
+        }
+    }
+
+    // فحص تاريخ الميلاد النصي
     if (dobStr) {
-        const match = String(dobStr).match(/\b(19\d\d|20\d\d)\b/);
-        if (match) birthYear = parseInt(match[1]);
+        const str = String(dobStr).trim();
+        const match = str.match(/\b(19\d\d|20\d\d)\b/);
+        if (match) {
+            const birthY = parseInt(match[1], 10);
+            if (birthY > 1900 && birthY <= currentYear) {
+                return currentYear - birthY;
+            }
+        }
     }
-    if (!birthYear && nationalId && String(nationalId).length === 14) {
-        const century = nationalId[0] === '2' ? 1900 : 2000;
-        birthYear = century + parseInt(nationalId.substring(1, 3));
-    }
-    if (!birthYear) return null;
-    return 2026 - birthYear;
+    return null;
+}
+
+// التحقق مما إذا كان العضو منتقلاً (متوفى)
+function isMemberDeceased(member) {
+    const deathDate = String(member["تاريخ الوفاة"] || "").trim();
+    const status = String(member["حالة القيد"] || "").trim();
+    return (deathDate !== "" && deathDate !== "-" && deathDate !== "لا يوجد") || status.includes("متوف") || status.includes("منتقل");
 }
 
 function getLastFamilyVisitDate(familyMembers) {
@@ -362,12 +377,13 @@ function resetNamesFilters() {
     document.getElementById('filterGender').value = "";
     document.getElementById('filterElection').value = "";
     document.getElementById('filterMarital').value = "";
-    document.getElementById('filterSundaySchool').value = "";
+    document.getElementById('filterDeceased').value = "alive";
     document.getElementById('familyResultsContainer').innerHTML = "";
     document.getElementById('namesPlaceholder').classList.remove('hidden');
     document.getElementById('recordCount').innerText = "0 سجل";
 }
 
+// دالة الفرز التراكمي المترابط (Cumulative Filter Logic)
 function applyNamesFilter() {
     const headQ = document.getElementById('filterFamilyHead').value.trim().toLowerCase();
     const nameQ = document.getElementById('filterFullName').value.trim().toLowerCase();
@@ -376,9 +392,10 @@ function applyNamesFilter() {
     const genderQ = document.getElementById('filterGender').value;
     const electionQ = document.getElementById('filterElection').value;
     const maritalQ = document.getElementById('filterMarital').value;
-    const ssQ = document.getElementById('filterSundaySchool').value;
+    const deceasedQ = document.getElementById('filterDeceased').value; // alive, deceased, all
 
-    const hasActiveFilter = headQ || nameQ || areaQ || ageGroupQ || genderQ || electionQ || maritalQ || ssQ;
+    // فحص ما إذا كان هناك أي فلتر نشط
+    const hasActiveFilter = headQ || nameQ || areaQ || ageGroupQ || genderQ || electionQ || maritalQ || (deceasedQ !== "alive");
 
     if (!hasActiveFilter) {
         document.getElementById('familyResultsContainer').innerHTML = "";
@@ -391,179 +408,129 @@ function applyNamesFilter() {
     const container = document.getElementById('familyResultsContainer');
     container.innerHTML = "";
 
-    // 1. بحث بالاسم ثلاثي فقط
-    if (nameQ && !headQ) {
-        const matched = rawData.filter(item => String(item["الاسم ثلاثي"] || "").toLowerCase().includes(nameQ));
-        document.getElementById('recordCount').innerText = `${matched.length} فرد`;
+    // تطبيق الفلترة التراكمية على الأفراد (AND Logic)
+    const matchedMembers = rawData.filter(item => {
+        const deceased = isMemberDeceased(item);
 
-        if (matched.length === 0) {
-            container.innerHTML = `<div class="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300 text-slate-400 font-bold">لا يوجد عضو مسجل بهذا الاسم</div>`;
-            return;
+        // فلترة حالة القيد
+        if (deceasedQ === "alive" && deceased) return false;
+        if (deceasedQ === "deceased" && !deceased) return false;
+
+        // فلترة المنطقة السكنية
+        if (areaQ && (item["المنطقة"] || "").trim() !== areaQ) return false;
+
+        // فلترة النوع
+        if (genderQ && item["ذكر/انثي"] !== genderQ) return false;
+
+        // فلترة الحالة الاجتماعية (مثل: آنسة، متزوجة، اعزب...)
+        if (maritalQ && (item["الحالة الاجتماعية"] || "").trim() !== maritalQ) return false;
+
+        // فلترة البطاقة الانتخابية
+        if (electionQ && (item["البطاقة الانتخابية"] || "").trim() !== electionQ) return false;
+
+        // فلترة الفئة العمرية المحسوبة بدقة
+        if (ageGroupQ) {
+            const age = calculateAge(item["تاريخ الميلاد"], item["الرقم القومي"]);
+            if (age === null) return false;
+            if (ageGroupQ === "children" && age >= 12) return false; // أطفال أقل من 12 سنة
+            if (ageGroupQ === "prep" && (age < 12 || age > 15)) return false;
+            if (ageGroupQ === "sec" && (age < 16 || age > 18)) return false;
+            if (ageGroupQ === "youth" && (age < 19 || age > 25)) return false;
+            if (ageGroupQ === "adults" && (age < 26 || age > 50)) return false;
+            if (ageGroupQ === "seniors" && age <= 50) return false;
         }
 
-        matched.forEach(member => {
-            const idVal = member["ID"] || member[Object.keys(member)[0]];
-            const age = calculateAge(member["تاريخ الميلاد"], member["الرقم القومي"]);
-            
-            const card = document.createElement('div');
-            card.className = "bg-white rounded-2xl p-6 shadow-sm border-2 border-indigo-100 hover:border-indigo-400 transition";
-            card.innerHTML = `
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 pb-4 border-b border-slate-100">
-                    <div>
-                        <span class="text-xs font-mono font-bold text-slate-400">#${idVal}</span>
-                        <h3 class="text-lg font-black text-slate-800">${member["الاسم ثلاثي"]}</h3>
-                        <p class="text-xs text-indigo-600 font-bold mt-0.5">رب الأسرة: ${member["اسم رب الاسرة"] || "غير محدد"} (${member["صلة القرابة"] || "عضو"})</p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button onclick="editRecord(${idVal})" class="text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-2 rounded-xl transition">تعديل</button>
-                        ${currentUser.Role === "Admin" ? `<button onclick="deleteRecord(${idVal})" class="text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-2 rounded-xl transition">حذف</button>` : ''}
-                    </div>
-                </div>
+        // فلترة باسم رب الأسرة
+        if (headQ) {
+            const headName = String(item["اسم رب الاسرة"] || "").toLowerCase();
+            if (!headName.includes(headQ)) return false;
+        }
 
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 text-xs font-semibold">
-                    <div class="bg-indigo-50/50 p-2.5 rounded-xl border border-indigo-100">
-                        <span class="block text-slate-400 text-[10px] mb-1">✝ أب الاعتراف</span>
-                        <strong class="text-slate-800 text-sm">${member["اب الاعتراف"] || "-"}</strong>
-                    </div>
-                    <div class="bg-amber-50/50 p-2.5 rounded-xl border border-amber-100">
-                        <span class="block text-slate-400 text-[10px] mb-1">📅 تاريخ آخر اعتراف</span>
-                        <strong class="text-amber-800 text-sm">${member["تاريخ اخر اعتراف"] || "لم يسجل بعد"}</strong>
-                    </div>
-                    <div class="bg-blue-50/50 p-2.5 rounded-xl border border-blue-100">
-                        <span class="block text-slate-400 text-[10px] mb-1">📍 المنطقة السكنية</span>
-                        <strong class="text-blue-900">${member["المنطقة"] || "-"}</strong>
-                    </div>
-                    <div class="bg-slate-50 p-2.5 rounded-xl border">
-                        <span class="block text-slate-400 text-[10px] mb-1">📱 المحمول</span>
-                        <strong class="text-slate-800">${member["تليفون العمل/المحمول"] || "-"}</strong>
-                    </div>
-                    <div class="bg-slate-50 p-2.5 rounded-xl border">
-                        <span class="block text-slate-400 text-[10px] mb-1">🎂 العمر</span>
-                        <strong class="text-slate-800">${age ? age + ' سنة' : '-'}</strong>
-                    </div>
-                    <div class="bg-slate-50 p-2.5 rounded-xl border">
-                        <span class="block text-slate-400 text-[10px] mb-1">المرحلة والصف</span>
-                        <strong class="text-slate-800">${member["المرحلة"] || "-"} - ${member["الصف"] || "-"}</strong>
-                    </div>
-                    <div class="bg-slate-50 p-2.5 rounded-xl border">
-                        <span class="block text-slate-400 text-[10px] mb-1">مدارس الأحد</span>
-                        <strong class="text-slate-800">${member["مدارس الأحد"] || "-"} (${member["أنهي مدارس الأحد"] || "غير محدد"})</strong>
-                    </div>
-                    <div class="bg-slate-50 p-2.5 rounded-xl border">
-                        <span class="block text-slate-400 text-[10px] mb-1">الحالة الاجتماعية</span>
-                        <strong class="text-slate-800">${member["الحالة الاجتماعية"] || "-"}</strong>
-                    </div>
-                </div>
-            `;
-            container.appendChild(card);
-        });
+        // فلترة بالاسم ثلاثي
+        if (nameQ) {
+            const fullName = String(item["الاسم ثلاثي"] || "").toLowerCase();
+            if (!fullName.includes(nameQ)) return false;
+        }
+
+        return true;
+    });
+
+    document.getElementById('recordCount').innerText = `${matchedMembers.length} فرد مطابق`;
+
+    if (matchedMembers.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300 text-slate-400 font-bold">
+                لم يتم العثور على أي أفراد مطابقين لجميع شروط الفرز المحددة معاً
+            </div>
+        `;
         return;
     }
 
-    // 2. البحث برب الأسرة أو الفلاتر الأخرى
-    let targetHeads = new Set();
+    // عرض الأفراد المطابقين فقط مع بطاقتهم ومعلومات الأسرة
+    matchedMembers.forEach(member => {
+        const idVal = member["ID"] || member[Object.keys(member)[0]];
+        const age = calculateAge(member["تاريخ الميلاد"], member["الرقم القومي"]);
+        const deceased = isMemberDeceased(member);
+        const deathDate = member["تاريخ الوفاة"] || "";
 
-    rawData.forEach(item => {
-        if (headQ && !String(item["اسم رب الاسرة"] || "").toLowerCase().includes(headQ)) return;
-        if (areaQ && (item["المنطقة"] || "").trim() !== areaQ) return;
-        if (genderQ && item["ذكر/انثي"] !== genderQ) return;
-        if (electionQ && (item["البطاقة الانتخابية"] || "").trim() !== electionQ) return;
-        if (maritalQ && (item["الحالة الاجتماعية"] || "").trim() !== maritalQ) return;
-        if (ssQ && (item["مدارس الأحد"] || "").trim() !== ssQ) return;
+        const card = document.createElement('div');
+        card.className = `bg-white rounded-2xl p-5 shadow-sm border transition ${deceased ? 'border-purple-300 bg-purple-50/20' : 'border-slate-200 hover:border-indigo-400'}`;
+        
+        const genderBadge = member["ذكر/انثي"] === "ذكر" 
+            ? `<span class="bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full text-xs font-bold">ذكر</span>`
+            : `<span class="bg-pink-50 text-pink-700 border border-pink-200 px-2.5 py-0.5 rounded-full text-xs font-bold">انثي</span>`;
 
-        if (item["اسم رب الاسرة"]) {
-            targetHeads.add(item["اسم رب الاسرة"]);
-        }
-    });
+        const deceasedBadge = deceased 
+            ? `<span class="bg-purple-100 text-purple-800 border border-purple-300 px-2.5 py-0.5 rounded-full text-xs font-black">منتقل ☩ (${deathDate || 'التاريخ غير مسجل'})</span>`
+            : '';
 
-    let familiesCount = 0;
-    let totalMembersCount = 0;
-
-    targetHeads.forEach(headName => {
-        const familyMembers = rawData.filter(r => r["اسم رب الاسرة"] === headName);
-        familiesCount++;
-        totalMembersCount += familyMembers.length;
-
-        const headMember = familyMembers.find(m => m["الاسم ثلاثي"] === headName) || familyMembers[0];
-        const familyArea = headMember["المنطقة"] || "غير محدد";
-        const familyStreet = headMember["اسم الشارع"] || "";
-        const familyHouse = headMember["رقم المنزل"] || "";
-        const familyPhone = headMember["هاتف الاسرة"] || headMember["تليفون العمل/المحمول"] || "-";
-        const lastVisitDate = getLastFamilyVisitDate(familyMembers);
-
-        const famDiv = document.createElement('div');
-        famDiv.className = "family-box";
-
-        let addressDetails = [familyArea, familyStreet, familyHouse].filter(Boolean).join(" - ");
-
-        let headerHtml = `
-            <div class="family-header">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-lg">
-                        🏠
+        card.innerHTML = `
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 pb-3 border-b border-slate-100">
+                <div>
+                    <div class="flex items-center gap-2 mb-1 flex-wrap">
+                        <span class="text-xs font-mono font-bold text-slate-400">#${idVal}</span>
+                        <h3 class="text-base font-black text-slate-800">${member["الاسم ثلاثي"]}</h3>
+                        <span class="text-xs bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full font-bold border">${member["صلة القرابة"] || "عضو"}</span>
+                        ${genderBadge}
+                        <span class="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-0.5 rounded-full font-bold">${member["الحالة الاجتماعية"] || "-"}</span>
+                        ${deceasedBadge}
                     </div>
-                    <div>
-                        <h3 class="text-base font-black text-slate-800">أسرة: ${headName}</h3>
-                        <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600 font-bold mt-1">
-                            <span>📍 المنطقة السكنية: <strong class="text-blue-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">${addressDetails || "غير محددة"}</strong></span>
-                            <span>📞 هاتف الأسرة: <strong class="text-indigo-800 font-mono">${familyPhone}</strong></span>
-                            <span>🗓 تاريخ آخر افتقاد: <strong class="text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">${lastVisitDate}</strong></span>
-                            <span class="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded text-[11px] font-bold">أفراد الأسرة: ${familyMembers.length}</span>
-                        </div>
-                    </div>
+                    <p class="text-xs text-indigo-700 font-bold">
+                        🏠 الأسرة: <strong>${member["اسم رب الاسرة"] || "غير محدد"}</strong> 
+                        | 📍 المنطقة: <strong class="text-slate-800">${member["المنطقة"] || "غير محددة"}</strong>
+                    </p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="editRecord(${idVal})" class="text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-xl transition">تعديل</button>
+                    ${currentUser.Role === "Admin" ? `<button onclick="deleteRecord(${idVal})" class="text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1.5 rounded-xl transition">حذف</button>` : ''}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 text-xs font-semibold">
+                <div class="bg-slate-50 p-2.5 rounded-xl border">
+                    <span class="block text-slate-400 text-[10px] mb-0.5">العمر المحسوب</span>
+                    <strong class="text-slate-800">${age !== null ? age + ' سنة' : '-'}</strong>
+                </div>
+                <div class="bg-slate-50 p-2.5 rounded-xl border">
+                    <span class="block text-slate-400 text-[10px] mb-0.5">المحمول</span>
+                    <strong class="text-slate-800 font-mono">${member["تليفون العمل/المحمول"] || "-"}</strong>
+                </div>
+                <div class="bg-slate-50 p-2.5 rounded-xl border">
+                    <span class="block text-slate-400 text-[10px] mb-0.5">المرحلة والصف</span>
+                    <strong class="text-slate-800">${member["المرحلة"] || "-"} (${member["الصف"] || "-"})</strong>
+                </div>
+                <div class="bg-amber-50/50 p-2.5 rounded-xl border border-amber-200">
+                    <span class="block text-amber-700 text-[10px] mb-0.5">آخر اعتراف</span>
+                    <strong class="text-amber-900">${member["تاريخ اخر اعتراف"] || "لم يسجل"}</strong>
+                </div>
+                <div class="bg-slate-50 p-2.5 rounded-xl border">
+                    <span class="block text-slate-400 text-[10px] mb-0.5">أب الاعتراف</span>
+                    <strong class="text-slate-800">${member["اب الاعتراف"] || "-"}</strong>
                 </div>
             </div>
         `;
-
-        let membersHtml = `<div class="divide-y divide-slate-100">`;
-
-        familyMembers.forEach(member => {
-            const idVal = member["ID"] || member[Object.keys(member)[0]];
-            const age = calculateAge(member["تاريخ الميلاد"], member["الرقم القومي"]);
-            const ageText = age !== null ? `${age} سنة` : "-";
-            const genderBadge = member["ذكر/انثي"] === "ذكر" 
-                ? `<span class="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-[11px] font-bold">ذكر</span>`
-                : `<span class="bg-pink-50 text-pink-700 border border-pink-200 px-2 py-0.5 rounded text-[11px] font-bold">انثي</span>`;
-
-            membersHtml += `
-                <div class="member-row flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                    <div class="flex items-start gap-3">
-                        <span class="text-xs font-mono font-bold text-slate-400 mt-1">#${idVal}</span>
-                        <div>
-                            <div class="flex items-center gap-2 mb-1">
-                                <h4 class="text-sm font-black text-slate-800">${member["الاسم ثلاثي"] || "-"}</h4>
-                                <span class="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-bold">${member["صلة القرابة"] || "عضو"}</span>
-                                ${genderBadge}
-                                <span class="text-[11px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded font-bold">${member["الحالة الاجتماعية"] || "-"}</span>
-                            </div>
-                            <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 font-semibold">
-                                <span>العمر: <strong class="text-slate-700">${ageText}</strong></span>
-                                <span>المحمول: ${member["تليفون العمل/المحمول"] || "-"}</span>
-                                <span>آخر اعتراف: <strong class="text-indigo-600">${member["تاريخ اخر اعتراف"] || "-"}</strong> (${member["اب الاعتراف"] || "-"})</span>
-                                <span>المرحلة: ${member["المرحلة"] || "-"} (${member["الصف"] || "-"})</span>
-                                <span>مدارس الأحد: ${member["مدارس الأحد"] || "-"}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-2 w-full lg:w-auto justify-end border-t lg:border-t-0 pt-2 lg:pt-0">
-                        <button onclick="editRecord(${idVal})" class="text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg transition">تعديل</button>
-                        ${currentUser.Role === "Admin" ? `<button onclick="deleteRecord(${idVal})" class="text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1.5 rounded-lg transition">حذف</button>` : ''}
-                    </div>
-                </div>
-            `;
-        });
-
-        membersHtml += `</div>`;
-        famDiv.innerHTML = headerHtml + membersHtml;
-        container.appendChild(famDiv);
+        container.appendChild(card);
     });
-
-    document.getElementById('recordCount').innerText = `${familiesCount} أسرة (${totalMembersCount} فرد)`;
-
-    if (familiesCount === 0) {
-        container.innerHTML = `<div class="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300 text-slate-400 font-bold">لم يتم العثور على أسر مطابقة للبحث</div>`;
-    }
 }
 
 function renderStandardCards() {
