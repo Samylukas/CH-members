@@ -100,44 +100,37 @@ const SCHEMAS = {
     ]
 };
 
-// التحكم الذكي في توقيت شاشة السبلاش: الانتظار حتى اكتمال تحميل الصورة فعلياً
+// دالة إغلاق شاشة السبلاش والانتقال لتسجيل الدخول
+function endSplash() {
+    const splash = document.getElementById('splashScreen');
+    if (!splash || splash.style.display === 'none') return;
+    splash.style.opacity = '0';
+    setTimeout(() => {
+        splash.style.display = 'none';
+        document.getElementById('loginScreen').classList.remove('hidden');
+    }, 700);
+}
+
 window.onload = () => {
     loadServantsListForLogin();
 
-    const splashImg = document.getElementById('splashLogoImg');
-    const splashTitle = document.getElementById('splashTitleText');
-    const splashScreen = document.getElementById('splashScreen');
-
-    function startSplashSequence() {
-        // تشغيل الأنيميشن فقط بعد أن تكون الصورة جاهزة 100%
-        splashImg.classList.add('animate-start');
-        splashTitle.classList.add('animate-start');
-
-        // الانتظار لمدة 2.8 ثانية ليشاهد المستخدم اللوجو كاملاً ثم يتلاشى
-        setTimeout(() => {
-            splashScreen.style.opacity = '0';
-            setTimeout(() => {
-                splashScreen.style.display = 'none';
-                document.getElementById('loginScreen').classList.remove('hidden');
-            }, 800);
-        }, 2800);
-    }
-
-    if (splashImg.complete && splashImg.naturalHeight !== 0) {
-        startSplashSequence();
-    } else {
-        splashImg.onload = startSplashSequence;
-        splashImg.onerror = () => {
-            // محاولة ثانية بمسار بديل إن لزم الأمر
-            if (!splashImg.dataset.tried) {
-                splashImg.dataset.tried = "1";
-                splashImg.src = "ch%20logo.png";
-                splashImg.onload = startSplashSequence;
-                splashImg.onerror = startSplashSequence;
-            } else {
-                startSplashSequence();
-            }
+    const video = document.getElementById('splashVideo');
+    if (video) {
+        // عند انتهاء تشغيل الفيديو، تنتقل الشاشة تلقائياً للوجين
+        video.onended = () => {
+            endSplash();
         };
+
+        // محاولة بدء التشغيل التلقائي
+        video.play().catch(() => {
+            // صمام أمان في حال منع المتصفح التشغيل التلقائي
+            setTimeout(endSplash, 3000);
+        });
+
+        // صمام أمان أقصى (مثلاً 10 ثوانٍ) في حال تعذر تشغيل ملف الفيديو
+        setTimeout(endSplash, 10000);
+    } else {
+        setTimeout(endSplash, 2000);
     }
 };
 
