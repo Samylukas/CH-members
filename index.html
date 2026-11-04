@@ -4,19 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>منظومة الخدمة والرعاية الكنسية</title>
-    <link rel="preload" as="image" href="logo.png">
+    <link rel="preload" as="video" href="intro.mp4" type="video/mp4">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/png" href="logo.png">
 </head>
 <body class="flex flex-col min-h-screen bg-slate-50">
 
-<!-- شاشة البداية -->
+<!-- شاشة البداية فيديو (Splash Screen) -->
 <div id="splashScreen">
-    <div class="splash-logo-container">
-        <img id="splashLogoImg" src="logo.png" alt="Logo" class="splash-logo">
-        <h1 id="splashTitleText" class="splash-title">منظومة الخدمة والرعاية الكنسية</h1>
-    </div>
+    <video id="splashVideo" autoplay muted playsinline preload="auto" class="splash-video">
+        <source src="intro.mp4" type="video/mp4">
+        متصفحك لا يدعم تشغيل الفيديو.
+    </video>
+    <button onclick="endSplash()" class="absolute bottom-6 left-6 text-xs bg-slate-900/70 hover:bg-slate-900 text-white px-3.5 py-1.5 rounded-full backdrop-blur-sm transition z-10 font-bold shadow-md">
+        تخطي ✕
+    </button>
 </div>
 
 <!-- نافذة تسجيل الدخول -->
@@ -80,15 +83,15 @@
 
     <div id="dataView" class="hidden">
         
-        <!-- الترويسة المخصصة للطباعة فقط (تظهر على الورق) -->
+        <!-- الترويسة المخصصة للطباعة فقط -->
         <div id="churchPrintHeader" class="hidden print:flex print-header">
             <div class="text-right">
-                <h2 class="text-lg font-black text-slate-900 leading-tight mb-0.5">كنيسة العذراء مريم والشهيدة بربارة</h2>
-                <p class="text-[10px] font-bold text-slate-600">منظومة الخدمة والرعاية الكنسية</p>
-                <p id="printReportTitle" class="text-xs font-black text-indigo-900 mt-1"></p>
+                <h2 class="text-base font-black text-slate-900 leading-tight mb-0.5">كنيسة العذراء مريم والشهيدة بربارة</h2>
+                <p class="text-[9px] font-bold text-slate-600">منظومة الخدمة والرعاية الكنسية</p>
+                <p id="printReportTitle" class="text-[10px] font-black text-indigo-900 mt-0.5"></p>
             </div>
-            <img src="logo.png" alt="Logo" class="max-w-[70px] max-h-[60px] object-contain">
-            <div class="text-left text-[10px] font-bold text-slate-600">
+            <img src="logo.png" alt="Logo" class="max-w-[60px] max-h-[50px] object-contain">
+            <div class="text-left text-[9px] font-bold text-slate-600">
                 <p>تاريخ الطباعة: <span id="printCurrentDate"></span></p>
                 <p>المشرف: <span id="printServantName"></span></p>
             </div>
