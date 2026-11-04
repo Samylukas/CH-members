@@ -148,3 +148,66 @@ body {
     opacity: 1;
     transition: max-height 0.5s ease-in, opacity 0.3s ease;
 }
+
+/* ================= تنسيقات الطباعة الرسمية (@media print) ================= */
+@media print {
+    /* إخفاء كل العناصر التفاعلية والقوائم */
+    body {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        font-size: 11pt !important;
+    }
+    
+    header, #splashScreen, #loginScreen, #namesViewSwitcher, 
+    #namesFilterSection, .alpha-pill, #alphabetBar, .no-print, 
+    button, input, select, .fixed {
+        display: none !important;
+    }
+
+    #dataView, #namesRosterSection, #familyResultsContainer, #printContainer {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* الترويسة الكنسية المطبوعة */
+    .print-header {
+        display: flex !important;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #000000;
+        padding-bottom: 12px;
+        margin-bottom: 20px;
+    }
+
+    /* جداول الطباعة المنضبطة */
+    table.print-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        margin-top: 10px;
+    }
+
+    table.print-table th, table.print-table td {
+        border: 1px solid #333333 !important;
+        padding: 6px 8px !important;
+        text-align: right !important;
+        font-size: 10pt !important;
+    }
+
+    table.print-table th {
+        background-color: #f1f5f9 !important;
+        font-weight: 800 !important;
+    }
+
+    /* منع انقسام السطر أو الكارت في منتصف الصفحة */
+    .roster-card, tr, .family-box {
+        page-break-inside: avoid !important;
+    }
+
+    .members-accordion {
+        max-height: none !important;
+        opacity: 1 !important;
+        display: block !important;
+    }
+}
