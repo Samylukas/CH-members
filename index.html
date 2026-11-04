@@ -97,23 +97,27 @@
             </div>
         </div>
 
-        <!-- فلاتر الفرز لأعضاء الكنيسة -->
+        <!-- لوحة الفلاتر والبحث التراكمي المتقدم لأعضاء الكنيسة -->
         <div id="namesFilterSection" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6 hidden">
             <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
-                <span class="text-xs font-black text-indigo-900">أدوات البحث والفرز العائلي</span>
+                <span class="text-xs font-black text-indigo-900 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-indigo-600 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                    أدوات البحث والفرز التراكمي
+                </span>
                 <button onclick="resetNamesFilters()" class="text-xs font-bold text-slate-500 hover:text-rose-600 transition">مسح الفلاتر</button>
             </div>
+            
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                    <label class="filter-label text-indigo-700">🔍 بحث برب الأسرة (عائلة كاملة)</label>
-                    <input type="text" id="filterFamilyHead" oninput="applyNamesFilter()" placeholder="اكتب اسم رب الأسرة..." class="w-full px-3 py-2 bg-indigo-50/50 border border-indigo-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
+                    <label class="filter-label text-indigo-700">🔍 بحث برب الأسرة</label>
+                    <input type="text" id="filterFamilyHead" oninput="applyNamesFilter()" placeholder="اسم رب الأسرة..." class="w-full px-3 py-2 bg-indigo-50/40 border border-indigo-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
                 <div>
-                    <label class="filter-label text-emerald-700">👤 بحث بالاسم ثلاثي (بيانات الفرد)</label>
-                    <input type="text" id="filterFullName" oninput="applyNamesFilter()" placeholder="اكتب اسم العضو ثلاثي..." class="w-full px-3 py-2 bg-emerald-50/50 border border-emerald-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500">
+                    <label class="filter-label text-emerald-700">👤 بحث بالاسم ثلاثي</label>
+                    <input type="text" id="filterFullName" oninput="applyNamesFilter()" placeholder="اسم العضو ثلاثي..." class="w-full px-3 py-2 bg-emerald-50/40 border border-emerald-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500">
                 </div>
                 <div>
-                    <label class="filter-label text-blue-700 font-extrabold">المنطقة (من شيت Family name)</label>
+                    <label class="filter-label text-blue-700 font-extrabold">المنطقة السكنية</label>
                     <select id="filterArea" onchange="applyNamesFilter()" class="w-full px-3 py-2 bg-blue-50/40 border border-blue-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="">كل المناطق السكنية</option>
                     </select>
@@ -124,9 +128,9 @@
                         <option value="">كل الأعمار</option>
                         <option value="children">أطفال (أقل من 12 سنة)</option>
                         <option value="prep">إعدادي (12 - 15 سنة)</option>
-                        <option value="sec">ثانوي (15 - 18 سنة)</option>
-                        <option value="youth">شباب وجامعي (18 - 25 سنة)</option>
-                        <option value="adults">خريجين وأسر (25 - 50 سنة)</option>
+                        <option value="sec">ثانوي (16 - 18 سنة)</option>
+                        <option value="youth">شباب وجامعي (19 - 25 سنة)</option>
+                        <option value="adults">خريجين وأسر (26 - 50 سنة)</option>
                         <option value="seniors">كبار السن (أكثر من 50 سنة)</option>
                     </select>
                 </div>
@@ -136,14 +140,6 @@
                         <option value="">الكل</option>
                         <option value="ذكر">ذكر</option>
                         <option value="انثي">انثي</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="filter-label">البطاقة الانتخابية</label>
-                    <select id="filterElection" onchange="applyNamesFilter()" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="">الكل</option>
-                        <option value="يوجد">يوجد بطاقة</option>
-                        <option value="لا يوجد">لا يوجد بطاقة</option>
                     </select>
                 </div>
                 <div>
@@ -159,11 +155,19 @@
                     </select>
                 </div>
                 <div>
-                    <label class="filter-label">مدارس الأحد</label>
-                    <select id="filterSundaySchool" onchange="applyNamesFilter()" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
+                    <label class="filter-label">البطاقة الانتخابية</label>
+                    <select id="filterElection" onchange="applyNamesFilter()" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="">الكل</option>
-                        <option value="مشترك">مشترك</option>
-                        <option value="غير مشترك">غير مشترك</option>
+                        <option value="يوجد">يوجد بطاقة</option>
+                        <option value="لا يوجد">لا يوجد بطاقة</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="filter-label text-purple-700 font-bold">حالة القيد / المتوفين</label>
+                    <select id="filterDeceased" onchange="applyNamesFilter()" class="w-full px-3 py-2 bg-purple-50/50 border border-purple-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="alive">الأحياء فقط (الافتراضي)</option>
+                        <option value="deceased">سجل المنتقلين (المتوفين)</option>
+                        <option value="all">الكل (أحياء ومنتقلون)</option>
                     </select>
                 </div>
             </div>
