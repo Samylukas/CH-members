@@ -989,3 +989,34 @@ function showLoader(s) {
         document.getElementById('standardCardsContainer').classList.toggle('hidden', s);
     }
 }
+
+// =========================================================================
+// التحكم الذكي في أزرار التمرير (Scroll Buttons Logic)
+// =========================================================================
+window.addEventListener('scroll', () => {
+    const topBtn = document.getElementById('scrollTopBtn');
+    const bottomBtn = document.getElementById('scrollBottomBtn');
+    
+    if (!topBtn || !bottomBtn) return;
+
+    // إظهار زر "أعلى الصفحة" إذا نزل المستخدم أكثر من 300 بكسل
+    if (window.scrollY > 300) {
+        topBtn.classList.remove('opacity-0', 'pointer-events-none');
+        topBtn.classList.add('opacity-100', 'pointer-events-auto');
+    } else {
+        topBtn.classList.add('opacity-0', 'pointer-events-none');
+        topBtn.classList.remove('opacity-100', 'pointer-events-auto');
+    }
+
+    // إخفاء زر "أسفل الصفحة" إذا وصل المستخدم لنهاية الصفحة
+    const scrollPosition = window.innerHeight + window.scrollY;
+    const bottomThreshold = document.body.offsetHeight - 50; // قبل النهاية بـ 50 بكسل
+    
+    if (scrollPosition >= bottomThreshold) {
+        bottomBtn.classList.add('opacity-0', 'pointer-events-none');
+        bottomBtn.classList.remove('opacity-100', 'pointer-events-auto');
+    } else {
+        bottomBtn.classList.remove('opacity-0', 'pointer-events-none');
+        bottomBtn.classList.add('opacity-100', 'pointer-events-auto');
+    }
+});
