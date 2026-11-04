@@ -81,15 +81,27 @@
         <div id="dashboardGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-5xl mx-auto"></div>
     </div>
 
+  <!-- واجهة عرض البيانات والفرز -->
     <div id="dataView" class="hidden">
         <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
             <div class="flex items-center gap-3 w-full md:w-auto">
                 <h2 id="currentTabTitle" class="text-2xl font-black text-slate-800"></h2>
                 <span id="recordCount" class="bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-1 rounded-lg font-bold text-xs">0 سجل</span>
             </div>
+            
+            <!-- أزرار التبديل بين كشف أرباب الأسر والفرز المتقدم (تظهر في قسم أعضاء الكنيسة) -->
+            <div id="namesViewSwitcher" class="flex items-center gap-2 bg-slate-200/80 p-1 rounded-xl hidden">
+                <button id="btnViewRoster" onclick="switchNamesView('roster')" class="px-4 py-2 rounded-lg text-xs font-black transition bg-white text-indigo-700 shadow-sm">
+                    🗂️ كشف أرباب الأسر (أبجدياً)
+                </button>
+                <button id="btnViewFilters" onclick="switchNamesView('filters')" class="px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900">
+                    🔍 البحث والفرز المتقدم
+                </button>
+            </div>
+
             <div class="flex items-center gap-2 w-full md:w-auto justify-end">
-                <button onclick="openModal('add')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition">
-                    + إضافة سجل جديد
+                <button onclick="openModal('add')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5">
+                    <span>+</span> إضافة سجل جديد
                 </button>
                 <button onclick="loadData(true)" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2.5 rounded-xl font-bold text-xs transition">
                     تحديث
@@ -97,12 +109,33 @@
             </div>
         </div>
 
-        <!-- لوحة الفلاتر والبحث التراكمي المتقدم لأعضاء الكنيسة -->
+        <!-- ================= 1. واجهة كشف أرباب الأسر الأبجدي ================= -->
+        <div id="namesRosterSection" class="hidden space-y-4">
+            <!-- شريط البحث السريع والفلترة بالحروف -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="flex flex-col md:flex-row gap-3 items-center justify-between mb-3">
+                    <div class="relative w-full md:w-96">
+                        <input type="text" id="rosterSearchInput" oninput="filterRoster()" placeholder="ابحث مباشرة في كشف أرباب الأسر..." class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="expandAllFamilies(true)" class="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition">توسيع الكل ▾</button>
+                        <button onclick="expandAllFamilies(false)" class="text-[11px] font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg hover:bg-slate-200 transition">طي الكل ▴</button>
+                    </div>
+                </div>
+                <!-- شريط الحروف الأبجدية -->
+                <div id="alphabetBar" class="flex flex-wrap gap-1 pt-2 border-t border-slate-100 justify-center sm:justify-start"></div>
+            </div>
+
+            <!-- حاوية عرض كروت أرباب الأسر وقوائم أفرادهم -->
+            <div id="rosterCardsContainer" class="space-y-4"></div>
+        </div>
+
+        <!-- ================= 2. واجهة البحث والفرز التراكمي ================= -->
         <div id="namesFilterSection" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6 hidden">
             <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
                 <span class="text-xs font-black text-indigo-900 flex items-center gap-2">
                     <svg class="w-4 h-4 text-indigo-600 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
-                    أدوات البحث والفرز التراكمي
+                    أدوات الفرز المتقدم
                 </span>
                 <button onclick="resetNamesFilters()" class="text-xs font-bold text-slate-500 hover:text-rose-600 transition">مسح الفلاتر</button>
             </div>
@@ -172,6 +205,24 @@
                 </div>
             </div>
         </div>
+
+        <!-- حقل البحث لباقي الأقسام -->
+        <div id="standardSearchContainer" class="relative w-full max-w-md mb-6 hidden">
+            <input type="text" id="searchInput" oninput="renderStandardCards()" placeholder="بحث سريع في السجلات..." class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold shadow-sm">
+        </div>
+
+        <div id="loader" class="hidden text-center py-20">
+            <p class="text-slate-600 font-bold text-sm">جاري جلب البيانات من السجلات...</p>
+        </div>
+
+        <div id="namesPlaceholder" class="hidden text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
+            <h3 class="text-lg font-black text-slate-700 mb-1">حدد شروط الفرز لعرض النتائج</h3>
+            <p class="text-xs text-slate-500 font-bold max-w-md mx-auto">أو انتقل إلى "كشف أرباب الأسر" لتصفح العائلات بالكامل مرتبة أبجدياً.</p>
+        </div>
+
+        <div id="familyResultsContainer" class="hidden flex flex-col gap-4"></div>
+        <div id="standardCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </div>
 
         <div id="standardSearchContainer" class="relative w-full max-w-md mb-6 hidden">
             <input type="text" id="searchInput" oninput="renderStandardCards()" placeholder="بحث سريع في السجلات..." class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold shadow-sm">
