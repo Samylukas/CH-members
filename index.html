@@ -301,7 +301,37 @@
         </form>
     </div>
 </div>
+<!-- نافذة تحديد فصل مدارس الأحد لتوليد كشف الحضور والغياب المطبوع -->
+<div id="ssPrintModal" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm no-print">
+    <div class="bg-white rounded-3xl w-full max-w-lg p-6 shadow-2xl border border-slate-100 text-right">
+        <h3 class="text-base font-black text-slate-800 mb-4 pb-2 border-b flex items-center gap-2">
+            <span>📋</span> تجهيز كشف حضور وغياب الفصل للطباعة
+        </h3>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">المرحلة الدراسية</label>
+                <select id="ssPrintStage" onchange="updatePrintGradesDropdown(this.value)" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-bold outline-none"></select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">الصف الدراسي</label>
+                <select id="ssPrintGrade" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-bold outline-none"></select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">اسم الفصل (اختياري للتخصيص)</label>
+                <input type="text" id="ssPrintClass" placeholder="اكتب اسم الفصل أو اتركه للكل..." class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-bold outline-none">
+            </div>
+        </div>
+        <div class="pt-5 mt-4 border-t flex justify-end gap-2">
+            <button onclick="closeSundaySchoolPrintModal()" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">إلغاء</button>
+            <button onclick="generateAndPrintClassRoster()" class="px-6 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition flex items-center gap-1.5">
+                🖨️ استخراج الكشف والطباعة
+            </button>
+        </div>
+    </div>
+</div>
 
+<!-- حاوية مؤقتة للطباعة المخصصة -->
+<div id="printContainer" class="hidden print:block"></div>
 <script src="app.js"></script>
     <!-- أزرار التمرير السريع المودرن (الركن الأيسر) -->
 <div class="fixed bottom-8 left-6 flex flex-col gap-3 z-50">
