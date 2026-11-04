@@ -12,12 +12,13 @@
 <body class="flex flex-col min-h-screen bg-slate-50">
 
 <!-- شاشة البداية فيديو (Splash Screen) -->
-<div id="splashScreen">
-    <video id="splashVideo" autoplay muted playsinline preload="auto" class="splash-video">
+<div id="splashScreen" class="fixed inset-0 bg-white z-[9999] flex items-center justify-center overflow-hidden">
+    <!-- خاصية pointer-events-none تمنع لمس الفيديو نهائياً وتمنع تكرار تشغيله -->
+    <video id="splashVideo" autoplay muted playsinline preload="auto" class="w-full h-full object-contain pointer-events-none">
         <source src="intro.mp4" type="video/mp4">
-        متصفحك لا يدعم تشغيل الفيديو.
     </video>
-    <button onclick="endSplash()" class="absolute bottom-6 left-6 text-xs bg-slate-900/70 hover:bg-slate-900 text-white px-3.5 py-1.5 rounded-full backdrop-blur-sm transition z-10 font-bold shadow-md">
+    <!-- زر تخطي سريع ومؤمن بأعلى طبقة -->
+    <button type="button" onclick="endSplash(event)" class="absolute bottom-8 left-8 text-xs bg-slate-900/80 hover:bg-slate-950 text-white px-5 py-2.5 rounded-full backdrop-blur-md transition z-[10000] font-black shadow-2xl cursor-pointer">
         تخطي ✕
     </button>
 </div>
@@ -83,15 +84,15 @@
 
     <div id="dataView" class="hidden">
         
-        <!-- الترويسة المخصصة للطباعة فقط -->
+        <!-- الترويسة المخصصة للطباعة الرسمية -->
         <div id="churchPrintHeader" class="hidden print:flex print-header">
             <div class="text-right">
-                <h2 class="text-base font-black text-slate-900 leading-tight mb-0.5">كنيسة العذراء مريم والشهيدة بربارة</h2>
-                <p class="text-[9px] font-bold text-slate-600">منظومة الخدمة والرعاية الكنسية</p>
-                <p id="printReportTitle" class="text-[10px] font-black text-indigo-900 mt-0.5"></p>
+                <h2 class="text-sm font-black text-slate-900 leading-tight mb-0.5">كنيسة العذراء مريم والشهيدة بربارة</h2>
+                <p class="text-[8.5pt] font-bold text-slate-600">منظومة الخدمة والرعاية الكنسية</p>
+                <p id="printReportTitle" class="text-[9pt] font-black text-indigo-950 mt-0.5"></p>
             </div>
-            <img src="logo.png" alt="Logo" class="max-w-[60px] max-h-[50px] object-contain">
-            <div class="text-left text-[9px] font-bold text-slate-600">
+            <img src="logo.png" alt="Logo" class="max-w-[55px] max-h-[45px] object-contain">
+            <div class="text-left text-[8pt] font-bold text-slate-600">
                 <p>تاريخ الطباعة: <span id="printCurrentDate"></span></p>
                 <p>المشرف: <span id="printServantName"></span></p>
             </div>
@@ -238,7 +239,7 @@
     </div>
 </main>
 
-<!-- نافذة تحديد فصل مدارس الأحد لتوليد كشف الحضور والغياب المطبوع -->
+<!-- نافذة تحديد فصل مدارس الأحد للطباعة -->
 <div id="ssPrintModal" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm no-print">
     <div class="bg-white rounded-3xl w-full max-w-lg p-6 shadow-2xl border border-slate-100 text-right">
         <h3 class="text-base font-black text-slate-800 mb-4 pb-2 border-b flex items-center gap-2">
@@ -254,7 +255,7 @@
                 <select id="ssPrintGrade" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-bold outline-none"></select>
             </div>
             <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1">اسم الفصل (اختياري للتخصيص)</label>
+                <label class="block text-xs font-bold text-slate-600 mb-1">اسم الفصل (اختياري)</label>
                 <input type="text" id="ssPrintClass" placeholder="اكتب اسم الفصل أو اتركه للكل..." class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-bold outline-none">
             </div>
         </div>
@@ -267,7 +268,6 @@
     </div>
 </div>
 
-<!-- حاوية مؤقتة للطباعة المخصصة -->
 <div id="printContainer" class="hidden print:block"></div>
 
 <!-- نافذة الإدخال والتعديل -->
