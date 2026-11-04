@@ -102,3 +102,49 @@ body {
     background: #cbd5e1;
     border-radius: 4px;
 }
+
+/* ================= كشف أرباب الأسر الأبجدي ================= */
+.roster-card {
+    border-radius: 16px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.roster-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.alpha-pill {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.75rem;
+    font-weight: 800;
+    border-radius: 10px;
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.alpha-pill:hover, .alpha-pill.active {
+    background-color: #4f46e5;
+    color: #ffffff;
+    border-color: #4f46e5;
+    transform: translateY(-2px);
+}
+
+.members-accordion {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease-out, opacity 0.3s ease;
+    opacity: 0;
+}
+
+.members-accordion.open {
+    max-height: 2500px;
+    opacity: 1;
+    transition: max-height 0.5s ease-in, opacity 0.3s ease;
+}
