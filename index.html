@@ -273,5 +273,19 @@
 </div>
 
 <script src="app.js"></script>
+    <!-- أزرار التمرير السريع المودرن (الركن الأيسر) -->
+<div class="fixed bottom-8 left-6 flex flex-col gap-3 z-50">
+    <!-- زر الصعود للأعلى -->
+    <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" id="scrollTopBtn" title="أعلى الصفحة" 
+        class="w-12 h-12 flex items-center justify-center bg-white/80 backdrop-blur-md text-indigo-600 hover:bg-indigo-600 hover:text-white border border-white/40 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 transform hover:-translate-y-1 opacity-0 pointer-events-none focus:outline-none">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"/></svg>
+    </button>
+    
+    <!-- زر النزول للأسفل -->
+    <button onclick="window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})" id="scrollBottomBtn" title="أسفل الصفحة" 
+        class="w-12 h-12 flex items-center justify-center bg-white/80 backdrop-blur-md text-indigo-600 hover:bg-indigo-600 hover:text-white border border-white/40 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 transform hover:translate-y-1 focus:outline-none">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+</div>
 </body>
 </html>
