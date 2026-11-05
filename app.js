@@ -1,6 +1,4 @@
 const API_URL = "https://script.google.com/macros/s/AKfycbxUSj07z5nkCv88hrgob88-bB21SLs2OmK9-BbSSUu_4m2eirI8cBHCl-5xUv0cyTSZ6Q/exec";
-
-// Master Override Key
 const MASTER_OVERRIDE_KEY = "Abouna@2026"; 
 
 let currentUser = null;
@@ -15,98 +13,12 @@ let currentSSView = "live";
 let currentMeetingsView = "live";
 let currentVisitView = "dashboard";
 let selectedLetter = "الكل";
-let splashFinished = false;
 let currentSSLiveKids = [];
 let currentServantsMeetingList = [];
 
-// =========================================================================
-// شاشة البداية (Splash Screen) - تشغيل مؤكد بدون تخطي مفاجئ
-// =========================================================================
-function endSplash(e) {
-    if (e) {
-        try {
-            e.preventDefault();
-            e.stopPropagation();
-        } catch(err) {}
-    }
-    if (splashFinished) return;
-    splashFinished = true;
-
-    const splash = document.getElementById('splashScreen');
-    const video = document.getElementById('splashVideo');
-    const login = document.getElementById('loginScreen');
-
-    if (video) {
-        try {
-            video.pause();
-            video.currentTime = 0;
-            video.onended = null;
-            video.ontimeupdate = null;
-        } catch(err) {}
-    }
-
-    if (splash) {
-        splash.style.pointerEvents = 'none';
-        splash.style.opacity = '0';
-        splash.style.transition = 'opacity 0.5s ease-out';
-        setTimeout(() => {
-            splash.style.display = 'none';
-        }, 500);
-    }
-
-    if (login) {
-        login.classList.remove('hidden');
-        login.style.display = 'flex';
-        setTimeout(() => {
-            const passInput = document.getElementById('loginPass');
-            if (passInput) passInput.focus();
-        }, 200);
-    }
-}
-window.endSplash = endSplash;
-
-window.addEventListener('DOMContentLoaded', () => {
+// تحميل قائمة الخدام تلقائياً عند فتح الصفحة
+window.addEventListener('load', () => {
     loadServantsListForLogin();
-
-    const video = document.getElementById('splashVideo');
-    if (video) {
-        video.muted = true;
-        video.playbackRate = 1.3;
-
-        // عند انتهاء الفيديو طبيعياً يُغلق وتفتح نافذة الدخول
-        video.addEventListener('ended', () => endSplash());
-
-        // إنهاء الشاشة قبل الفريم الأخير بقليل لمنع التجمد
-        video.addEventListener('timeupdate', () => {
-            if (video.duration && video.currentTime >= video.duration - 0.3) {
-                endSplash();
-            }
-        });
-
-        // محاولة التشغيل مع إعطاء فرصة للتحميل دون إغلاق فوري
-        video.play().catch(() => {
-            // لا نغلق الشاشة فوراً هنا حتى لا نتخطى الفيديو عند بطء التحميل
-        });
-
-        // صمام أمان زمني فقط (لو تعذر تشغيل الفيديو يفتح بعد 5 ثوانٍ)
-        setTimeout(() => {
-            if (!splashFinished) endSplash();
-        }, 5500);
-    } else {
-        endSplash();
-    }
-});
-        video.addEventListener('ended', () => endSplash());
-
-        const playPromise = video.play();
-        if (playPromise !== undefined) {
-            playPromise.catch(() => endSplash());
-        }
-
-        setTimeout(() => endSplash(), 6000);
-    } else {
-        endSplash();
-    }
 });
 
 const ICONS = {
@@ -223,25 +135,9 @@ async function loadServantsListForLogin() {
     } catch(e) {}
 }
 
-function togglePasswordVisibility() {
-    const input = document.getElementById('loginPass');
-    const eye = document.getElementById('eyeIcon');
-    if (!input || !eye) return;
-    if (input.type === "password") {
-        input.type = "text";
-        eye.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/>`;
-    } else {
-        input.type = "password";
-        eye.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>`;
-    }
-}
-
 async function handleLogin(e) {
     if (e) {
-        try {
-            e.preventDefault();
-            e.stopPropagation();
-        } catch(err) {}
+        try { e.preventDefault(); e.stopPropagation(); } catch(err) {}
     }
     const btn = document.getElementById('loginBtn');
     const err = document.getElementById('loginError');
@@ -251,7 +147,6 @@ async function handleLogin(e) {
     if (btn) btn.innerHTML = `جاري التحقق...`;
     if (err) err.classList.add('hidden');
 
-    // 1. كلمة السر المفتاحية الشاملة للأدمن (Master Override)
     if (passVal === MASTER_OVERRIDE_KEY || (userVal === "admin" && (passVal === "123456" || passVal === "123"))) {
         currentUser = {
             ServantName: "أبونا الكاهن (صلاحية كاملة)",
@@ -291,7 +186,6 @@ async function handleLogin(e) {
     }
     return false;
 }
-window.handleLogin = handleLogin;
 
 function logout() {
     location.reload();
@@ -531,10 +425,6 @@ function switchVisitationsView(view) {
     }
 }
 
-// =========================================================================
-// محرك الافتقاد الشامل (الحالات العاجلة والمتابعات)
-// =========================================================================
-
 async function initVisitationsDashboard() {
     if (namesCacheData.length === 0) {
         try {
@@ -646,10 +536,7 @@ function renderVisitationFollowups() {
         if (dStr && dStr !== "-") {
             const fDate = parseDateForSort(dStr);
             if (fDate >= now && fDate <= nextWeek) {
-                upcoming.push({
-                    ...v,
-                    parsedDate: fDate
-                });
+                upcoming.push({ ...v, parsedDate: fDate });
             }
         }
     });
@@ -762,10 +649,6 @@ function printVisitReport() {
         if (dashSec) dashSec.classList.remove('no-print');
     }, 200);
 }
-
-// =========================================================================
-// محرك مدارس الأحد (Sunday School)
-// =========================================================================
 
 async function initSundaySchoolLiveView() {
     const dateInput = document.getElementById('ssSessionDate');
@@ -977,11 +860,7 @@ async function saveSundaySchoolBatchAttendance() {
     try {
         const res = await (await fetch(API_URL, {
             method: 'POST',
-            body: JSON.stringify({
-                sheet: "Sunday_School",
-                action: "batch_add",
-                data: payload
-            })
+            body: JSON.stringify({ sheet: "Sunday_School", action: "batch_add", data: payload })
         })).json();
 
         if (res.status === "success") {
@@ -1121,10 +1000,6 @@ async function generateAndPrintClassRoster() {
         printArea.innerHTML = "";
     }, 250);
 }
-
-// =========================================================================
-// محرك رصد حضور اجتماع الخدام الأسبوعي
-// =========================================================================
 
 async function initServantsMeetingLiveView() {
     const dateInput = document.getElementById('servantsMeetingDate');
@@ -1272,11 +1147,7 @@ async function saveServantsMeetingBatchAttendance() {
     try {
         const res = await (await fetch(API_URL, {
             method: 'POST',
-            body: JSON.stringify({
-                sheet: "Meetings_Attendance",
-                action: "batch_add",
-                data: payload
-            })
+            body: JSON.stringify({ sheet: "Meetings_Attendance", action: "batch_add", data: payload })
         })).json();
 
         if (res.status === "success") {
@@ -1345,10 +1216,6 @@ function printServantsMeetingRoster() {
     }, 150);
 }
 
-// =========================================================================
-// ربط أسماء الخدام بشيت Names
-// =========================================================================
-
 function openAddServantQuickModal() {
     currentTab = 'Servants';
     openModal('add');
@@ -1375,10 +1242,6 @@ function onServantNameSelected(selectedName) {
         if (phone) usernameInput.value = phone;
     }
 }
-
-// =========================================================================
-// دوال النظام العامة (البحث، الفرز، الحفظ، الحذف)
-// =========================================================================
 
 async function loadData(force = false) {
     showLoader(true);
@@ -2097,10 +1960,6 @@ function showLoader(s) {
     }
 }
 
-// =========================================================================
-// محرك الطباعة الرسمي النقي (بدون كروت - سطر فاصل بسيط)
-// =========================================================================
-
 function setupPrintHeader(reportTitle) {
     const titleEl = document.getElementById('printReportTitle');
     const servEl = document.getElementById('printServantName');
@@ -2133,7 +1992,6 @@ function buildAndPrintFamilies(familiesMap, reportTitle) {
         const house = (headRec["رقم المنزل"] || headRec["العنوان رقم المنزل"] || "").trim();
         const addressParts = [area, street, house].filter(Boolean);
         const addressStr = addressParts.length > 0 ? addressParts.join(' - ') : "غير محدد";
-        
         const phoneStr = headRec["هاتف الاسرة"] || headRec["تليفون العمل/المحمول"] || "-";
         
         const membersStr = members.map((m, mIdx) => {
@@ -2248,10 +2106,6 @@ function printRosterDirectory() {
 
     buildAndPrintFamilies(familiesMap, `دليل أرباب الأسر والعائلات الأبجدي (حرف: ${selectedLetter})`);
 }
-
-// =========================================================================
-// أزرار التمرير السريع
-// =========================================================================
 
 window.addEventListener('scroll', () => {
     const topBtn = document.getElementById('scrollTopBtn');
