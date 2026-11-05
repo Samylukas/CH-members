@@ -11,161 +11,21 @@
 </head>
 <body class="flex flex-col min-h-screen bg-slate-50">
 
-<!-- ================= شاشة بداية حديثة وسلسة بالكامل ================= -->
-<div id="splashScreen" class="splash-container">
-    <div class="splash-card">
-        <!-- إطار اللوجو الأنيق -->
-        <div class="splash-logo-wrapper">
-            <img src="logo.png" alt="Church Logo" class="splash-logo-img">
-        </div>
-
-        <!-- النصوص وهوية المنظومة -->
-        <div class="splash-text-group">
-            <h1 class="splash-title">منظومة الخدمة والرعاية الكنسية</h1>
-            <p class="splash-subtitle">كنيسة العذراء مريم والشهيدة بربارة</p>
-        </div>
-
-        <!-- مؤشر التحميل فائق النعومة (GPU Accelerated) -->
-        <div class="splash-loader-track">
-            <div class="splash-loader-bar"></div>
-        </div>
-
-        <span class="splash-status">جاري تهيئة النظام...</span>
-    </div>
-</div>
-
-<style>
-/* الحاوية الأساسية للشاشة */
-.splash-container {
-    position: fixed;
-    inset: 0;
-    z-index: 999999;
-    background: radial-gradient(circle at center, #ffffff 0%, #f8fafc 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1.5rem;
-    transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s ease;
-    will-change: opacity, transform;
-}
-
-/* بطاقة المحتوى المركزية */
-.splash-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    max-width: 380px;
-    width: 100%;
-}
-
-/* إطار اللوجو ذو الظلال الهادئة */
-.splash-logo-wrapper {
-    width: 110px;
-    height: 110px;
-    border-radius: 24px;
-    background: #ffffff;
-    padding: 12px;
-    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
-    border: 1px solid rgba(226, 232, 240, 0.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 1.75rem;
-    animation: splashFloat 2.4s ease-in-out infinite;
-    will-change: transform;
-}
-
-.splash-logo-img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-}
-
-/* تناسق الخطوط والألوان */
-.splash-title {
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: #0f172a;
-    letter-spacing: -0.02em;
-    margin: 0 0 0.4rem 0;
-}
-
-.splash-subtitle {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #64748b;
-    margin: 0 0 2rem 0;
-}
-
-/* مسار خط التحميل */
-.splash-loader-track {
-    width: 160px;
-    height: 5px;
-    background: #e2e8f0;
-    border-radius: 99px;
-    overflow: hidden;
-    position: relative;
-    margin-bottom: 0.75rem;
-}
-
-/* خط التحميل - يعتمد حصرياً على الـ transform لضمان 60fps بدون تكسير */
-.splash-loader-bar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 100%;
-    background: linear-gradient(90deg, #3b82f6, #4f46e5);
-    border-radius: 99px;
-    transform-origin: left;
-    animation: smoothSlide 1.5s cubic-bezier(0.65, 0, 0.35, 1) infinite;
-    will-change: transform;
-}
-
-/* كلمة جاري التحميل */
-.splash-status {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: #94a3b8;
-}
-
-/* أنيميشن ناعم جداً ومضغوط لمعالج الجهاز */
-@keyframes smoothSlide {
-    0% {
-        transform: translateX(-100%) scaleX(0.2);
-    }
-    50% {
-        transform: translateX(0%) scaleX(0.7);
-    }
-    100% {
-        transform: translateX(100%) scaleX(0.2);
-    }
-}
-
-@keyframes splashFloat {
-    0%, 100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-6px);
-    }
-}
-</style>
-
-<!-- سكريبت الإنهاء التلقائي بعد ثانيتين بسلاسة -->
 <script>
 (function() {
-    function dismissSplash() {
-        const splash = document.getElementById('splashScreen');
-        const login = document.getElementById('loginScreen');
-        
+    const splash = document.getElementById('splashScreen');
+    const logoImg = splash ? splash.querySelector('.splash-logo-img') || splash.querySelector('img') : null;
+
+    function finishSplash() {
         if (splash && splash.style.display !== 'none') {
             splash.style.opacity = '0';
             splash.style.transform = 'scale(0.97)';
             setTimeout(() => {
                 splash.style.display = 'none';
                 splash.remove();
+                
+                // إظهار نافذة تسجيل الدخول
+                const login = document.getElementById('loginScreen');
                 if (login) {
                     login.classList.remove('hidden');
                     login.style.display = 'flex';
@@ -176,11 +36,24 @@
         }
     }
 
-    // إغلاق الشاشة تلقائياً بعد ثانيتين
-    setTimeout(dismissSplash, 8000);
+    function startSplashTimer() {
+        // الانتظار 5 ثوانٍ كاملة بعد تحميل الصورة
+        setTimeout(finishSplash, 5000);
+    }
+
+    // التأكد من اكتمال تحميل الصورة أولاً قبل بدء الـ 5 ثوانٍ
+    if (logoImg) {
+        if (logoImg.complete && logoImg.naturalHeight !== 0) {
+            startSplashTimer();
+        } else {
+            logoImg.addEventListener('load', startSplashTimer);
+            logoImg.addEventListener('error', startSplashTimer); // لضمان فتح التطبيق حتى لو تعثرت الصورة
+        }
+    } else {
+        startSplashTimer();
+    }
 })();
 </script>
-<!-- ============================================================== -->
 <!-- نافذة تسجيل الدخول -->
 <div id="loginScreen" class="fixed inset-0 bg-white/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm hidden">
     <div class="bg-white rounded-3xl shadow-xl p-8 w-full max-w-md text-center border border-slate-200">
