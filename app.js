@@ -1048,6 +1048,10 @@ function showLoader(s) {
     }
 }
 
+// =========================================================================
+// محرك الطباعة الرسمي النقي (بدون كروت - سطر فاصل بسيط)
+// =========================================================================
+
 function setupPrintHeader(reportTitle) {
     document.getElementById('printReportTitle').innerText = reportTitle;
     document.getElementById('printServantName').innerText = currentUser ? `${currentUser.ServantName} (${currentUser.Role})` : "الأدمن";
@@ -1055,21 +1059,148 @@ function setupPrintHeader(reportTitle) {
     document.getElementById('printCurrentDate').innerText = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
 }
 
+// دالة توليد أسطر الأسر النظيفة وطباعتها
+function buildAndPrintFamilies(familiesMap, reportTitle) {
+    const printContainer = document.getElementById('printContainer');
+    if (!printContainer) return;
+
+    // ترتيب أرباب الأسر أبجدياً بدقة
+    const sortedHeads = Object.keys(familiesMap).sort((a, b) => a.localeCompare(b, 'ar'));
+
+    if (sortedHeads.length === 0) {
+        alert("لا توجد أسر مطابقة للشروط المحددة للطباعة!");
+        return;
+    }
+
+    let rowsHtml = '';
+    sortedHeads.forEach((headName, idx) => {
+        const members = familiesMap[headName];
+        const headRec = members.find(m => m["الاسم ثلاثي"] === headName || m["صلة القرابة"] === "زوج" || m["صلة القرابة"] === "رب أسرة") || members[0];
+        
+        const area = (headRec["المنطقة"] || "").trim();
+        const street = (headRec["اسم الشارع"] || "").trim();
+        const house = (headRec["رقم المنزل"] || headRec["العنوان رقم المنزل"] || "").trim();
+        const addressParts = [area, street, house].filter(Boolean);
+        const addressStr = addressParts.length > 0 ? addressParts.join(' - ') : "غير محدد";
+        
+        const phoneStr = headRec["هاتف الاسرة"] || headRec["تليفون العمل/المحمول"] || "-";
+        
+        // أفراد الأسرة: الاسم ثلاثي والتليفون فقط
+        const membersStr = members.map((m, mIdx) => {
+            const mPhone = m["تليفون العمل/المحمول"] || "-";
+            return `<span>${mIdx + 1}. ${m["الاسم ثلاثي"] || "-"} <span class="member-phone">(${mPhone})</span></span>`;
+        }).join(' &nbsp;•&nbsp; ');
+
+        rowsHtml += `
+            <div class="print-family-row">
+                <div class="print-fam-main">
+                    <div class="print-fam-title">
+                        <span class="print-fam-num">${idx + 1}</span>
+                        <span class="print-fam-head">رب الأسرة: ${headName}</span>
+                    </div>
+                    <div class="print-fam-meta">
+                        <span class="print-fam-addr"><strong>العنوان:</strong> ${addressStr}</span>
+                        <span class="print-fam-phone"><strong>الهاتف:</strong> ${phoneStr}</span>
+                    </div>
+                </div>
+                <div class="print-fam-members">
+                    <strong>أفراد الأسرة:</strong> ${membersStr}
+                </div>
+            </div>
+        `;
+    });
+
+    printContainer.innerHTML = rowsHtml;
+    setupPrintHeader(reportTitle);
+
+    setTimeout(() => {
+        window.print();
+        printContainer.innerHTML = "";
+    }, 200);
+}
+
+// 1. طباعة نتائج الفرز التراكمي (تطبع حصرياً المنطقة أو الفلتر المختار)
 function printFilteredResults() {
-    const areaVal = document.getElementById('filterArea')?.value || "كل المناطق";
+    const headQ = document.getElementById('filterFamilyHead')?.value.trim().toLowerCase() || "";
+    const nameQ = document.getElementById('filterFullName')?.value.trim().toLowerCase() || "";
+    const areaQ = document.getElementById('filterArea')?.value.trim() || "";
+    const ageGroupQ = document.getElementById('filterAgeGroup')?.value || "";
+    const genderQ = document.getElementById('filterGender')?.value || "";
+    const electionQ = document.getElementById('filterElection')?.value || "";
+    const maritalQ = document.getElementById('filterMarital')?.value || "";
+    const deceasedQ = document.getElementById('filterDeceased')?.value || "alive";
+
+    // تصفية السجلات بحسب الفلاتر النشطة بدقة (مثل منطقة "الامل")
+    const matchedMembers = rawData.filter(item => {
+        const deceased = isMemberDeceased(item);
+        if (deceasedQ === "alive" && deceased) return false;
+        if (deceasedQ === "deceased" && !deceased) return false;
+        if (areaQ && (item["المنطقة"] || "").trim() !== areaQ) return false;
+        if (genderQ && item["ذكر/انثي"] !== genderQ) return false;
+        if (maritalQ && (item["الحالة الاجتماعية"] || "").trim() !== maritalQ) return false;
+        if (electionQ && (item["البطاقة الانتخابية"] || "").trim() !== electionQ) return false;
+        if (ageGroupQ) {
+            const age = calculateAge(item["تاريخ الميلاد"], item["الرقم القومي"]);
+            if (age === null) return false;
+            if (ageGroupQ === "children" && age >= 12) return false;
+            if (ageGroupQ === "prep" && (age < 12 || age > 15)) return false;
+            if (ageGroupQ === "sec" && (age < 16 || age > 18)) return false;
+            if (ageGroupQ === "youth" && (age < 19 || age > 25)) return false;
+            if (ageGroupQ === "adults" && (age < 26 || age > 50)) return false;
+            if (ageGroupQ === "seniors" && age <= 50) return false;
+        }
+        if (headQ && !String(item["اسم رب الاسرة"] || "").toLowerCase().includes(headQ)) return false;
+        if (nameQ && !String(item["الاسم ثلاثي"] || "").toLowerCase().includes(nameQ)) return false;
+        return true;
+    });
+
+    if (matchedMembers.length === 0) {
+        alert("لا توجد سجلات مطابقة للفرز المحدد للطباعة!");
+        return;
+    }
+
+    // تجميع الأفراد المطابقين فقط تحت أرباب أسرهم
+    const familiesMap = {};
+    matchedMembers.forEach(m => {
+        const head = (m["اسم رب الاسرة"] || "").trim();
+        if (!head) return;
+        if (!familiesMap[head]) familiesMap[head] = [];
+        familiesMap[head].push(m);
+    });
+
+    const areaVal = areaQ || "كل المناطق";
     const ageVal = document.getElementById('filterAgeGroup')?.options[document.getElementById('filterAgeGroup')?.selectedIndex]?.text || "كل الأعمار";
     const statusVal = document.getElementById('filterDeceased')?.options[document.getElementById('filterDeceased')?.selectedIndex]?.text || "الأحياء";
     
-    setupPrintHeader(`بيان فرز السجلات: [${areaVal} - ${ageVal} - ${statusVal}]`);
-    window.print();
+    buildAndPrintFamilies(familiesMap, `بيان فرز السجلات: [${areaVal} - ${ageVal} - ${statusVal}]`);
 }
 
+// 2. طباعة الدليل الأبجدي الكامل
 function printRosterDirectory() {
-    setupPrintHeader(`دليل أرباب الأسر والعائلات الأبجدي (حرف: ${selectedLetter})`);
-    expandAllFamilies(true);
-    setTimeout(() => {
-        window.print();
-    }, 250);
+    const query = document.getElementById('rosterSearchInput') ? document.getElementById('rosterSearchInput').value.trim().toLowerCase() : "";
+
+    const familiesMap = {};
+    rawData.forEach(m => {
+        const head = (m["اسم رب الاسرة"] || "").trim();
+        if (!head) return;
+
+        const normHead = normalizeArabic(head).toLowerCase();
+        if (selectedLetter !== "الكل") {
+            const targetChar = normalizeArabic(selectedLetter)[0];
+            if (normHead[0] !== targetChar) return;
+        }
+
+        if (query) {
+            const hasHeadMatch = normHead.includes(normalizeArabic(query).toLowerCase());
+            const hasMemberMatch = normalizeArabic(m["الاسم ثلاثي"]).toLowerCase().includes(normalizeArabic(query).toLowerCase());
+            if (!hasHeadMatch && !hasMemberMatch) return;
+        }
+
+        if (!familiesMap[head]) familiesMap[head] = [];
+        familiesMap[head].push(m);
+    });
+
+    buildAndPrintFamilies(familiesMap, `دليل أرباب الأسر والعائلات الأبجدي (حرف: ${selectedLetter})`);
 }
 
 function openSundaySchoolPrintModal() {
