@@ -1,0 +1,25 @@
+{
+  "name": "church-service-system",
+  "version": "1.0.0",
+  "description": "منظومة الخدمة والرعاية الكنسية",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win --x64"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.church.care",
+    "productName": "منظومة الخدمة والرعاية الكنسية",
+    "win": {
+      "target": "nsis",
+      "icon": "logo.png"
+    }
+  }
+}
