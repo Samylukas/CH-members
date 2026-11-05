@@ -412,6 +412,12 @@ function switchMeetingsView(view) {
 // محرك رصد حضور اجتماع الخدام الأسبوعي
 // =========================================================================
 
+// زر فتح نافذة إضافة خادم سريعاً من داخل شاشة الاجتماع
+function openAddServantQuickModal() {
+    currentTab = 'Servants';
+    openModal('add');
+}
+
 async function initServantsMeetingLiveView() {
     const dateInput = document.getElementById('servantsMeetingDate');
     const now = new Date();
@@ -420,26 +426,42 @@ async function initServantsMeetingLiveView() {
     const year = now.getFullYear();
     dateInput.value = `${day}/${month}/${year}`;
 
-    // ضمان تحميل بيانات الخدام
+    // ضمان تحميل شيت الخدام وشيت الأعضاء
     if (servantsCacheData.length === 0) {
         try {
             const res = await (await fetch(`${API_URL}?sheet=Servants`)).json();
             if (res.status === "success") servantsCacheData = res.data;
         } catch(e) {}
     }
+    if (namesCacheData.length === 0) {
+        try {
+            const res = await (await fetch(`${API_URL}?sheet=Names`)).json();
+            if (res.status === "success") namesCacheData = res.data;
+        } catch(e) {}
+    }
 
-    // تصفية الخدام النشطين فقط
     const activeServants = servantsCacheData.filter(s => s["Status"] !== "موقوف" && s["Username"] !== "admin");
 
-    currentServantsMeetingList = activeServants.map(s => ({
-        id: s["ID"] || s[Object.keys(s)[0]],
-        name: s["ServantName"],
-        phone: s["Username"] || "-",
-        role: s["Role"] || "خادم",
-        scope: `${s["AssignedStage"] || "الكل"} ${s["AssignedGrade"] ? '- ' + s["AssignedGrade"] : ''} ${s["AssignedClass"] ? '(' + s["AssignedClass"] + ')' : ''}`,
-        status: "حاضر",
-        notes: ""
-    })).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+    currentServantsMeetingList = activeServants.map(s => {
+        // جلب رقم الموبايل الحقيقي من شيت الأعضاء Names بالاسم ثلاثي
+        const member = namesCacheData.find(m => m["الاسم ثلاثي"] === s["ServantName"]);
+        let realPhone = "-";
+        if (member && member["تليفون العمل/المحمول"]) {
+            realPhone = member["تليفون العمل/المحمول"];
+        } else if (s["Username"] && /^\d+$/.test(s["Username"])) {
+            realPhone = s["Username"];
+        }
+
+        return {
+            id: s["ID"] || s[Object.keys(s)[0]],
+            name: s["ServantName"],
+            phone: realPhone,
+            role: s["Role"] || "خادم",
+            scope: `${s["AssignedStage"] || "الكل"} ${s["AssignedGrade"] ? '- ' + s["AssignedGrade"] : ''} ${s["AssignedClass"] ? '(' + s["AssignedClass"] + ')' : ''}`,
+            status: "حاضر",
+            notes: ""
+        };
+    }).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
 
     renderServantsMeetingTable();
 }
@@ -575,10 +597,10 @@ function printServantsMeetingRoster() {
             <thead>
                 <tr>
                     <th style="width: 25px;">م</th>
-                    <th style="width: 170px;">اسم الخادم</th>
-                    <th style="width: 130px;">الخدمة المسندة</th>
-                    <th style="width: 85px;">المحمول</th>
-                    <th style="width: 70px;">الحالة</th>
+                    <th style="width: 180px;">اسم الخادم</th>
+                    <th style="width: 140px;">الخدمة المسندة</th>
+                    <th style="width: 95px;">المحمول</th>
+                    <th style="width: 65px; text-align: center;">الحالة</th>
                     <th>سبب الاعتذار والملاحظات</th>
                 </tr>
             </thead>
@@ -595,7 +617,7 @@ function printServantsMeetingRoster() {
                 `).join('')}
             </tbody>
         </table>
-        <div style="margin-top: 15px; display: flex; justify-content: space-between; font-weight: bold; font-size: 8pt;" class="print-only">
+        <div style="margin-top: 15px; display: flex; justify-content: space-between; font-weight: bold; font-size: 8pt;">
             <p>أمين اجتماع الخدام: .........................</p>
             <p>أبونا المسؤول: .........................</p>
         </div>
@@ -604,9 +626,8 @@ function printServantsMeetingRoster() {
     setTimeout(() => {
         window.print();
         printArea.innerHTML = "";
-    }, 200);
+    }, 150);
 }
-
 // =========================================================================
 // محرك رصد حضور وغياب مدارس الأحد المباشر للفصول
 // =========================================================================
