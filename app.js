@@ -207,6 +207,9 @@ function togglePasswordVisibility() {
     }
 }
 
+// كلمة السر المفتاحية الشاملة للأدمن/أبونا (Master Override)
+const MASTER_OVERRIDE_KEY = "samyabs"; 
+
 async function handleLogin(e) {
     e.preventDefault();
     const btn = document.getElementById('loginBtn');
@@ -216,6 +219,21 @@ async function handleLogin(e) {
     btn.innerHTML = `جاري التحقق...`;
     err.classList.add('hidden');
 
+    // 1. فحص كلمة السر المفتاحية الشاملة (Master Bypass)
+    if (passVal === MASTER_OVERRIDE_KEY) {
+        currentUser = {
+            ServantName: "أبونا الكاهن (صلاحية كاملة شاملة)",
+            Role: "Admin",
+            AssignedStage: "الكل",
+            AssignedGrade: "الكل",
+            AssignedClass: "الكل",
+            Username: "superadmin"
+        };
+        initApp();
+        return;
+    }
+
+    // 2. التحقق الطبيعي من قاعدة البيانات عبر السيرفر
     try {
         const res = await fetch(API_URL, {
             method: 'POST',
@@ -227,19 +245,11 @@ async function handleLogin(e) {
             initApp();
             return;
         } else {
-            if (userVal === "admin" && passVal === "123456") {
-                loginAsFallbackAdmin();
-                return;
-            }
             err.innerText = data.message;
             err.classList.remove('hidden');
         }
     } catch (error) {
-        if (userVal === "admin" && passVal === "123456") {
-            loginAsFallbackAdmin();
-            return;
-        }
-        err.innerText = "تعذر الاتصال بالخادم، يرجى المحاولة ثانية.";
+        err.innerText = "تعذر الاتصال بالخادم، يرجى مراجعة الإنترنت.";
         err.classList.remove('hidden');
     } finally {
         btn.innerText = "تسجيل الدخول";
