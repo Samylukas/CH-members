@@ -1,35 +1,34 @@
-- name: Build Windows Installer & Portable (.exe)
-      run: npx electron-builder --win nsis portable --x64 --publish never
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+name: Build Windows Desktop App
+
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
-  build-windows:
+  build:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 20
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-    - name: Install Dependencies
-      run: npm install
+      - name: Install Dependencies
+        run: npm install
 
-    - name: Build Windows Installer (.exe)
-      run: npx electron-builder --win --x64 --publish never
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build Windows Setup and Portable
+        run: npx electron-builder --win nsis portable --x64 --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Upload Windows Setup (.exe)
-      uses: actions/upload-artifact@v4
-      with:
-        name: Church-Care-Windows-Setup
-        path: dist/*.exe
+      - name: Upload Windows Output
+        uses: actions/upload-artifact@v4
+        with:
+          name: Church-Care-Windows-App
+          path: dist/*.exe
