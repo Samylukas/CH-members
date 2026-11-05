@@ -42,30 +42,54 @@ body {
 .members-accordion { max-height: 0; overflow: hidden; transition: max-height 0.35s ease-out, opacity 0.3s ease; opacity: 0; }
 .members-accordion.open { max-height: 2500px; opacity: 1; transition: max-height 0.5s ease-in, opacity 0.3s ease; }
 
-/* ================= تنسيقات الطباعة الكثيفة بسطر فاصل (@media print) ================= */
+/* ================= إصلاح الطباعة المباشرة بدون فراغات (@media print) ================= */
 @media print {
     @page {
         size: A4 portrait;
         margin: 8mm 10mm;
     }
 
-    body {
+    html, body {
+        display: block !important;
+        height: auto !important;
+        min-height: 0 !important;
         background-color: #ffffff !important;
         color: #000000 !important;
         font-size: 8pt !important;
         line-height: 1.15 !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
-    
-    /* إخفاء كافة الشاشات والكروت والأقسام التفاعلية نهائياً */
+
+    main {
+        display: block !important;
+        flex-grow: 0 !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: auto !important;
+        min-height: 0 !important;
+    }
+
+    #dataView {
+        display: block !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* إخفاء كافة الشاشات والقوائم التفاعلية */
     header, #splashScreen, #loginScreen, #namesViewSwitcher, 
-    #namesFilterSection, .alpha-pill, #alphabetBar, .no-print, 
-    button, input, select, .fixed, #dashboardView,
+    #ssViewSwitcher, #meetingsViewSwitcher, #sundaySchoolLiveSection,
+    #servantsMeetingLiveSection, #namesFilterSection, .alpha-pill, 
+    #alphabetBar, .no-print, button, input, select, .fixed, #dashboardView,
     #namesRosterSection, #familyResultsContainer, #standardCardsContainer,
-    #rosterCardsContainer, #namesPlaceholder, #loader, #standardSearchContainer {
+    #rosterCardsContainer, #namesPlaceholder, #loader, #standardSearchContainer,
+    #ssPrintModal, #dataModal {
         display: none !important;
     }
 
-    /* إظهار فقط ترويسة الكنيسة وحاوية الطباعة النظيفة */
+    /* إظهار الترويسة في قمة الصفحة */
     #churchPrintHeader {
         display: flex !important;
         justify-content: space-between !important;
@@ -85,90 +109,80 @@ body {
         margin: 1px 0 !important;
     }
     .print-header img {
-        height: 40px !important;
+        height: 38px !important;
         width: auto !important;
     }
 
+    /* حاوية الطباعة تبدأ فوراً أسفل الهيدر */
     #printContainer {
         display: block !important;
         width: 100% !important;
-        margin: 0 !important;
+        margin-top: 4px !important;
         padding: 0 !important;
     }
 
-    /* سطر الأسرة البسيط الفاصل */
+    /* الجداول الرسمية المضغوطة */
+    table.print-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        margin-top: 4px !important;
+    }
+    table.print-table th, table.print-table td {
+        border: 1px solid #000 !important;
+        padding: 3px 5px !important;
+        text-align: right !important;
+        font-size: 8pt !important;
+    }
+    table.print-table th {
+        background-color: #f1f5f9 !important;
+        font-weight: 900 !important;
+    }
+
+    /* أسطر كشف العائلات */
     .print-family-row {
         border-bottom: 0.75px solid #444 !important;
-        padding-top: 3px !important;
-        padding-bottom: 3px !important;
+        padding-top: 2.5px !important;
+        padding-bottom: 2.5px !important;
         margin-bottom: 2px !important;
         page-break-inside: avoid !important;
     }
-
     .print-fam-main {
         display: flex !important;
         align-items: baseline !important;
         justify-content: space-between !important;
         font-size: 8.5pt !important;
     }
-
     .print-fam-title {
         display: flex !important;
         align-items: center !important;
-        gap: 6px !important;
+        gap: 5px !important;
     }
-
     .print-fam-num {
         display: inline-block !important;
-        min-width: 20px !important;
+        min-width: 18px !important;
         font-weight: 900 !important;
         text-align: center !important;
         border: 0.75px solid #333 !important;
         border-radius: 3px !important;
         font-size: 7.5pt !important;
-        padding: 0 2px !important;
     }
-
     .print-fam-head {
         font-weight: 900 !important;
         color: #000 !important;
     }
-
     .print-fam-meta {
         display: flex !important;
-        gap: 15px !important;
+        gap: 12px !important;
         font-size: 7.5pt !important;
-        color: #222 !important;
     }
-
     .print-fam-members {
-        margin-top: 1.5px !important;
-        padding-right: 26px !important;
+        margin-top: 1px !important;
+        padding-right: 23px !important;
         font-size: 7pt !important;
         color: #333 !important;
-        line-height: 1.2 !important;
     }
-
     .member-phone {
         font-family: monospace !important;
         font-size: 7pt !important;
-        color: #111 !important;
-    }
-
-    /* جدول مدارس الأحد */
-    table.print-table {
-        width: 100% !important;
-        border-collapse: collapse !important;
-        margin-top: 3px !important;
-    }
-    table.print-table th, table.print-table td {
-        border: 1px solid #000 !important;
-        padding: 2px 4px !important;
-        text-align: right !important;
-        font-size: 7.5pt !important;
-    }
-    table.print-table th {
-        background-color: #e2e8f0 !important;
-        font-weight: bold !important;
     }
 }
