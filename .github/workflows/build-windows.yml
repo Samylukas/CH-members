@@ -1,5 +1,7 @@
-name: Build Windows Desktop App (.exe)
-
+- name: Build Windows Installer & Portable (.exe)
+      run: npx electron-builder --win nsis portable --x64 --publish never
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 on:
   push:
     branches: [ main ]
