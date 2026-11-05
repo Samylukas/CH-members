@@ -22,7 +22,7 @@ jobs:
       run: npm install
 
     - name: Build Windows Installer (.exe)
-      run: npx electron-builder --win --x64 -c.publish=never
+      run: npx electron-builder --win --x64 --publish never
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
