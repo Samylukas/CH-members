@@ -20,7 +20,7 @@ let currentSSLiveKids = [];
 let currentServantsMeetingList = [];
 
 // =========================================================================
-// شاشة البداية (Splash Screen)
+// شاشة البداية (Splash Screen) - تشغيل مؤكد بدون تخطي مفاجئ
 // =========================================================================
 function endSplash(e) {
     if (e) {
@@ -48,7 +48,10 @@ function endSplash(e) {
     if (splash) {
         splash.style.pointerEvents = 'none';
         splash.style.opacity = '0';
-        splash.style.display = 'none';
+        splash.style.transition = 'opacity 0.5s ease-out';
+        setTimeout(() => {
+            splash.style.display = 'none';
+        }, 500);
     }
 
     if (login) {
@@ -57,7 +60,7 @@ function endSplash(e) {
         setTimeout(() => {
             const passInput = document.getElementById('loginPass');
             if (passInput) passInput.focus();
-        }, 150);
+        }, 200);
     }
 }
 window.endSplash = endSplash;
@@ -70,12 +73,29 @@ window.addEventListener('DOMContentLoaded', () => {
         video.muted = true;
         video.playbackRate = 1.3;
 
+        // عند انتهاء الفيديو طبيعياً يُغلق وتفتح نافذة الدخول
+        video.addEventListener('ended', () => endSplash());
+
+        // إنهاء الشاشة قبل الفريم الأخير بقليل لمنع التجمد
         video.addEventListener('timeupdate', () => {
-            if (video.duration && video.currentTime >= video.duration - 0.4) {
+            if (video.duration && video.currentTime >= video.duration - 0.3) {
                 endSplash();
             }
         });
 
+        // محاولة التشغيل مع إعطاء فرصة للتحميل دون إغلاق فوري
+        video.play().catch(() => {
+            // لا نغلق الشاشة فوراً هنا حتى لا نتخطى الفيديو عند بطء التحميل
+        });
+
+        // صمام أمان زمني فقط (لو تعذر تشغيل الفيديو يفتح بعد 5 ثوانٍ)
+        setTimeout(() => {
+            if (!splashFinished) endSplash();
+        }, 5500);
+    } else {
+        endSplash();
+    }
+});
         video.addEventListener('ended', () => endSplash());
 
         const playPromise = video.play();
