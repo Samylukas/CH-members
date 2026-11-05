@@ -12,16 +12,76 @@
 <body class="flex flex-col min-h-screen bg-slate-50">
 
 <!-- شاشة البداية فيديو (Splash Screen) -->
-<div id="splashScreen" class="fixed inset-0 bg-white z-[99999] flex items-center justify-center overflow-hidden">
-    <video id="splashVideo" autoplay muted playsinline preload="auto" class="w-full h-full object-contain pointer-events-none">
+<div id="splashScreen" style="position: fixed; inset: 0; background-color: #ffffff; z-index: 999999; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+    <video id="splashVideo" autoplay muted playsinline preload="auto" style="width: 100%; height: 100%; object-fit: contain; pointer-events: none;">
         <source src="intro.mp4" type="video/mp4">
     </video>
-    <button type="button" id="skipSplashBtn" onclick="endSplash(event)"
-        class="absolute bottom-8 left-8 text-xs bg-slate-900/90 hover:bg-black text-white px-5 py-2.5 rounded-full backdrop-blur-md transition z-[100000] font-black shadow-2xl cursor-pointer">
+    <button type="button" id="skipSplashBtn"
+        style="position: absolute; bottom: 2rem; left: 2rem; font-size: 0.75rem; background: rgba(15, 23, 42, 0.9); color: white; padding: 0.65rem 1.3rem; border-radius: 9999px; font-weight: 900; z-index: 1000000; cursor: pointer; border: none; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
         تخطي ✕
     </button>
 </div>
 
+<!-- محرك شاشة البداية المباشر والقاطع -->
+<script>
+(function() {
+    var splash = document.getElementById('splashScreen');
+    var video = document.getElementById('splashVideo');
+    var skipBtn = document.getElementById('skipSplashBtn');
+    var finished = false;
+
+    window.endSplash = function() {
+        if (finished) return;
+        finished = true;
+
+        if (video) {
+            try { video.pause(); video.currentTime = 0; } catch(e) {}
+        }
+
+        // إزالة عنصر شاشة الفيديو نهائياً من كود الصفحة
+        if (splash) {
+            splash.style.display = 'none';
+            splash.remove();
+        }
+
+        // إظهار نافذة تسجيل الدخول فوراً
+        var login = document.getElementById('loginScreen');
+        if (login) {
+            login.classList.remove('hidden');
+            login.style.display = 'flex';
+            setTimeout(function() {
+                var p = document.getElementById('loginPass');
+                if (p) p.focus();
+            }, 100);
+        }
+    };
+
+    // ربط زر تخطي
+    if (skipBtn) {
+        skipBtn.onclick = window.endSplash;
+    }
+
+    // مراقبة الفيديو
+    if (video) {
+        video.playbackRate = 1.3;
+        video.onended = window.endSplash;
+        video.ontimeupdate = function() {
+            if (video.duration && video.currentTime >= (video.duration - 0.4)) {
+                window.endSplash();
+            }
+        };
+        var playPromise = video.play();
+        if (playPromise && playPromise.catch) {
+            playPromise.catch(function() {
+                // في حال حظر التشغيل التلقائي لا نغلق فوراً بل ننتظر انتهاء المؤقت
+            });
+        }
+    }
+
+    // صمام أمان قاطع: أقصى مدة 4.5 ثوانٍ وتُفتح شاشة الدخول إجبارياً
+    setTimeout(window.endSplash, 4500);
+})();
+</script>
 <!-- نافذة تسجيل الدخول -->
 <div id="loginScreen" class="fixed inset-0 bg-white/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm hidden">
     <div class="bg-white rounded-3xl shadow-xl p-8 w-full max-w-md text-center border border-slate-200">
