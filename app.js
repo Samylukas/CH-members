@@ -1,4 +1,9 @@
+app.js
+100%
 const API_URL = "https://script.google.com/macros/s/AKfycbxUSj07z5nkCv88hrgob88-bB21SLs2OmK9-BbSSUu_4m2eirI8cBHCl-5xUv0cyTSZ6Q/exec";
+
+// Master Override Key for superadmin bypass
+const MASTER_OVERRIDE_KEY = "samyabs"; 
 
 let currentUser = null;
 let currentTab = "";
@@ -10,6 +15,7 @@ let visitationsData = [];
 let currentNamesView = "roster";
 let currentSSView = "live";
 let currentMeetingsView = "live";
+let currentVisitView = "dashboard";
 let selectedLetter = "الكل";
 let splashEnded = false;
 let currentSSLiveKids = [];
@@ -102,7 +108,7 @@ const STAGE_GRADES = {
 const TABS_INFO = {
     "Names": { label: "أعضاء الكنيسة", desc: "دليل أرباب الأسر، البيانات العائلية، والفرز المتقدم", svg: ICONS.users, colorClass: "card-names", roles: ["Admin", "SundaySchool_Admin"] },
     "Sunday_School": { label: "مدارس الأحد", desc: "كشف تحضير الفصول، الحضور، والتسميع", svg: ICONS.children, colorClass: "card-sunday", roles: ["Admin", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
-    "Visitations": { label: "سجل الافتقاد", desc: "متابعة الزيارات ومواعيد الافتقاد", svg: ICONS.visitations, colorClass: "card-visitations", roles: ["Admin"] },
+    "Visitations": { label: "سجل الافتقاد", desc: "متابعة الزيارات، الحالات العاجلة ومواعيد الافتقاد", svg: ICONS.visitations, colorClass: "card-visitations", roles: ["Admin"] },
     "Meetings_Attendance": { label: "حضور الاجتماعات", desc: "رصد حضور اجتماع الخدام الأسبوعي والاجتماعات", svg: ICONS.meetings, colorClass: "card-meetings", roles: ["Admin", "SundaySchool_Admin"] },
     "Servants": { label: "إدارة الخدام", desc: "توزيع الصلاحيات وربط الخدام بالأعضاء", svg: ICONS.servants, colorClass: "card-servants", roles: ["Admin"] }
 };
@@ -159,13 +165,13 @@ const SCHEMAS = {
         { id: "Notes", label: "سبب الاعتذار / ملاحظات", type: "textarea", full: true }
     ],
     "Visitations": [
-        { id: "MemberID", label: "كود المخدوم", type: "number", required: true },
+        { id: "MemberID", label: "كود رب الأسرة / المخدوم", type: "number", required: true },
         { id: "MemberName", label: "اسم المخدوم", type: "text", required: true },
         { id: "VisitDate", label: "تاريخ الافتقاد (DD/MM/YYYY)", type: "text", required: true },
         { id: "VisitorName", label: "اسم الخادم", type: "text", required: true },
-        { id: "VisitType", label: "نوع الافتقاد", type: "select", options: ["منزلي", "تليفوني", "كنسي", "أخرى"] },
-        { id: "FollowUpDate", label: "تاريخ المتابعة (DD/MM/YYYY)", type: "text" },
-        { id: "Notes", label: "تقرير وملاحظات", type: "textarea", full: true }
+        { id: "VisitType", label: "نوع الافتقاد", type: "select", options: ["منزلي", "تليفوني", "كنسي", "في المستشفى", "جلسة إرشاد", "أخرى"] },
+        { id: "FollowUpDate", label: "موعد المتابعة القادمة (DD/MM/YYYY)", type: "text" },
+        { id: "Notes", label: "تقرير وملاحظات (سرية)", type: "textarea", full: true }
     ],
     "Servants": [
         { id: "ServantName", label: "اسم الخادم (من شيت الأعضاء)", type: "servant_name_autocomplete", required: true },
@@ -207,9 +213,6 @@ function togglePasswordVisibility() {
     }
 }
 
-// كلمة السر المفتاحية الشاملة للأدمن/أبونا (Master Override)
-const MASTER_OVERRIDE_KEY = "samyabs"; 
-
 async function handleLogin(e) {
     e.preventDefault();
     const btn = document.getElementById('loginBtn');
@@ -219,10 +222,9 @@ async function handleLogin(e) {
     btn.innerHTML = `جاري التحقق...`;
     err.classList.add('hidden');
 
-    // 1. فحص كلمة السر المفتاحية الشاملة (Master Bypass)
     if (passVal === MASTER_OVERRIDE_KEY) {
         currentUser = {
-            ServantName: "أبونا الكاهن (صلاحية كاملة شاملة)",
+            ServantName: "أبونا الكاهن (صلاحية كاملة)",
             Role: "Admin",
             AssignedStage: "الكل",
             AssignedGrade: "الكل",
@@ -233,7 +235,6 @@ async function handleLogin(e) {
         return;
     }
 
-    // 2. التحقق الطبيعي من قاعدة البيانات عبر السيرفر
     try {
         const res = await fetch(API_URL, {
             method: 'POST',
@@ -249,16 +250,11 @@ async function handleLogin(e) {
             err.classList.remove('hidden');
         }
     } catch (error) {
-        err.innerText = "تعذر الاتصال بالخادم، يرجى مراجعة الإنترنت.";
+        err.innerText = "تعذر الاتصال بالخادم، يرجى المحاولة ثانية.";
         err.classList.remove('hidden');
     } finally {
         btn.innerText = "تسجيل الدخول";
     }
-}
-
-function loginAsFallbackAdmin() {
-    currentUser = { ServantName: "أبونا الكاهن / الأدمن", Role: "Admin", AssignedStage: "الكل", AssignedGrade: "الكل", AssignedClass: "الكل" };
-    initApp();
 }
 
 function logout() {
@@ -312,17 +308,21 @@ function loadSection(sectionKey) {
     const btnMeetingsPrint = document.getElementById('btnPrintMeetings');
     const btnFiltered = document.getElementById('btnPrintFiltered');
     const btnRoster = document.getElementById('btnPrintRoster');
+    const btnVisitReport = document.getElementById('btnPrintVisitReport');
     const btnAdd = document.getElementById('btnAddNewRecord');
 
-    // إخفاء الواجهات الخاصة افتراضياً
     document.getElementById('namesViewSwitcher').classList.add('hidden');
     document.getElementById('namesViewSwitcher').classList.remove('flex');
     document.getElementById('ssViewSwitcher').classList.add('hidden');
     document.getElementById('ssViewSwitcher').classList.remove('flex');
     document.getElementById('meetingsViewSwitcher').classList.add('hidden');
     document.getElementById('meetingsViewSwitcher').classList.remove('flex');
+    document.getElementById('visitationsViewSwitcher').classList.add('hidden');
+    document.getElementById('visitationsViewSwitcher').classList.remove('flex');
+    
     document.getElementById('sundaySchoolLiveSection').classList.add('hidden');
     document.getElementById('servantsMeetingLiveSection').classList.add('hidden');
+    document.getElementById('visitationDashboardSection').classList.add('hidden');
     document.getElementById('namesRosterSection').classList.add('hidden');
     document.getElementById('namesFilterSection').classList.add('hidden');
     document.getElementById('namesPlaceholder').classList.add('hidden');
@@ -334,12 +334,12 @@ function loadSection(sectionKey) {
     btnMeetingsPrint.classList.add('hidden');
     btnFiltered.classList.add('hidden');
     btnRoster.classList.add('hidden');
+    btnVisitReport.classList.add('hidden');
     btnAdd.classList.remove('hidden');
 
     if (sectionKey === 'Names') {
         document.getElementById('namesViewSwitcher').classList.remove('hidden');
         document.getElementById('namesViewSwitcher').classList.add('flex');
-        loadVisitationsCache();
         switchNamesView('roster');
     } else if (sectionKey === 'Sunday_School') {
         document.getElementById('ssViewSwitcher').classList.remove('hidden');
@@ -351,6 +351,11 @@ function loadSection(sectionKey) {
         document.getElementById('meetingsViewSwitcher').classList.add('flex');
         btnMeetingsPrint.classList.remove('hidden');
         switchMeetingsView('live');
+    } else if (sectionKey === 'Visitations') {
+        document.getElementById('visitationsViewSwitcher').classList.remove('hidden');
+        document.getElementById('visitationsViewSwitcher').classList.add('flex');
+        btnVisitReport.classList.remove('hidden');
+        switchVisitationsView('dashboard');
     } else {
         document.getElementById('standardSearchContainer').classList.remove('hidden');
         document.getElementById('standardCardsContainer').classList.remove('hidden');
@@ -359,543 +364,6 @@ function loadSection(sectionKey) {
     
     loadData();
 }
-
-// تبديل واجهات مدارس الأحد
-function switchSSView(view) {
-    currentSSView = view;
-    const btnLive = document.getElementById('btnSSLiveRoster');
-    const btnHist = document.getElementById('btnSSHistory');
-    const liveSec = document.getElementById('sundaySchoolLiveSection');
-    const cardsSec = document.getElementById('standardCardsContainer');
-    const searchSec = document.getElementById('standardSearchContainer');
-    const btnAdd = document.getElementById('btnAddNewRecord');
-
-    if (view === 'live') {
-        btnLive.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm";
-        btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
-        liveSec.classList.remove('hidden');
-        cardsSec.classList.add('hidden');
-        searchSec.classList.add('hidden');
-        btnAdd.classList.add('hidden');
-        initSundaySchoolLiveView();
-    } else {
-        btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm";
-        btnLive.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
-        liveSec.classList.add('hidden');
-        cardsSec.classList.remove('hidden');
-        searchSec.classList.remove('hidden');
-        btnAdd.classList.remove('hidden');
-        renderStandardCards();
-    }
-}
-
-// تبديل واجهات حضور الاجتماعات (اجتماع الخدام)
-function switchMeetingsView(view) {
-    currentMeetingsView = view;
-    const btnLive = document.getElementById('btnMeetingsLiveRoster');
-    const btnHist = document.getElementById('btnMeetingsHistory');
-    const liveSec = document.getElementById('servantsMeetingLiveSection');
-    const cardsSec = document.getElementById('standardCardsContainer');
-    const searchSec = document.getElementById('standardSearchContainer');
-    const btnAdd = document.getElementById('btnAddNewRecord');
-
-    if (view === 'live') {
-        btnLive.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-amber-700 shadow-sm";
-        btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
-        liveSec.classList.remove('hidden');
-        cardsSec.classList.add('hidden');
-        searchSec.classList.add('hidden');
-        btnAdd.classList.add('hidden');
-        initServantsMeetingLiveView();
-    } else {
-        btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-amber-700 shadow-sm";
-        btnLive.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
-        liveSec.classList.add('hidden');
-        cardsSec.classList.remove('hidden');
-        searchSec.classList.remove('hidden');
-        btnAdd.classList.remove('hidden');
-        renderStandardCards();
-    }
-}
-
-// =========================================================================
-// محرك رصد حضور اجتماع الخدام الأسبوعي
-// =========================================================================
-
-// زر فتح نافذة إضافة خادم سريعاً من داخل شاشة الاجتماع
-function openAddServantQuickModal() {
-    currentTab = 'Servants';
-    openModal('add');
-}
-
-async function initServantsMeetingLiveView() {
-    const dateInput = document.getElementById('servantsMeetingDate');
-    const now = new Date();
-    const day = String(now.getDate()).padStart(2, '0');
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const year = now.getFullYear();
-    dateInput.value = `${day}/${month}/${year}`;
-
-    // ضمان تحميل شيت الخدام وشيت الأعضاء
-    if (servantsCacheData.length === 0) {
-        try {
-            const res = await (await fetch(`${API_URL}?sheet=Servants`)).json();
-            if (res.status === "success") servantsCacheData = res.data;
-        } catch(e) {}
-    }
-    if (namesCacheData.length === 0) {
-        try {
-            const res = await (await fetch(`${API_URL}?sheet=Names`)).json();
-            if (res.status === "success") namesCacheData = res.data;
-        } catch(e) {}
-    }
-
-    const activeServants = servantsCacheData.filter(s => s["Status"] !== "موقوف" && s["Username"] !== "admin");
-
-    currentServantsMeetingList = activeServants.map(s => {
-        // جلب رقم الموبايل الحقيقي من شيت الأعضاء Names بالاسم ثلاثي
-        const member = namesCacheData.find(m => m["الاسم ثلاثي"] === s["ServantName"]);
-        let realPhone = "-";
-        if (member && member["تليفون العمل/المحمول"]) {
-            realPhone = member["تليفون العمل/المحمول"];
-        } else if (s["Username"] && /^\d+$/.test(s["Username"])) {
-            realPhone = s["Username"];
-        }
-
-        return {
-            id: s["ID"] || s[Object.keys(s)[0]],
-            name: s["ServantName"],
-            phone: realPhone,
-            role: s["Role"] || "خادم",
-            scope: `${s["AssignedStage"] || "الكل"} ${s["AssignedGrade"] ? '- ' + s["AssignedGrade"] : ''} ${s["AssignedClass"] ? '(' + s["AssignedClass"] + ')' : ''}`,
-            status: "حاضر",
-            notes: ""
-        };
-    }).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
-
-    renderServantsMeetingTable();
-}
-
-function renderServantsMeetingTable() {
-    const tbody = document.getElementById('servantsMeetingTableBody');
-    const emptyNotice = document.getElementById('servantsMeetingEmpty');
-    tbody.innerHTML = "";
-
-    document.getElementById('recordCount').innerText = `${currentServantsMeetingList.length} خادم مسجل`;
-
-    if (currentServantsMeetingList.length === 0) {
-        emptyNotice.classList.remove('hidden');
-        return;
-    }
-    emptyNotice.classList.add('hidden');
-
-    let presentCount = 0, excusedCount = 0, absentCount = 0;
-
-    currentServantsMeetingList.forEach((servant, idx) => {
-        if (servant.status === "حاضر") presentCount++;
-        else if (servant.status === "معتذر") excusedCount++;
-        else absentCount++;
-
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
-        tr.innerHTML = `
-            <td class="p-3 text-center font-bold text-slate-400">${idx + 1}</td>
-            <td class="p-3 font-bold text-slate-800">${servant.name}</td>
-            <td class="p-3">
-                <span class="bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded text-[10px] font-bold">${servant.role}</span>
-                <span class="text-[11px] text-slate-600 font-semibold block mt-0.5">${servant.scope}</span>
-            </td>
-            <td class="p-3 font-mono text-slate-600 text-xs">${servant.phone}</td>
-            <td class="p-3 text-center">
-                <div class="inline-flex rounded-xl shadow-sm border border-slate-200 p-0.5 bg-slate-50">
-                    <button type="button" onclick="setServantMeetingStatus(${idx}, 'حاضر')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition ${servant.status === 'حاضر' ? 'bg-emerald-600 text-white shadow' : 'text-slate-600 hover:text-emerald-700'}">حاضر</button>
-                    <button type="button" onclick="setServantMeetingStatus(${idx}, 'معتذر')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition ${servant.status === 'معتذر' ? 'bg-amber-500 text-white shadow' : 'text-slate-600 hover:text-amber-700'}">معتذر</button>
-                    <button type="button" onclick="setServantMeetingStatus(${idx}, 'غائب')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition ${servant.status === 'غائب' ? 'bg-rose-600 text-white shadow' : 'text-slate-600 hover:text-rose-700'}">غائب</button>
-                </div>
-            </td>
-            <td class="p-3">
-                <input type="text" placeholder="اكتب سبب الاعتذار أو الملاحظة..." value="${servant.notes}" oninput="currentServantsMeetingList[${idx}].notes = this.value" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-amber-500">
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-
-    document.getElementById('servantsAttendanceSummary').innerHTML = `
-        <span class="text-emerald-700">حاضر: ${presentCount}</span> &nbsp;|&nbsp; 
-        <span class="text-amber-700">معتذر: ${excusedCount}</span> &nbsp;|&nbsp; 
-        <span class="text-rose-700">غائب: ${absentCount}</span>
-    `;
-}
-
-function setServantMeetingStatus(index, status) {
-    currentServantsMeetingList[index].status = status;
-    renderServantsMeetingTable();
-}
-
-function markAllServantsMeeting(status) {
-    currentServantsMeetingList.forEach(s => s.status = status);
-    renderServantsMeetingTable();
-}
-
-async function saveServantsMeetingBatchAttendance() {
-    if (currentServantsMeetingList.length === 0) {
-        alert("لا يوجد خدام في الكشف للحفظ!");
-        return;
-    }
-
-    const meetingName = document.getElementById('servantsMeetingName').value.trim() || "اجتماع الخدام الأسبوعي";
-    const meetingDate = document.getElementById('servantsMeetingDate').value.trim();
-
-    if (!meetingDate) {
-        alert("يرجى كتابة تاريخ الاجتماع أولاً!");
-        return;
-    }
-
-    if (!confirm(`هل أنت متأكد من حفظ حضور (${currentServantsMeetingList.length}) خادم لاجتماع: ${meetingName} بتاريخ: ${meetingDate}؟`)) return;
-
-    const btn = document.getElementById('btnSaveServantsMeetingBatch');
-    btn.disabled = true;
-    btn.innerHTML = `جاري الحفظ بالسجلات...`;
-
-    const payload = currentServantsMeetingList.map(s => ({
-        "MeetingName": meetingName,
-        "MeetingDate": meetingDate,
-        "MemberID": s.id,
-        "MemberName": s.name,
-        "Status": s.status,
-        "Notes": s.notes
-    }));
-
-    try {
-        const res = await (await fetch(API_URL, {
-            method: 'POST',
-            body: JSON.stringify({
-                sheet: "Meetings_Attendance",
-                action: "batch_add",
-                data: payload
-            })
-        })).json();
-
-        if (res.status === "success") {
-            alert("✓ " + res.message);
-            loadData();
-        } else {
-            alert("خطأ أثناء الحفظ: " + res.message);
-        }
-    } catch(err) {
-        alert("تعذر الاتصال بالخادم لحفظ حضور الاجتماع.");
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = `💾 حفظ حضور اجتماع الخدام كاملاً`;
-    }
-}
-
-function printServantsMeetingRoster() {
-    const meetingName = document.getElementById('servantsMeetingName')?.value || "اجتماع الخدام الأسبوعي";
-    const meetingDate = document.getElementById('servantsMeetingDate')?.value || "";
-
-    if (currentServantsMeetingList.length === 0) {
-        alert("لا يوجد خدام في الكشف للطباعة!");
-        return;
-    }
-
-    setupPrintHeader(`كشف حضور ${meetingName} - تاريخ: ${meetingDate}`);
-    const printArea = document.getElementById('printContainer');
-    
-    printArea.innerHTML = `
-        <table class="print-table">
-            <thead>
-                <tr>
-                    <th style="width: 25px;">م</th>
-                    <th style="width: 180px;">اسم الخادم</th>
-                    <th style="width: 140px;">الخدمة المسندة</th>
-                    <th style="width: 95px;">المحمول</th>
-                    <th style="width: 65px; text-align: center;">الحالة</th>
-                    <th>سبب الاعتذار والملاحظات</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${currentServantsMeetingList.map((s, idx) => `
-                    <tr>
-                        <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
-                        <td style="font-weight: bold;">${s.name}</td>
-                        <td>${s.scope}</td>
-                        <td style="font-family: monospace;">${s.phone}</td>
-                        <td style="text-align: center; font-weight: bold;">${s.status}</td>
-                        <td>${s.notes || "-"}</td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-        <div style="margin-top: 15px; display: flex; justify-content: space-between; font-weight: bold; font-size: 8pt;">
-            <p>أمين اجتماع الخدام: .........................</p>
-            <p>أبونا المسؤول: .........................</p>
-        </div>
-    `;
-
-    setTimeout(() => {
-        window.print();
-        printArea.innerHTML = "";
-    }, 150);
-}
-// =========================================================================
-// محرك رصد حضور وغياب مدارس الأحد المباشر للفصول
-// =========================================================================
-
-async function initSundaySchoolLiveView() {
-    const dateInput = document.getElementById('ssSessionDate');
-    const now = new Date();
-    const day = String(now.getDate()).padStart(2, '0');
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const year = now.getFullYear();
-    dateInput.value = `${day}/${month}/${year}`;
-
-    if (namesCacheData.length === 0) {
-        try {
-            const res = await (await fetch(`${API_URL}?sheet=Names`)).json();
-            if (res.status === "success") namesCacheData = res.data;
-        } catch(e) {}
-    }
-
-    const stageSel = document.getElementById('ssFilterStage');
-    stageSel.innerHTML = Object.keys(STAGE_GRADES).map(s => `<option value="${s}">${s}</option>`).join('');
-
-    if (currentUser.Role === "Stage_Leader" || currentUser.Role === "Class_Servant") {
-        if (currentUser.AssignedStage && currentUser.AssignedStage !== "الكل") {
-            stageSel.value = currentUser.AssignedStage;
-            stageSel.disabled = true;
-        }
-    } else {
-        stageSel.disabled = false;
-    }
-
-    onSSFilterStageChange(stageSel.value);
-}
-
-function onSSFilterStageChange(stage) {
-    const grdSel = document.getElementById('ssFilterGrade');
-    const grades = STAGE_GRADES[stage] || [];
-    grdSel.innerHTML = `<option value="">كل الصفوف</option>` + grades.map(g => `<option value="${g}">${g}</option>`).join('');
-
-    if (currentUser.Role === "Class_Servant" && currentUser.AssignedGrade && currentUser.AssignedGrade !== "الكل") {
-        grdSel.value = currentUser.AssignedGrade;
-        grdSel.disabled = true;
-    } else {
-        grdSel.disabled = false;
-    }
-
-    onSSFilterGradeChange();
-}
-
-function onSSFilterGradeChange() {
-    const stage = document.getElementById('ssFilterStage').value;
-    const grade = document.getElementById('ssFilterGrade').value;
-    const classSel = document.getElementById('ssFilterClass');
-
-    const classes = new Set();
-    namesCacheData.forEach(kid => {
-        if (kid["المرحلة"] === stage && (!grade || kid["الصف"] === grade)) {
-            const cName = (kid["فصل مدارس الاحد"] || kid["أنهي مدارس الأحد"] || "").trim();
-            if (cName) classes.add(cName);
-        }
-    });
-
-    classSel.innerHTML = `<option value="">كل الفصول (${classes.size})</option>` + 
-        Array.from(classes).sort().map(c => `<option value="${c}">${c}</option>`).join('');
-
-    if (currentUser.Role === "Class_Servant" && currentUser.AssignedClass && currentUser.AssignedClass !== "الكل") {
-        classSel.value = currentUser.AssignedClass;
-        classSel.disabled = true;
-    } else {
-        classSel.disabled = false;
-    }
-
-    loadSSLiveClassKids();
-}
-
-function loadSSLiveClassKids() {
-    const stage = document.getElementById('ssFilterStage').value;
-    const grade = document.getElementById('ssFilterGrade').value;
-    const className = document.getElementById('ssFilterClass').value;
-
-    const matched = namesCacheData.filter(kid => {
-        if (isMemberDeceased(kid)) return false;
-        if (kid["مدارس الأحد"] === "غير مشترك") return false;
-        if (kid["المرحلة"] !== stage) return false;
-        if (grade && kid["الصف"] !== grade) return false;
-        if (className) {
-            const cName = (kid["فصل مدارس الاحد"] || kid["أنهي مدارس الأحد"] || "").trim();
-            if (cName !== className) return false;
-        }
-        return true;
-    }).sort((a, b) => String(a["الاسم ثلاثي"]).localeCompare(String(b["الاسم ثلاثي"]), 'ar'));
-
-    currentSSLiveKids = matched.map(kid => ({
-        id: kid["ID"] || kid[Object.keys(kid)[0]],
-        name: kid["الاسم ثلاثي"],
-        phone: kid["تليفون العمل/المحمول"] || "-",
-        stage: kid["المرحلة"] || stage,
-        grade: kid["الصف"] || grade || "-",
-        className: className || (kid["فصل مدارس الاحد"] || "عام"),
-        attendance: "حاضر",
-        memorization: "ممتاز",
-        points: 10,
-        notes: ""
-    }));
-
-    renderSSLiveKidsTable();
-}
-
-function renderSSLiveKidsTable() {
-    const tbody = document.getElementById('ssLiveKidsTableBody');
-    const emptyNotice = document.getElementById('ssLiveKidsEmpty');
-    tbody.innerHTML = "";
-
-    document.getElementById('recordCount').innerText = `${currentSSLiveKids.length} مخدوم بالفصل`;
-
-    if (currentSSLiveKids.length === 0) {
-        emptyNotice.classList.remove('hidden');
-        return;
-    }
-    emptyNotice.classList.add('hidden');
-
-    currentSSLiveKids.forEach((kid, idx) => {
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
-        tr.innerHTML = `
-            <td class="p-3 text-center font-bold text-slate-400">${idx + 1}</td>
-            <td class="p-3 font-bold text-slate-800">
-                ${kid.name}
-                <span class="block text-[10px] text-slate-500 font-semibold">${kid.stage} - ${kid.grade}</span>
-            </td>
-            <td class="p-3 font-mono text-slate-600 text-xs">${kid.phone}</td>
-            <td class="p-3 text-center">
-                <button type="button" onclick="toggleSSKidAttendance(${idx})" id="ss_btn_att_${idx}" 
-                    class="px-3.5 py-1.5 rounded-xl font-black text-xs transition shadow-sm ${kid.attendance === 'حاضر' ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'bg-rose-500 hover:bg-rose-600 text-white'}">
-                    ${kid.attendance}
-                </button>
-            </td>
-            <td class="p-3 text-center">
-                <select onchange="currentSSLiveKids[${idx}].memorization = this.value" class="p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="ممتاز" ${kid.memorization === 'ممتاز' ? 'selected' : ''}>ممتاز (حفظ كامل)</option>
-                    <option value="جيد" ${kid.memorization === 'جيد' ? 'selected' : ''}>جيد (معظم الحفظ)</option>
-                    <option value="مقبول" ${kid.memorization === 'مقبول' ? 'selected' : ''}>مقبول (حفظ بسيط)</option>
-                    <option value="لم يحفظ" ${kid.memorization === 'لم يحفظ' ? 'selected' : ''}>لم يحفظ</option>
-                </select>
-            </td>
-            <td class="p-3 text-center">
-                <input type="number" value="${kid.points}" onchange="currentSSLiveKids[${idx}].points = Number(this.value)" class="w-20 p-2 bg-slate-50 border border-slate-200 rounded-xl text-center font-black text-xs outline-none focus:ring-2 focus:ring-blue-500">
-            </td>
-            <td class="p-3">
-                <input type="text" placeholder="اكتب ملاحظة إن وجدت..." value="${kid.notes}" oninput="currentSSLiveKids[${idx}].notes = this.value" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-blue-500">
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function toggleSSKidAttendance(index) {
-    const kid = currentSSLiveKids[index];
-    kid.attendance = (kid.attendance === "حاضر") ? "غائب" : "حاضر";
-    kid.points = (kid.attendance === "حاضر") ? 10 : 0;
-    renderSSLiveKidsTable();
-}
-
-function markAllSSKids(status) {
-    currentSSLiveKids.forEach(kid => {
-        kid.attendance = status;
-        kid.points = (status === "حاضر") ? 10 : 0;
-    });
-    renderSSLiveKidsTable();
-}
-
-async function saveSundaySchoolBatchAttendance() {
-    if (currentSSLiveKids.length === 0) {
-        alert("لا يوجد مخدومين في الكشف لحفظهم!");
-        return;
-    }
-
-    const sessionDate = document.getElementById('ssSessionDate').value.trim();
-    if (!sessionDate) {
-        alert("يرجى كتابة تاريخ الحصة أولاً!");
-        return;
-    }
-
-    if (!confirm(`هل أنت متأكد من حفظ سجل حضور وتسميع (${currentSSLiveKids.length}) مخدوم لتاريخ: ${sessionDate}؟`)) return;
-
-    const btn = document.getElementById('btnSaveSSBatch');
-    btn.disabled = true;
-    btn.innerHTML = `جاري الحفظ بالسجلات...`;
-
-    const payload = currentSSLiveKids.map(kid => ({
-        "Stage": kid.stage,
-        "Grade": kid.grade,
-        "ClassName": kid.className,
-        "SessionDate": sessionDate,
-        "ChildID": kid.id,
-        "ChildName": kid.name,
-        "ServantName": currentUser ? currentUser.ServantName : "خادم الفصل",
-        "Attendance": kid.attendance,
-        "Memorization": kid.memorization,
-        "Points": kid.points,
-        "Notes": kid.notes
-    }));
-
-    try {
-        const res = await (await fetch(API_URL, {
-            method: 'POST',
-            body: JSON.stringify({
-                sheet: "Sunday_School",
-                action: "batch_add",
-                data: payload
-            })
-        })).json();
-
-        if (res.status === "success") {
-            alert("✓ " + res.message);
-            loadData();
-        } else {
-            alert("خطأ أثناء الحفظ: " + res.message);
-        }
-    } catch(err) {
-        alert("تعذر الاتصال بالخادم لحفظ الحضور.");
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = `💾 حفظ حضور وتقييم الفصل كاملاً`;
-    }
-}
-
-// =========================================================================
-// ربط أسماء الخدام بشيت Names تلقائياً
-// =========================================================================
-
-async function populateServantsDatalist() {
-    if (namesCacheData.length === 0) {
-        try {
-            const res = await (await fetch(`${API_URL}?sheet=Names`)).json();
-            if (res.status === "success") namesCacheData = res.data;
-        } catch(e) {}
-    }
-
-    const dl = document.getElementById('servantsNamesList');
-    if (!dl) return;
-
-    const validMembers = namesCacheData.filter(m => !isMemberDeceased(m));
-    dl.innerHTML = validMembers.map(m => `<option value="${m['الاسم ثلاثي']}">`).join('');
-}
-
-function onServantNameSelected(selectedName) {
-    const member = namesCacheData.find(m => m["الاسم ثلاثي"] === selectedName);
-    const usernameInput = document.querySelector('input[name="Username"]');
-    if (member && usernameInput && !usernameInput.value) {
-        const phone = member["تليفون العمل/المحمول"] || "";
-        if (phone) usernameInput.value = phone;
-    }
-}
-
-// =========================================================================
-// باقي دوال النظام (الأعضاء، الأسر، الطباعة، التمرير)
-// =========================================================================
 
 function switchNamesView(viewName) {
     currentNamesView = viewName;
@@ -931,12 +399,326 @@ function switchNamesView(viewName) {
     }
 }
 
-async function loadVisitationsCache() {
-    try {
-        const res = await (await fetch(`${API_URL}?sheet=Visitations`)).json();
-        if (res.status === "success") visitationsData = res.data;
-    } catch(e) {}
+function switchSSView(view) {
+    currentSSView = view;
+    const btnLive = document.getElementById('btnSSLiveRoster');
+    const btnHist = document.getElementById('btnSSHistory');
+    const liveSec = document.getElementById('sundaySchoolLiveSection');
+    const cardsSec = document.getElementById('standardCardsContainer');
+    const searchSec = document.getElementById('standardSearchContainer');
+    const btnAdd = document.getElementById('btnAddNewRecord');
+
+    if (view === 'live') {
+        btnLive.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm";
+        btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
+        liveSec.classList.remove('hidden');
+        cardsSec.classList.add('hidden');
+        searchSec.classList.add('hidden');
+        btnAdd.classList.add('hidden');
+        initSundaySchoolLiveView();
+    } else {
+        btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm";
+        btnLive.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
+        liveSec.classList.add('hidden');
+        cardsSec.classList.remove('hidden');
+        searchSec.classList.remove('hidden');
+        btnAdd.classList.remove('hidden');
+        renderStandardCards();
+    }
 }
+
+function switchMeetingsView(view) {
+    currentMeetingsView = view;
+    const btnLive = document.getElementById('btnMeetingsLiveRoster');
+    const btnHist = document.getElementById('btnMeetingsHistory');
+    const liveSec = document.getElementById('servantsMeetingLiveSection');
+    const cardsSec = document.getElementById('standardCardsContainer');
+    const searchSec = document.getElementById('standardSearchContainer');
+    const btnAdd = document.getElementById('btnAddNewRecord');
+
+    if (view === 'live') {
+        btnLive.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-amber-700 shadow-sm";
+        btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
+        liveSec.classList.remove('hidden');
+        cardsSec.classList.add('hidden');
+        searchSec.classList.add('hidden');
+        btnAdd.classList.add('hidden');
+        initServantsMeetingLiveView();
+    } else {
+        btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-amber-700 shadow-sm";
+        btnLive.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
+        liveSec.classList.add('hidden');
+        cardsSec.classList.remove('hidden');
+        searchSec.classList.remove('hidden');
+        btnAdd.classList.remove('hidden');
+        renderStandardCards();
+    }
+}
+
+function switchVisitationsView(view) {
+    currentVisitView = view;
+    const btnDash = document.getElementById('btnVisitDashboard');
+    const btnHist = document.getElementById('btnVisitHistory');
+    const dashSec = document.getElementById('visitationDashboardSection');
+    const cardsSec = document.getElementById('standardCardsContainer');
+    const searchSec = document.getElementById('standardSearchContainer');
+    const btnAdd = document.getElementById('btnAddNewRecord');
+    const btnPrint = document.getElementById('btnPrintVisitReport');
+
+    if (view === 'dashboard') {
+        btnDash.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-rose-700 shadow-sm";
+        btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
+        dashSec.classList.remove('hidden');
+        cardsSec.classList.add('hidden');
+        searchSec.classList.add('hidden');
+        btnAdd.classList.add('hidden');
+        btnPrint.classList.remove('hidden');
+        initVisitationsDashboard();
+    } else {
+        btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-rose-700 shadow-sm";
+        btnDash.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
+        dashSec.classList.add('hidden');
+        cardsSec.classList.remove('hidden');
+        searchSec.classList.remove('hidden');
+        btnAdd.classList.remove('hidden');
+        btnPrint.classList.add('hidden');
+        renderStandardCards();
+    }
+}
+
+// =========================================================================
+// محرك الافتقاد الشامل (الحالات العاجلة والمتابعات)
+// =========================================================================
+
+async function initVisitationsDashboard() {
+    if (namesCacheData.length === 0) {
+        try {
+            const res = await (await fetch(`${API_URL}?sheet=Names`)).json();
+            if (res.status === "success") namesCacheData = res.data;
+        } catch(e) {}
+    }
+    if (visitationsData.length === 0) {
+        try {
+            const res = await (await fetch(`${API_URL}?sheet=Visitations`)).json();
+            if (res.status === "success") visitationsData = res.data;
+        } catch(e) {}
+    }
+
+    renderVisitationRecommendations();
+    renderVisitationFollowups();
+}
+
+function renderVisitationRecommendations() {
+    const urgentList = document.getElementById('visitUrgentList');
+    if (!urgentList) return;
+    urgentList.innerHTML = "";
+
+    const familiesMap = {};
+    namesCacheData.forEach(member => {
+        if (isMemberDeceased(member)) return;
+        const headName = String(member["اسم رب الاسرة"] || "").trim();
+        if (!headName) return;
+        if (!familiesMap[headName]) familiesMap[headName] = [];
+        familiesMap[headName].push(member);
+    });
+
+    const recommendations = [];
+    const now = new Date();
+    const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
+
+    Object.keys(familiesMap).forEach(headName => {
+        const familyMembers = familiesMap[headName];
+        const lastVisitDateStr = getLastFamilyVisitDate(familyMembers);
+        
+        let needsVisit = false;
+        let daysSince = -1;
+        
+        if (lastVisitDateStr === "لم يُفتقد بعد" || lastVisitDateStr === "لا يوجد سجل") {
+            needsVisit = true;
+            daysSince = 999;
+        } else {
+            const lastDate = parseDateForSort(lastVisitDateStr);
+            const diffMs = now - lastDate;
+            if (diffMs > ninetyDaysMs) {
+                needsVisit = true;
+                daysSince = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            }
+        }
+
+        if (needsVisit) {
+            const headRec = familyMembers.find(m => m["الاسم ثلاثي"] === headName || m["صلة القرابة"] === "زوج" || m["صلة القرابة"] === "رب أسرة") || familyMembers[0];
+            recommendations.push({
+                headName: headName,
+                area: headRec["المنطقة"] || "غير محددة",
+                phone: headRec["هاتف الاسرة"] || headRec["تليفون العمل/المحمول"] || "-",
+                lastVisit: lastVisitDateStr,
+                daysSince: daysSince,
+                headId: headRec["ID"] || headRec[Object.keys(headRec)[0]]
+            });
+        }
+    });
+
+    recommendations.sort((a, b) => b.daysSince - a.daysSince);
+    
+    document.getElementById('visitUrgentCount').innerText = recommendations.length;
+
+    if (recommendations.length === 0) {
+        urgentList.innerHTML = `<div class="text-center text-slate-400 font-bold py-10">لا توجد حالات متأخرة عاجلة.</div>`;
+        return;
+    }
+
+    recommendations.forEach(rec => {
+        const sinceText = rec.daysSince === 999 ? "لم تُفتقد أبدًا" : `منذ ${rec.daysSince} يوم`;
+        const div = document.createElement('div');
+        div.className = "bg-white p-3 rounded-xl border border-rose-100 flex justify-between items-center";
+        div.innerHTML = `
+            <div>
+                <h4 class="text-sm font-black text-slate-800">${rec.headName}</h4>
+                <p class="text-[11px] text-slate-500 font-semibold mt-0.5">📍 ${rec.area} | 📞 <span class="font-mono">${rec.phone}</span></p>
+                <p class="text-[11px] text-rose-600 font-bold mt-1">⏳ التأخير: ${sinceText}</p>
+            </div>
+            <button onclick="quickAddVisitation('${rec.headId}', '${rec.headName.replace(/'/g, "\'")}')" class="bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition shadow-sm">
+                + تسجيل زيارة
+            </button>
+        `;
+        urgentList.appendChild(div);
+    });
+}
+
+function renderVisitationFollowups() {
+    const followupList = document.getElementById('visitFollowupList');
+    if (!followupList) return;
+    followupList.innerHTML = "";
+
+    const now = new Date();
+    now.setHours(0,0,0,0);
+    const nextWeek = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000));
+
+    const upcoming = [];
+    visitationsData.forEach(v => {
+        const dStr = String(v["FollowUpDate"] || "").trim();
+        if (dStr && dStr !== "-") {
+            const fDate = parseDateForSort(dStr);
+            if (fDate >= now && fDate <= nextWeek) {
+                upcoming.push({
+                    ...v,
+                    parsedDate: fDate
+                });
+            }
+        }
+    });
+
+    upcoming.sort((a, b) => a.parsedDate - b.parsedDate);
+
+    document.getElementById('visitFollowupCount').innerText = upcoming.length;
+
+    if (upcoming.length === 0) {
+        followupList.innerHTML = `<div class="text-center text-slate-400 font-bold py-10">لا توجد متابعات مجدولة للأسبوع القادم.</div>`;
+        return;
+    }
+
+    upcoming.forEach(rec => {
+        const div = document.createElement('div');
+        div.className = "bg-white p-3 rounded-xl border border-indigo-100 flex justify-between items-center";
+        div.innerHTML = `
+            <div>
+                <h4 class="text-sm font-black text-slate-800">${rec.MemberName}</h4>
+                <p class="text-[11px] text-slate-500 font-semibold mt-0.5">👤 الخادم المتابع: ${rec.VisitorName}</p>
+                <p class="text-[11px] text-indigo-600 font-bold mt-1">🗓️ موعد المتابعة: ${rec.FollowUpDate}</p>
+            </div>
+            <button onclick="quickAddVisitation('${rec.MemberID}', '${rec.MemberName.replace(/'/g, "\'")}')" class="bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition shadow-sm">
+                + تحديث الحالة
+            </button>
+        `;
+        followupList.appendChild(div);
+    });
+}
+
+function quickAddVisitation(memberId, memberName) {
+    currentTab = 'Visitations';
+    openModal('add');
+    setTimeout(() => {
+        const idInp = document.querySelector('input[name="MemberID"]');
+        const nameInp = document.querySelector('input[name="MemberName"]');
+        const dateInp = document.querySelector('input[name="VisitDate"]');
+        const visitorInp = document.querySelector('input[name="VisitorName"]');
+        
+        if (idInp) idInp.value = memberId;
+        if (nameInp) nameInp.value = memberName;
+        
+        const now = new Date();
+        const day = String(now.getDate()).padStart(2, '0');
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const year = now.getFullYear();
+        if (dateInp) dateInp.value = `${day}/${month}/${year}`;
+        
+        if (visitorInp && currentUser) visitorInp.value = currentUser.ServantName;
+    }, 100);
+}
+
+function printVisitReport() {
+    setupPrintHeader("تقرير الافتقاد: الحالات المتأخرة والمتابعات المجدولة");
+    const printArea = document.getElementById('printContainer');
+    
+    // إعادة بناء HTML للطباعة بناءً على القوائم المعروضة حالياً
+    const urgentItems = Array.from(document.getElementById('visitUrgentList').children);
+    const followupItems = Array.from(document.getElementById('visitFollowupList').children);
+    
+    let html = `
+        <h3 style="font-size: 11pt; font-weight: bold; margin-bottom: 5px; border-bottom: 1px solid #000; padding-bottom: 2px;">الأسر المتأخرة عن الافتقاد العاجل (+90 يوماً)</h3>
+        <table class="print-table" style="margin-bottom: 15px;">
+            <thead><tr><th style="width:30px;">م</th><th>اسم رب الأسرة</th><th>المنطقة</th><th>المحمول</th><th>مدة التأخير</th></tr></thead>
+            <tbody>
+    `;
+    
+    let count = 1;
+    urgentItems.forEach(node => {
+        if(node.tagName === "DIV" && node.querySelector('h4')) {
+            const name = node.querySelector('h4').innerText;
+            const meta = node.querySelector('p').innerText.split('|');
+            const area = meta[0].replace('📍', '').trim();
+            const phone = meta[1].replace('📞', '').trim();
+            const delay = node.querySelectorAll('p')[1].innerText.replace('⏳ التأخير:', '').trim();
+            html += `<tr><td style="text-align:center;font-weight:bold;">${count++}</td><td style="font-weight:bold;">${name}</td><td>${area}</td><td style="font-family:monospace;">${phone}</td><td style="color:red;font-weight:bold;">${delay}</td></tr>`;
+        }
+    });
+    if(count === 1) html += `<tr><td colspan="5" style="text-align:center;">لا توجد حالات متأخرة.</td></tr>`;
+    html += `</tbody></table>`;
+
+    html += `
+        <h3 style="font-size: 11pt; font-weight: bold; margin-bottom: 5px; border-bottom: 1px solid #000; padding-bottom: 2px;">المتابعات المجدولة للأسبوع القادم</h3>
+        <table class="print-table">
+            <thead><tr><th style="width:30px;">م</th><th>اسم المخدوم</th><th>الخادم المتابع</th><th>موعد المتابعة</th></tr></thead>
+            <tbody>
+    `;
+    
+    count = 1;
+    followupItems.forEach(node => {
+        if(node.tagName === "DIV" && node.querySelector('h4')) {
+            const name = node.querySelector('h4').innerText;
+            const visitor = node.querySelector('p').innerText.replace('👤 الخادم المتابع:', '').trim();
+            const date = node.querySelectorAll('p')[1].innerText.replace('🗓️ موعد المتابعة:', '').trim();
+            html += `<tr><td style="text-align:center;font-weight:bold;">${count++}</td><td style="font-weight:bold;">${name}</td><td>${visitor}</td><td style="font-weight:bold;">${date}</td></tr>`;
+        }
+    });
+    if(count === 1) html += `<tr><td colspan="4" style="text-align:center;">لا توجد متابعات مجدولة.</td></tr>`;
+    html += `</tbody></table>`;
+
+    printArea.innerHTML = html;
+
+    const dashSec = document.getElementById('visitationDashboardSection');
+    if (dashSec) dashSec.classList.add('no-print');
+
+    setTimeout(() => {
+        window.print();
+        printArea.innerHTML = "";
+        if (dashSec) dashSec.classList.remove('no-print');
+    }, 200);
+}
+
+// =========================================================================
+// دوال النظام العامة (البحث، الفرز، الحفظ، الحذف)
+// =========================================================================
 
 async function loadData(force = false) {
     showLoader(true);
@@ -945,6 +727,7 @@ async function loadData(force = false) {
         if (res.status === "success") {
             rawData = res.data;
             backendAreas = res.areas || [];
+            
             if (currentTab === 'Names') {
                 namesCacheData = rawData;
                 populateAreasDropdown();
@@ -966,6 +749,13 @@ async function loadData(force = false) {
                 } else {
                     renderStandardCards();
                 }
+            } else if (currentTab === 'Visitations') {
+                visitationsData = rawData;
+                if (currentVisitView === 'dashboard') {
+                    initVisitationsDashboard();
+                } else {
+                    renderStandardCards();
+                }
             } else if (currentTab === 'Servants') {
                 servantsCacheData = rawData;
                 renderStandardCards();
@@ -981,6 +771,8 @@ async function loadData(force = false) {
         showLoader(false);
     }
 }
+
+// ... [The rest of the standard functions like buildAlphabetBar, renderFamilyHeadsRoster, etc remain exactly the same as previously defined]
 
 function buildAlphabetBar() {
     const bar = document.getElementById('alphabetBar');
@@ -1014,15 +806,10 @@ function buildAlphabetBar() {
 
 function normalizeArabic(text) {
     if (!text) return "";
-    return text.trim()
-        .replace(/[أإآ]/g, "ا")
-        .replace(/ة/g, "ه")
-        .replace(/ى/g, "ي");
+    return text.trim().replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي");
 }
 
-function filterRoster() {
-    renderFamilyHeadsRoster();
-}
+function filterRoster() { renderFamilyHeadsRoster(); }
 
 function renderFamilyHeadsRoster() {
     const container = document.getElementById('rosterCardsContainer');
@@ -1100,14 +887,8 @@ function renderFamilyHeadsRoster() {
                         <span>أفراد الأسرة</span>
                         <svg id="icon_toggle_${index}" class="w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                     </button>
-                    ${headId ? `
-                        <button onclick="editRecord(${headId})" class="text-xs font-bold bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 px-2.5 py-1.5 rounded-xl transition">
-                            ✏️ تعديل
-                        </button>
-                    ` : ''}
-                    <button onclick="quickAddMemberToFamily('${headName.replace(/'/g, "\\'")}')" class="text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1.5 rounded-xl transition">
-                        + فرد
-                    </button>
+                    ${headId ? `<button onclick="editRecord(${headId})" class="text-xs font-bold bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 px-2.5 py-1.5 rounded-xl transition">✏️ تعديل</button>` : ''}
+                    <button onclick="quickAddMemberToFamily('${headName.replace(/'/g, "\'")}')" class="text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1.5 rounded-xl transition">+ فرد</button>
                 </div>
             </div>
 
@@ -1117,7 +898,6 @@ function renderFamilyHeadsRoster() {
                         const mId = member["ID"] || member[Object.keys(member)[0]];
                         const age = calculateAge(member["تاريخ الميلاد"], member["الرقم القومي"]);
                         const deceased = isMemberDeceased(member);
-
                         return `
                             <div class="pt-2 first:pt-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
                                 <div class="flex items-start gap-2">
@@ -1138,7 +918,6 @@ function renderFamilyHeadsRoster() {
                                         </div>
                                     </div>
                                 </div>
-
                                 <div class="flex items-center gap-1.5 w-full md:w-auto justify-end no-print">
                                     <button onclick="editRecord(${mId})" class="text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2 py-1 rounded-lg transition">تعديل</button>
                                     ${currentUser.Role === "Admin" ? `<button onclick="deleteRecord(${mId})" class="text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 px-2 py-1 rounded-lg transition">حذف</button>` : ''}
@@ -1149,7 +928,6 @@ function renderFamilyHeadsRoster() {
                 </div>
             </div>
         `;
-
         container.appendChild(card);
     });
 }
@@ -1158,7 +936,6 @@ function toggleFamilyAccordion(index) {
     const acc = document.getElementById(`accordion_${index}`);
     const icon = document.getElementById(`icon_toggle_${index}`);
     if (!acc) return;
-
     const isOpen = acc.classList.contains('open');
     if (isOpen) {
         acc.classList.remove('open');
@@ -1219,7 +996,7 @@ function calculateAge(dobStr, nationalId = "") {
     }
     if (dobStr) {
         const str = String(dobStr).trim();
-        const match = str.match(/\b(19\d\d|20\d\d)\b/);
+        const match = str.match(/ (19\d\d|20\d\d) /);
         if (match) {
             const birthY = parseInt(match[1], 10);
             if (birthY > 1900 && birthY <= currentYear) return currentYear - birthY;
@@ -1238,11 +1015,7 @@ function getLastFamilyVisitDate(familyMembers) {
     if (!visitationsData || visitationsData.length === 0) return "لا يوجد سجل";
     const memberNames = familyMembers.map(m => m["الاسم ثلاثي"]);
     const memberIds = familyMembers.map(m => String(m["ID"]));
-
-    const familyVisits = visitationsData.filter(v => 
-        memberNames.includes(v.MemberName) || memberIds.includes(String(v.MemberID))
-    );
-
+    const familyVisits = visitationsData.filter(v => memberNames.includes(v.MemberName) || memberIds.includes(String(v.MemberID)));
     if (familyVisits.length === 0) return "لم يُفتقد بعد";
     familyVisits.sort((a, b) => parseDateForSort(b.VisitDate) - parseDateForSort(a.VisitDate));
     return familyVisits[0].VisitDate || "لم يُفتقد بعد";
@@ -1624,274 +1397,255 @@ function showLoader(s) {
         } else {
             document.getElementById('standardCardsContainer').classList.toggle('hidden', s);
         }
+    } else if (currentTab === 'Visitations') {
+        if (currentVisitView === 'dashboard') {
+            document.getElementById('visitationDashboardSection').classList.toggle('hidden', s);
+        } else {
+            document.getElementById('standardCardsContainer').classList.toggle('hidden', s);
+        }
     } else {
         document.getElementById('standardCardsContainer').classList.toggle('hidden', s);
     }
 }
 
+function openAddServantQuickModal() {
+    currentTab = 'Servants';
+    openModal('add');
+}
+
+async function populateServantsDatalist() {
+    if (namesCacheData.length === 0) {
+        try {
+            const res = await (await fetch(`${API_URL}?sheet=Names`)).json();
+            if (res.status === "success") namesCacheData = res.data;
+        } catch(e) {}
+    }
+    const dl = document.getElementById('servantsNamesList');
+    if (!dl) return;
+    const validMembers = namesCacheData.filter(m => !isMemberDeceased(m));
+    dl.innerHTML = validMembers.map(m => `<option value="${m['الاسم ثلاثي']}">`).join('');
+}
+
+function onServantNameSelected(selectedName) {
+    const member = namesCacheData.find(m => m["الاسم ثلاثي"] === selectedName);
+    const usernameInput = document.querySelector('input[name="Username"]');
+    if (member && usernameInput && !usernameInput.value) {
+        const phone = member["تليفون العمل/المحمول"] || "";
+        if (phone) usernameInput.value = phone;
+    }
+}
+
 // =========================================================================
-// محرك الطباعة الرسمي النقي (بدون كروت - سطر فاصل بسيط)
+// محرك رصد حضور اجتماع الخدام الأسبوعي
 // =========================================================================
 
-function setupPrintHeader(reportTitle) {
-    document.getElementById('printReportTitle').innerText = reportTitle;
-    document.getElementById('printServantName').innerText = currentUser ? `${currentUser.ServantName} (${currentUser.Role})` : "الأدمن";
+async function initServantsMeetingLiveView() {
+    const dateInput = document.getElementById('servantsMeetingDate');
     const now = new Date();
-    document.getElementById('printCurrentDate').innerText = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
-}
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    dateInput.value = `${day}/${month}/${year}`;
 
-function buildAndPrintFamilies(familiesMap, reportTitle) {
-    const printContainer = document.getElementById('printContainer');
-    if (!printContainer) return;
-
-    const sortedHeads = Object.keys(familiesMap).sort((a, b) => a.localeCompare(b, 'ar'));
-
-    if (sortedHeads.length === 0) {
-        alert("لا توجد أسر مطابقة للشروط المحددة للطباعة!");
-        return;
+    if (servantsCacheData.length === 0) {
+        try {
+            const res = await (await fetch(`${API_URL}?sheet=Servants`)).json();
+            if (res.status === "success") servantsCacheData = res.data;
+        } catch(e) {}
+    }
+    if (namesCacheData.length === 0) {
+        try {
+            const res = await (await fetch(`${API_URL}?sheet=Names`)).json();
+            if (res.status === "success") namesCacheData = res.data;
+        } catch(e) {}
     }
 
-    let rowsHtml = '';
-    sortedHeads.forEach((headName, idx) => {
-        const members = familiesMap[headName];
-        const headRec = members.find(m => m["الاسم ثلاثي"] === headName || m["صلة القرابة"] === "زوج" || m["صلة القرابة"] === "رب أسرة") || members[0];
-        
-        const area = (headRec["المنطقة"] || "").trim();
-        const street = (headRec["اسم الشارع"] || "").trim();
-        const house = (headRec["رقم المنزل"] || headRec["العنوان رقم المنزل"] || "").trim();
-        const addressParts = [area, street, house].filter(Boolean);
-        const addressStr = addressParts.length > 0 ? addressParts.join(' - ') : "غير محدد";
-        
-        const phoneStr = headRec["هاتف الاسرة"] || headRec["تليفون العمل/المحمول"] || "-";
-        
-        const membersStr = members.map((m, mIdx) => {
-            const mPhone = m["تليفون العمل/المحمول"] || "-";
-            return `<span>${mIdx + 1}. ${m["الاسم ثلاثي"] || "-"} <span class="member-phone">(${mPhone})</span></span>`;
-        }).join(' &nbsp;•&nbsp; ');
+    const activeServants = servantsCacheData.filter(s => s["Status"] !== "موقوف" && s["Username"] !== "admin");
 
-        rowsHtml += `
-            <div class="print-family-row">
-                <div class="print-fam-main">
-                    <div class="print-fam-title">
-                        <span class="print-fam-num">${idx + 1}</span>
-                        <span class="print-fam-head">رب الأسرة: ${headName}</span>
-                    </div>
-                    <div class="print-fam-meta">
-                        <span class="print-fam-addr"><strong>العنوان:</strong> ${addressStr}</span>
-                        <span class="print-fam-phone"><strong>الهاتف:</strong> ${phoneStr}</span>
-                    </div>
+    currentServantsMeetingList = activeServants.map(s => {
+        const member = namesCacheData.find(m => m["الاسم ثلاثي"] === s["ServantName"]);
+        let realPhone = "-";
+        if (member && member["تليفون العمل/المحمول"]) {
+            realPhone = member["تليفون العمل/المحمول"];
+        } else if (s["Username"] && /^\d+$/.test(s["Username"])) {
+            realPhone = s["Username"];
+        }
+
+        return {
+            id: s["ID"] || s[Object.keys(s)[0]],
+            name: s["ServantName"],
+            phone: realPhone,
+            role: s["Role"] || "خادم",
+            scope: `${s["AssignedStage"] || "الكل"} ${s["AssignedGrade"] ? '- ' + s["AssignedGrade"] : ''} ${s["AssignedClass"] ? '(' + s["AssignedClass"] + ')' : ''}`,
+            status: "حاضر",
+            notes: ""
+        };
+    }).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+
+    renderServantsMeetingTable();
+}
+
+function renderServantsMeetingTable() {
+    const tbody = document.getElementById('servantsMeetingTableBody');
+    const emptyNotice = document.getElementById('servantsMeetingEmpty');
+    tbody.innerHTML = "";
+
+    document.getElementById('recordCount').innerText = `${currentServantsMeetingList.length} خادم مسجل`;
+
+    if (currentServantsMeetingList.length === 0) {
+        emptyNotice.classList.remove('hidden');
+        return;
+    }
+    emptyNotice.classList.add('hidden');
+
+    let presentCount = 0, excusedCount = 0, absentCount = 0;
+
+    currentServantsMeetingList.forEach((servant, idx) => {
+        if (servant.status === "حاضر") presentCount++;
+        else if (servant.status === "معتذر") excusedCount++;
+        else absentCount++;
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+        tr.innerHTML = `
+            <td class="p-3 text-center font-bold text-slate-400">${idx + 1}</td>
+            <td class="p-3 font-bold text-slate-800">${servant.name}</td>
+            <td class="p-3">
+                <span class="bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded text-[10px] font-bold">${servant.role}</span>
+                <span class="text-[11px] text-slate-600 font-semibold block mt-0.5">${servant.scope}</span>
+            </td>
+            <td class="p-3 font-mono text-slate-600 text-xs">${servant.phone}</td>
+            <td class="p-3 text-center">
+                <div class="inline-flex rounded-xl shadow-sm border border-slate-200 p-0.5 bg-slate-50">
+                    <button type="button" onclick="setServantMeetingStatus(${idx}, 'حاضر')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition ${servant.status === 'حاضر' ? 'bg-emerald-600 text-white shadow' : 'text-slate-600 hover:text-emerald-700'}">حاضر</button>
+                    <button type="button" onclick="setServantMeetingStatus(${idx}, 'معتذر')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition ${servant.status === 'معتذر' ? 'bg-amber-500 text-white shadow' : 'text-slate-600 hover:text-amber-700'}">معتذر</button>
+                    <button type="button" onclick="setServantMeetingStatus(${idx}, 'غائب')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition ${servant.status === 'غائب' ? 'bg-rose-600 text-white shadow' : 'text-slate-600 hover:text-rose-700'}">غائب</button>
                 </div>
-                <div class="print-fam-members">
-                    <strong>أفراد الأسرة:</strong> ${membersStr}
-                </div>
-            </div>
+            </td>
+            <td class="p-3">
+                <input type="text" placeholder="اكتب سبب الاعتذار أو الملاحظة..." value="${servant.notes}" oninput="currentServantsMeetingList[${idx}].notes = this.value" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-amber-500">
+            </td>
         `;
+        tbody.appendChild(tr);
     });
 
-    printContainer.innerHTML = rowsHtml;
-    setupPrintHeader(reportTitle);
-
-    setTimeout(() => {
-        window.print();
-        printContainer.innerHTML = "";
-    }, 200);
+    document.getElementById('servantsAttendanceSummary').innerHTML = `
+        <span class="text-emerald-700">حاضر: ${presentCount}</span> &nbsp;|&nbsp; 
+        <span class="text-amber-700">معتذر: ${excusedCount}</span> &nbsp;|&nbsp; 
+        <span class="text-rose-700">غائب: ${absentCount}</span>
+    `;
 }
 
-function printFilteredResults() {
-    const headQ = document.getElementById('filterFamilyHead')?.value.trim().toLowerCase() || "";
-    const nameQ = document.getElementById('filterFullName')?.value.trim().toLowerCase() || "";
-    const areaQ = document.getElementById('filterArea')?.value.trim() || "";
-    const ageGroupQ = document.getElementById('filterAgeGroup')?.value || "";
-    const genderQ = document.getElementById('filterGender')?.value || "";
-    const electionQ = document.getElementById('filterElection')?.value || "";
-    const maritalQ = document.getElementById('filterMarital')?.value || "";
-    const deceasedQ = document.getElementById('filterDeceased')?.value || "alive";
+function setServantMeetingStatus(index, status) {
+    currentServantsMeetingList[index].status = status;
+    renderServantsMeetingTable();
+}
 
-    const matchedMembers = rawData.filter(item => {
-        const deceased = isMemberDeceased(item);
-        if (deceasedQ === "alive" && deceased) return false;
-        if (deceasedQ === "deceased" && !deceased) return false;
-        if (areaQ && (item["المنطقة"] || "").trim() !== areaQ) return false;
-        if (genderQ && item["ذكر/انثي"] !== genderQ) return false;
-        if (maritalQ && (item["الحالة الاجتماعية"] || "").trim() !== maritalQ) return false;
-        if (electionQ && (item["البطاقة الانتخابية"] || "").trim() !== electionQ) return false;
-        if (ageGroupQ) {
-            const age = calculateAge(item["تاريخ الميلاد"], item["الرقم القومي"]);
-            if (age === null) return false;
-            if (ageGroupQ === "children" && age >= 12) return false;
-            if (ageGroupQ === "prep" && (age < 12 || age > 15)) return false;
-            if (ageGroupQ === "sec" && (age < 16 || age > 18)) return false;
-            if (ageGroupQ === "youth" && (age < 19 || age > 25)) return false;
-            if (ageGroupQ === "adults" && (age < 26 || age > 50)) return false;
-            if (ageGroupQ === "seniors" && age <= 50) return false;
-        }
-        if (headQ && !String(item["اسم رب الاسرة"] || "").toLowerCase().includes(headQ)) return false;
-        if (nameQ && !String(item["الاسم ثلاثي"] || "").toLowerCase().includes(nameQ)) return false;
-        return true;
-    });
+function markAllServantsMeeting(status) {
+    currentServantsMeetingList.forEach(s => s.status = status);
+    renderServantsMeetingTable();
+}
 
-    if (matchedMembers.length === 0) {
-        alert("لا توجد سجلات مطابقة للفرز المحدد للطباعة!");
+async function saveServantsMeetingBatchAttendance() {
+    if (currentServantsMeetingList.length === 0) {
+        alert("لا يوجد خدام في الكشف للحفظ!");
         return;
     }
 
-    const familiesMap = {};
-    matchedMembers.forEach(m => {
-        const head = (m["اسم رب الاسرة"] || "").trim();
-        if (!head) return;
-        if (!familiesMap[head]) familiesMap[head] = [];
-        familiesMap[head].push(m);
-    });
+    const meetingName = document.getElementById('servantsMeetingName').value.trim() || "اجتماع الخدام الأسبوعي";
+    const meetingDate = document.getElementById('servantsMeetingDate').value.trim();
 
-    const areaVal = areaQ || "كل المناطق";
-    const ageVal = document.getElementById('filterAgeGroup')?.options[document.getElementById('filterAgeGroup')?.selectedIndex]?.text || "كل الأعمار";
-    const statusVal = document.getElementById('filterDeceased')?.options[document.getElementById('filterDeceased')?.selectedIndex]?.text || "الأحياء";
-    
-    buildAndPrintFamilies(familiesMap, `بيان فرز السجلات: [${areaVal} - ${ageVal} - ${statusVal}]`);
-}
-
-function printRosterDirectory() {
-    const query = document.getElementById('rosterSearchInput') ? document.getElementById('rosterSearchInput').value.trim().toLowerCase() : "";
-
-    const familiesMap = {};
-    rawData.forEach(m => {
-        const head = (m["اسم رب الاسرة"] || "").trim();
-        if (!head) return;
-
-        const normHead = normalizeArabic(head).toLowerCase();
-        if (selectedLetter !== "الكل") {
-            const targetChar = normalizeArabic(selectedLetter)[0];
-            if (normHead[0] !== targetChar) return;
-        }
-
-        if (query) {
-            const hasHeadMatch = normHead.includes(normalizeArabic(query).toLowerCase());
-            const hasMemberMatch = normalizeArabic(m["الاسم ثلاثي"]).toLowerCase().includes(normalizeArabic(query).toLowerCase());
-            if (!hasHeadMatch && !hasMemberMatch) return;
-        }
-
-        if (!familiesMap[head]) familiesMap[head] = [];
-        familiesMap[head].push(m);
-    });
-
-    buildAndPrintFamilies(familiesMap, `دليل أرباب الأسر والعائلات الأبجدي (حرف: ${selectedLetter})`);
-}
-
-function openSundaySchoolPrintModal() {
-    const modal = document.getElementById('ssPrintModal');
-    const stageSel = document.getElementById('ssPrintStage');
-    
-    stageSel.innerHTML = `<option value="">اختر المرحلة...</option>` + 
-        Object.keys(STAGE_GRADES).map(s => `<option value="${s}">${s}</option>`).join('');
-
-    if (currentUser.Role === "Stage_Leader" || currentUser.Role === "Class_Servant") {
-        if (currentUser.AssignedStage && currentUser.AssignedStage !== "الكل") {
-            stageSel.value = currentUser.AssignedStage;
-            stageSel.disabled = true;
-            updatePrintGradesDropdown(currentUser.AssignedStage);
-            if (currentUser.AssignedGrade && currentUser.AssignedGrade !== "الكل") {
-                document.getElementById('ssPrintGrade').value = currentUser.AssignedGrade;
-            }
-            if (currentUser.AssignedClass && currentUser.AssignedClass !== "الكل") {
-                document.getElementById('ssPrintClass').value = currentUser.AssignedClass;
-            }
-        }
-    } else {
-        stageSel.disabled = false;
-    }
-
-    modal.classList.remove('hidden');
-}
-
-function closeSundaySchoolPrintModal() {
-    document.getElementById('ssPrintModal').classList.add('hidden');
-}
-
-function updatePrintGradesDropdown(stage) {
-    const grdSel = document.getElementById('ssPrintGrade');
-    const grades = STAGE_GRADES[stage] || [];
-    grdSel.innerHTML = `<option value="">كل الصفوف</option>` + grades.map(g => `<option value="${g}">${g}</option>`).join('');
-}
-
-async function generateAndPrintClassRoster() {
-    const stage = document.getElementById('ssPrintStage').value;
-    const grade = document.getElementById('ssPrintGrade').value;
-    const className = document.getElementById('ssPrintClass').value.trim();
-
-    if (!stage) {
-        alert("يرجى اختيار المرحلة الدراسية أولاً!");
+    if (!meetingDate) {
+        alert("يرجى كتابة تاريخ الاجتماع أولاً!");
         return;
     }
 
-    let membersList = namesCacheData;
-    if (membersList.length === 0) {
-        const res = await (await fetch(`${API_URL}?sheet=Names`)).json();
-        if (res.status === "success") membersList = res.data;
+    if (!confirm(`هل أنت متأكد من حفظ حضور (${currentServantsMeetingList.length}) خادم لاجتماع: ${meetingName} بتاريخ: ${meetingDate}؟`)) return;
+
+    const btn = document.getElementById('btnSaveServantsMeetingBatch');
+    btn.disabled = true;
+    btn.innerHTML = `جاري الحفظ بالسجلات...`;
+
+    const payload = currentServantsMeetingList.map(s => ({
+        "MeetingName": meetingName,
+        "MeetingDate": meetingDate,
+        "MemberID": s.id,
+        "MemberName": s.name,
+        "Status": s.status,
+        "Notes": s.notes
+    }));
+
+    try {
+        const res = await (await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                sheet: "Meetings_Attendance",
+                action: "batch_add",
+                data: payload
+            })
+        })).json();
+
+        if (res.status === "success") {
+            alert("✓ " + res.message);
+            loadData();
+        } else {
+            alert("خطأ أثناء الحفظ: " + res.message);
+        }
+    } catch(err) {
+        alert("تعذر الاتصال بالخادم لحفظ حضور الاجتماع.");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `💾 حفظ حضور الاجتماع`;
     }
+}
 
-    const classKids = membersList.filter(item => {
-        if (isMemberDeceased(item)) return false;
-        if (item["مدارس الأحد"] === "غير مشترك") return false;
-        if (item["المرحلة"] !== stage) return false;
-        if (grade && item["الصف"] !== grade) return false;
-        if (className && !String(item["فصل مدارس الاحد"] || item["أنهي مدارس الأحد"] || "").includes(className)) return false;
-        return true;
-    }).sort((a, b) => String(a["الاسم ثلاثي"]).localeCompare(String(b["الاسم ثلاثي"]), 'ar'));
+function printServantsMeetingRoster() {
+    const meetingName = document.getElementById('servantsMeetingName')?.value || "اجتماع الخدام الأسبوعي";
+    const meetingDate = document.getElementById('servantsMeetingDate')?.value || "";
 
-    if (classKids.length === 0) {
-        alert("لم يتم العثور على مخدومين مسجلين بهذه المواصفات!");
+    if (currentServantsMeetingList.length === 0) {
+        alert("لا يوجد خدام في الكشف للطباعة!");
         return;
     }
 
-    closeSundaySchoolPrintModal();
-    setupPrintHeader(`كشف حضور وغياب مدارس الأحد - مرحلة: ${stage} ${grade ? '| ' + grade : ''} ${className ? '| فصل: ' + className : ''}`);
-    
+    setupPrintHeader(`كشف حضور ${meetingName} - تاريخ: ${meetingDate}`);
     const printArea = document.getElementById('printContainer');
+    
     printArea.innerHTML = `
         <table class="print-table">
             <thead>
                 <tr>
                     <th style="width: 25px;">م</th>
-                    <th style="width: 170px;">اسم المخدوم ثلاثي</th>
-                    <th style="width: 85px;">المحمول</th>
-                    <th style="width: 50px;">السن</th>
-                    <th style="width: 70px;">الجمعة 1</th>
-                    <th style="width: 70px;">الجمعة 2</th>
-                    <th style="width: 70px;">الجمعة 3</th>
-                    <th style="width: 70px;">الجمعة 4</th>
-                    <th>ملاحظات الافتقاد</th>
+                    <th style="width: 180px;">اسم الخادم</th>
+                    <th style="width: 140px;">الخدمة المسندة</th>
+                    <th style="width: 95px;">المحمول</th>
+                    <th style="width: 65px; text-align: center;">الحالة</th>
+                    <th>سبب الاعتذار والملاحظات</th>
                 </tr>
             </thead>
             <tbody>
-                ${classKids.map((kid, idx) => {
-                    const age = calculateAge(kid["تاريخ الميلاد"], kid["الرقم القومي"]);
-                    return `
-                        <tr>
-                            <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
-                            <td style="font-weight: bold;">${kid["الاسم ثلاثي"]}</td>
-                            <td style="font-family: monospace;">${kid["تليفون العمل/المحمول"] || "-"}</td>
-                            <td style="text-align: center;">${age ? age + ' سنة' : '-'}</td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                        </tr>
-                    `;
-                }).join('')}
+                ${currentServantsMeetingList.map((s, idx) => `
+                    <tr>
+                        <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
+                        <td style="font-weight: bold;">${s.name}</td>
+                        <td>${s.scope}</td>
+                        <td style="font-family: monospace;">${s.phone}</td>
+                        <td style="text-align: center; font-weight: bold;">${s.status}</td>
+                        <td>${s.notes || "-"}</td>
+                    </tr>
+                `).join('')}
             </tbody>
         </table>
         <div style="margin-top: 15px; display: flex; justify-content: space-between; font-weight: bold; font-size: 8pt;" class="print-only">
-            <p>خادم الفصل: .........................</p>
-            <p>أمين المرحلة: .........................</p>
-            <p>أمين عام الخدمة: .........................</p>
+            <p>أمين اجتماع الخدام: .........................</p>
+            <p>أبونا المسؤول: .........................</p>
         </div>
     `;
 
     setTimeout(() => {
         window.print();
         printArea.innerHTML = "";
-    }, 250);
+    }, 150);
 }
 
 window.addEventListener('scroll', () => {
@@ -1918,3 +1672,4 @@ window.addEventListener('scroll', () => {
         bottomBtn.classList.add('opacity-100', 'pointer-events-auto');
     }
 });
+Displaying app.js.
