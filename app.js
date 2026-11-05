@@ -4,12 +4,14 @@ let currentUser = null;
 let currentTab = "";
 let rawData = [];
 let backendAreas = [];
+let namesCacheData = []; // كاش لأعضاء شيت Names لتوليد كشوف الفصول
 let visitationsData = [];
 let currentNamesView = "roster";
+let currentSSView = "live"; // 'live' لرصد حضور اليوم، 'history' للسجل السابق
 let selectedLetter = "الكل";
 let splashEnded = false;
+let currentSSLiveKids = [];
 
-// إيقاف السبلاش ونقل المستخدم لنافذة الدخول مع تفعيل الفوكس
 function endSplash(e) {
     if (e) {
         try {
@@ -43,8 +45,6 @@ function endSplash(e) {
     if (login) {
         login.classList.remove('hidden');
         login.style.display = 'flex';
-        
-        // وضع الفوكس التلقائي على خانة كلمة المرور بعد ظهور النافذة
         setTimeout(() => {
             const passInput = document.getElementById('loginPass');
             if (passInput) passInput.focus();
@@ -98,7 +98,7 @@ const STAGE_GRADES = {
 
 const TABS_INFO = {
     "Names": { label: "أعضاء الكنيسة", desc: "دليل أرباب الأسر، البيانات العائلية، والفرز المتقدم", svg: ICONS.users, colorClass: "card-names", roles: ["Admin", "SundaySchool_Admin"] },
-    "Sunday_School": { label: "مدارس الأحد", desc: "إدارة الفصول، الحضور، والتسميع", svg: ICONS.children, colorClass: "card-sunday", roles: ["Admin", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
+    "Sunday_School": { label: "مدارس الأحد", desc: "كشف تحضير الفصول، الحضور، والتسميع", svg: ICONS.children, colorClass: "card-sunday", roles: ["Admin", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
     "Visitations": { label: "سجل الافتقاد", desc: "متابعة الزيارات ومواعيد الافتقاد", svg: ICONS.visitations, colorClass: "card-visitations", roles: ["Admin"] },
     "Meetings_Attendance": { label: "حضور الاجتماعات", desc: "تسجيل حضور وغياب الاجتماعات", svg: ICONS.meetings, colorClass: "card-meetings", roles: ["Admin"] },
     "Servants": { label: "إدارة الخدام", desc: "توزيع الصلاحيات والحسابات", svg: ICONS.servants, colorClass: "card-servants", roles: ["Admin"] }
@@ -115,6 +115,7 @@ const SCHEMAS = {
         { id: "الحالة الاجتماعية", label: "الحالة الاجتماعية", type: "select", options: ["", "متزوج", "متزوجة", "اعزب", "انسة", "ارمل", "ارملة"] },
         { id: "المرحلة", label: "المرحلة الدراسية", type: "stage_select", options: Object.keys(STAGE_GRADES) },
         { id: "الصف", label: "الصف الدراسي", type: "grade_select" },
+        { id: "فصل مدارس الاحد", label: "فصل مدارس الأحد", type: "text" },
         { id: "مدارس الأحد", label: "مدارس الأحد", type: "select", options: ["", "مشترك", "غير مشترك"] },
         { id: "أنهي مدارس الأحد", label: "أنهي مدارس الأحد (الكنيسة / الفصل)", type: "text" },
         { id: "تليفون العمل/المحمول", label: "المحمول / الهاتف", type: "text" },
@@ -142,7 +143,7 @@ const SCHEMAS = {
         { id: "ChildName", label: "اسم الطفل", type: "text", required: true },
         { id: "ServantName", label: "اسم الخادم", type: "text" },
         { id: "Attendance", label: "الحضور", type: "select", options: ["حاضر", "غائب"] },
-        { id: "Memorization", label: "الحفظ", type: "select", options: ["ممتاز", "جيد", "ضعيف", "لم يحفظ"] },
+        { id: "Memorization", label: "الحفظ", type: "select", options: ["ممتاز", "جيد", "مقبول", "لم يحفظ"] },
         { id: "Points", label: "النقاط", type: "number" },
         { id: "Notes", label: "ملاحظات", type: "textarea", full: true }
     ],
@@ -237,7 +238,6 @@ async function handleLogin(e) {
         err.innerText = "تعذر الاتصال بالخادم، يرجى المحاولة ثانية.";
         err.classList.remove('hidden');
     } finally {
-        // إعادة الزر لشكله الطبيعي في حالة الخطأ فقط
         btn.innerText = "تسجيل الدخول";
     }
 }
@@ -252,7 +252,6 @@ function logout() {
 }
 
 function initApp() {
-    // إخفاء نافذة تسجيل الدخول بشكل قاطع بعد التحقق الناجح
     const login = document.getElementById('loginScreen');
     login.style.display = 'none';
     login.classList.add('hidden');
@@ -298,40 +297,36 @@ function loadSection(sectionKey) {
     const btnSS = document.getElementById('btnPrintSundaySchool');
     const btnFiltered = document.getElementById('btnPrintFiltered');
     const btnRoster = document.getElementById('btnPrintRoster');
+    const btnAdd = document.getElementById('btnAddNewRecord');
 
-    if (sectionKey === 'Sunday_School') {
-        btnSS.classList.remove('hidden');
-        btnFiltered.classList.add('hidden');
-        btnRoster.classList.add('hidden');
-    } else if (sectionKey === 'Names') {
-        btnSS.classList.add('hidden');
-        if (currentNamesView === 'roster') {
-            btnRoster.classList.remove('hidden');
-            btnFiltered.classList.add('hidden');
-        } else {
-            btnFiltered.classList.remove('hidden');
-            btnRoster.classList.add('hidden');
-        }
-    } else {
-        btnSS.classList.add('hidden');
-        btnFiltered.classList.add('hidden');
-        btnRoster.classList.add('hidden');
-    }
+    // إخفاء كافة الواجهات الخاصة
+    document.getElementById('namesViewSwitcher').classList.add('hidden');
+    document.getElementById('namesViewSwitcher').classList.remove('flex');
+    document.getElementById('ssViewSwitcher').classList.add('hidden');
+    document.getElementById('ssViewSwitcher').classList.remove('flex');
+    document.getElementById('sundaySchoolLiveSection').classList.add('hidden');
+    document.getElementById('namesRosterSection').classList.add('hidden');
+    document.getElementById('namesFilterSection').classList.add('hidden');
+    document.getElementById('namesPlaceholder').classList.add('hidden');
+    document.getElementById('familyResultsContainer').classList.add('hidden');
+    document.getElementById('standardSearchContainer').classList.add('hidden');
+    document.getElementById('standardCardsContainer').classList.add('hidden');
+    btnSS.classList.add('hidden');
+    btnFiltered.classList.add('hidden');
+    btnRoster.classList.add('hidden');
+    btnAdd.classList.remove('hidden');
 
-    if (currentTab === 'Names') {
+    if (sectionKey === 'Names') {
         document.getElementById('namesViewSwitcher').classList.remove('hidden');
         document.getElementById('namesViewSwitcher').classList.add('flex');
-        document.getElementById('standardSearchContainer').classList.add('hidden');
-        document.getElementById('standardCardsContainer').classList.add('hidden');
         loadVisitationsCache();
         switchNamesView('roster');
+    } else if (sectionKey === 'Sunday_School') {
+        document.getElementById('ssViewSwitcher').classList.remove('hidden');
+        document.getElementById('ssViewSwitcher').classList.add('flex');
+        btnSS.classList.remove('hidden');
+        switchSSView('live');
     } else {
-        document.getElementById('namesViewSwitcher').classList.add('hidden');
-        document.getElementById('namesViewSwitcher').classList.remove('flex');
-        document.getElementById('namesRosterSection').classList.add('hidden');
-        document.getElementById('namesFilterSection').classList.add('hidden');
-        document.getElementById('namesPlaceholder').classList.add('hidden');
-        document.getElementById('familyResultsContainer').classList.add('hidden');
         document.getElementById('standardSearchContainer').classList.remove('hidden');
         document.getElementById('standardCardsContainer').classList.remove('hidden');
         document.getElementById('searchInput').value = "";
@@ -339,6 +334,274 @@ function loadSection(sectionKey) {
     
     loadData();
 }
+
+// تبديل واجهات مدارس الأحد: رصد مباشر أو سجلات قديمة
+function switchSSView(view) {
+    currentSSView = view;
+    const btnLive = document.getElementById('btnSSLiveRoster');
+    const btnHist = document.getElementById('btnSSHistory');
+    const liveSec = document.getElementById('sundaySchoolLiveSection');
+    const cardsSec = document.getElementById('standardCardsContainer');
+    const searchSec = document.getElementById('standardSearchContainer');
+    const btnAdd = document.getElementById('btnAddNewRecord');
+
+    if (view === 'live') {
+        btnLive.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm";
+        btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
+        liveSec.classList.remove('hidden');
+        cardsSec.classList.add('hidden');
+        searchSec.classList.add('hidden');
+        btnAdd.classList.add('hidden');
+        initSundaySchoolLiveView();
+    } else {
+        btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm";
+        btnLive.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
+        liveSec.classList.add('hidden');
+        cardsSec.classList.remove('hidden');
+        searchSec.classList.remove('hidden');
+        btnAdd.classList.remove('hidden');
+        renderStandardCards();
+    }
+}
+
+// =========================================================================
+// محرك رصد حضور وغياب مدارس الأحد المباشر للفصول
+// =========================================================================
+
+async function initSundaySchoolLiveView() {
+    // 1. تعيين تاريخ اليوم كقيمة افتراضية (DD/MM/YYYY)
+    const dateInput = document.getElementById('ssSessionDate');
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    dateInput.value = `${day}/${month}/${year}`;
+
+    // 2. ضمان تحميل أعضاء شيت Names في الكاش
+    if (namesCacheData.length === 0) {
+        try {
+            const res = await (await fetch(`${API_URL}?sheet=Names`)).json();
+            if (res.status === "success") namesCacheData = res.data;
+        } catch(e) {}
+    }
+
+    // 3. ملء قوائم المراحل والصفوف
+    const stageSel = document.getElementById('ssFilterStage');
+    stageSel.innerHTML = Object.keys(STAGE_GRADES).map(s => `<option value="${s}">${s}</option>`).join('');
+
+    // تطبيق صلاحية الخادم
+    if (currentUser.Role === "Stage_Leader" || currentUser.Role === "Class_Servant") {
+        if (currentUser.AssignedStage && currentUser.AssignedStage !== "الكل") {
+            stageSel.value = currentUser.AssignedStage;
+            stageSel.disabled = true;
+        }
+    } else {
+        stageSel.disabled = false;
+    }
+
+    onSSFilterStageChange(stageSel.value);
+}
+
+function onSSFilterStageChange(stage) {
+    const grdSel = document.getElementById('ssFilterGrade');
+    const grades = STAGE_GRADES[stage] || [];
+    grdSel.innerHTML = `<option value="">كل الصفوف</option>` + grades.map(g => `<option value="${g}">${g}</option>`).join('');
+
+    if (currentUser.Role === "Class_Servant" && currentUser.AssignedGrade && currentUser.AssignedGrade !== "الكل") {
+        grdSel.value = currentUser.AssignedGrade;
+        grdSel.disabled = true;
+    } else {
+        grdSel.disabled = false;
+    }
+
+    onSSFilterGradeChange();
+}
+
+function onSSFilterGradeChange() {
+    const stage = document.getElementById('ssFilterStage').value;
+    const grade = document.getElementById('ssFilterGrade').value;
+    const classSel = document.getElementById('ssFilterClass');
+
+    // استخراج أسماء الفصول المتاحة من شيت الأعضاء ديناميكياً
+    const classes = new Set();
+    namesCacheData.forEach(kid => {
+        if (kid["المرحلة"] === stage && (!grade || kid["الصف"] === grade)) {
+            const cName = (kid["فصل مدارس الاحد"] || kid["أنهي مدارس الأحد"] || "").trim();
+            if (cName) classes.add(cName);
+        }
+    });
+
+    classSel.innerHTML = `<option value="">كل الفصول (${classes.size})</option>` + 
+        Array.from(classes).sort().map(c => `<option value="${c}">${c}</option>`).join('');
+
+    if (currentUser.Role === "Class_Servant" && currentUser.AssignedClass && currentUser.AssignedClass !== "الكل") {
+        classSel.value = currentUser.AssignedClass;
+        classSel.disabled = true;
+    } else {
+        classSel.disabled = false;
+    }
+
+    loadSSLiveClassKids();
+}
+
+function loadSSLiveClassKids() {
+    const stage = document.getElementById('ssFilterStage').value;
+    const grade = document.getElementById('ssFilterGrade').value;
+    const className = document.getElementById('ssFilterClass').value;
+
+    // استخراج المخدومين المطابقين من شيت Names حصرياً
+    const matched = namesCacheData.filter(kid => {
+        if (isMemberDeceased(kid)) return false;
+        if (kid["مدارس الأحد"] === "غير مشترك") return false;
+        if (kid["المرحلة"] !== stage) return false;
+        if (grade && kid["الصف"] !== grade) return false;
+        if (className) {
+            const cName = (kid["فصل مدارس الاحد"] || kid["أنهي مدارس الأحد"] || "").trim();
+            if (cName !== className) return false;
+        }
+        return true;
+    }).sort((a, b) => String(a["الاسم ثلاثي"]).localeCompare(String(b["الاسم ثلاثي"]), 'ar'));
+
+    currentSSLiveKids = matched.map(kid => ({
+        id: kid["ID"] || kid[Object.keys(kid)[0]],
+        name: kid["الاسم ثلاثي"],
+        phone: kid["تليفون العمل/المحمول"] || "-",
+        stage: kid["المرحلة"] || stage,
+        grade: kid["الصف"] || grade || "-",
+        className: className || (kid["فصل مدارس الاحد"] || "عام"),
+        attendance: "حاضر",
+        memorization: "ممتاز",
+        points: 10,
+        notes: ""
+    }));
+
+    renderSSLiveKidsTable();
+}
+
+function renderSSLiveKidsTable() {
+    const tbody = document.getElementById('ssLiveKidsTableBody');
+    const emptyNotice = document.getElementById('ssLiveKidsEmpty');
+    tbody.innerHTML = "";
+
+    document.getElementById('recordCount').innerText = `${currentSSLiveKids.length} مخدوم بالفصل`;
+
+    if (currentSSLiveKids.length === 0) {
+        emptyNotice.classList.remove('hidden');
+        return;
+    }
+    emptyNotice.classList.add('hidden');
+
+    currentSSLiveKids.forEach((kid, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+        tr.innerHTML = `
+            <td class="p-3 text-center font-bold text-slate-400">${idx + 1}</td>
+            <td class="p-3 font-bold text-slate-800">
+                ${kid.name}
+                <span class="block text-[10px] text-slate-500 font-semibold">${kid.stage} - ${kid.grade}</span>
+            </td>
+            <td class="p-3 font-mono text-slate-600 text-xs">${kid.phone}</td>
+            <td class="p-3 text-center">
+                <button type="button" onclick="toggleSSKidAttendance(${idx})" id="ss_btn_att_${idx}" 
+                    class="px-3.5 py-1.5 rounded-xl font-black text-xs transition shadow-sm ${kid.attendance === 'حاضر' ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'bg-rose-500 hover:bg-rose-600 text-white'}">
+                    ${kid.attendance}
+                </button>
+            </td>
+            <td class="p-3 text-center">
+                <select onchange="currentSSLiveKids[${idx}].memorization = this.value" class="p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="ممتاز" ${kid.memorization === 'ممتاز' ? 'selected' : ''}>ممتاز (حفظ كامل)</option>
+                    <option value="جيد" ${kid.memorization === 'جيد' ? 'selected' : ''}>جيد (معظم الحفظ)</option>
+                    <option value="مقبول" ${kid.memorization === 'مقبول' ? 'selected' : ''}>مقبول (حفظ بسيط)</option>
+                    <option value="لم يحفظ" ${kid.memorization === 'لم يحفظ' ? 'selected' : ''}>لم يحفظ</option>
+                </select>
+            </td>
+            <td class="p-3 text-center">
+                <input type="number" value="${kid.points}" onchange="currentSSLiveKids[${idx}].points = Number(this.value)" class="w-20 p-2 bg-slate-50 border border-slate-200 rounded-xl text-center font-black text-xs outline-none focus:ring-2 focus:ring-blue-500">
+            </td>
+            <td class="p-3">
+                <input type="text" placeholder="اكتب ملاحظة إن وجدت..." value="${kid.notes}" oninput="currentSSLiveKids[${idx}].notes = this.value" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-blue-500">
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function toggleSSKidAttendance(index) {
+    const kid = currentSSLiveKids[index];
+    kid.attendance = (kid.attendance === "حاضر") ? "غائب" : "حاضر";
+    kid.points = (kid.attendance === "حاضر") ? 10 : 0;
+    renderSSLiveKidsTable();
+}
+
+function markAllSSKids(status) {
+    currentSSLiveKids.forEach(kid => {
+        kid.attendance = status;
+        kid.points = (status === "حاضر") ? 10 : 0;
+    });
+    renderSSLiveKidsTable();
+}
+
+async function saveSundaySchoolBatchAttendance() {
+    if (currentSSLiveKids.length === 0) {
+        alert("لا يوجد مخدومين في الكشف لحفظهم!");
+        return;
+    }
+
+    const sessionDate = document.getElementById('ssSessionDate').value.trim();
+    if (!sessionDate) {
+        alert("يرجى كتابة تاريخ الحصة أولاً!");
+        return;
+    }
+
+    if (!confirm(`هل أنت متأكد من حفظ سجل حضور وتسميع (${currentSSLiveKids.length}) مخدوم لتاريخ: ${sessionDate}؟`)) return;
+
+    const btn = document.getElementById('btnSaveSSBatch');
+    btn.disabled = true;
+    btn.innerHTML = `جاري الحفظ بالسجلات...`;
+
+    // تحويل البيانات لتناسب شيت Sunday_School
+    const payload = currentSSLiveKids.map(kid => ({
+        "Stage": kid.stage,
+        "Grade": kid.grade,
+        "ClassName": kid.className,
+        "SessionDate": sessionDate,
+        "ChildID": kid.id,
+        "ChildName": kid.name,
+        "ServantName": currentUser ? currentUser.ServantName : "خادم الفصل",
+        "Attendance": kid.attendance,
+        "Memorization": kid.memorization,
+        "Points": kid.points,
+        "Notes": kid.notes
+    }));
+
+    try {
+        const res = await (await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                sheet: "Sunday_School",
+                action: "batch_add",
+                data: payload
+            })
+        })).json();
+
+        if (res.status === "success") {
+            alert("✓ " + res.message);
+            // تحديث بيانات السجل القديم
+            loadData();
+        } else {
+            alert("خطأ أثناء الحفظ: " + res.message);
+        }
+    } catch(err) {
+        alert("تعذر الاتصال بالخادم لحفظ الحضور.");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `💾 حفظ حضور وتقييم الفصل كاملاً`;
+    }
+}
+
+// =========================================================================
+// باقي دوال النظام (الأعضاء، الأسر، الطباعة، التمرير)
+// =========================================================================
 
 function switchNamesView(viewName) {
     currentNamesView = viewName;
@@ -377,9 +640,7 @@ function switchNamesView(viewName) {
 async function loadVisitationsCache() {
     try {
         const res = await (await fetch(`${API_URL}?sheet=Visitations`)).json();
-        if (res.status === "success") {
-            visitationsData = res.data;
-        }
+        if (res.status === "success") visitationsData = res.data;
     } catch(e) {}
 }
 
@@ -391,12 +652,19 @@ async function loadData(force = false) {
             rawData = res.data;
             backendAreas = res.areas || [];
             if (currentTab === 'Names') {
+                namesCacheData = rawData;
                 populateAreasDropdown();
                 if (currentNamesView === 'roster') {
                     buildAlphabetBar();
                     renderFamilyHeadsRoster();
                 } else {
                     applyNamesFilter();
+                }
+            } else if (currentTab === 'Sunday_School') {
+                if (currentSSView === 'live') {
+                    initSundaySchoolLiveView();
+                } else {
+                    renderStandardCards();
                 }
             } else {
                 renderStandardCards();
@@ -472,18 +740,15 @@ function renderFamilyHeadsRoster() {
 
     let filteredHeadNames = sortedHeadNames.filter(head => {
         const normHead = normalizeArabic(head).toLowerCase();
-        
         if (selectedLetter !== "الكل") {
             const targetChar = normalizeArabic(selectedLetter)[0];
             if (normHead[0] !== targetChar) return false;
         }
-
         if (query) {
             const hasHeadMatch = normHead.includes(normalizeArabic(query).toLowerCase());
             const hasMemberMatch = familiesMap[head].some(m => normalizeArabic(m["الاسم ثلاثي"]).toLowerCase().includes(normalizeArabic(query).toLowerCase()));
             if (!hasHeadMatch && !hasMemberMatch) return false;
         }
-
         return true;
     });
 
@@ -622,22 +887,18 @@ function quickAddMemberToFamily(familyHeadName) {
         toggleAddMode('add_member');
     }
     const headInput = document.querySelector('input[name="اسم رب الاسرة"]');
-    if (headInput) {
-        headInput.value = familyHeadName;
-    }
+    if (headInput) headInput.value = familyHeadName;
 }
 
 function populateAreasDropdown() {
     const areaSelect = document.getElementById('filterArea');
     let areas = new Set(backendAreas);
-    
     if (areas.size === 0) {
         rawData.forEach(item => {
             const a = (item["المنطقة"] || "").trim();
             if (a) areas.add(a);
         });
     }
-
     areaSelect.innerHTML = `<option value="">كل المناطق السكنية (${areas.size})</option>` + 
         Array.from(areas).sort().map(a => `<option value="${a}">${a}</option>`).join('');
 }
@@ -680,7 +941,6 @@ function getLastFamilyVisitDate(familyMembers) {
     );
 
     if (familyVisits.length === 0) return "لم يُفتقد بعد";
-
     familyVisits.sort((a, b) => parseDateForSort(b.VisitDate) - parseDateForSort(a.VisitDate));
     return familyVisits[0].VisitDate || "لم يُفتقد بعد";
 }
@@ -856,7 +1116,7 @@ function renderStandardCards() {
         } else if (currentTab === "Servants") {
             details = `<p class="text-xs text-slate-600 mb-1 font-bold">الصلاحية: <span class="text-indigo-700">${item["Role"]}</span></p><p class="text-xs text-slate-500 font-semibold">النطاق: ${item["AssignedStage"]} - ${item["AssignedGrade"]}</p>`;
         } else if (currentTab === "Visitations") {
-            details = `<p class="text-xs text-slate-600 mb-1 font-semibold"><i class="fa-solid fa-user-tie text-slate-400 ml-1"></i>الخادم: ${item["VisitorName"]}</p><p class="text-xs text-slate-500">تاريخ الافتقاد: ${item["VisitDate"]}</p>`;
+            details = `<p class="text-xs text-slate-600 mb-1 font-semibold">الخادم: ${item["VisitorName"]}</p><p class="text-xs text-slate-500">تاريخ الافتقاد: ${item["VisitDate"]}</p>`;
         } else if (currentTab === "Meetings_Attendance") {
             details = `<p class="text-xs text-slate-600 mb-1 font-semibold">${item["MeetingName"]}</p><p class="text-xs text-slate-500">التاريخ: ${item["MeetingDate"]}</p>`;
         }
@@ -1043,6 +1303,12 @@ function showLoader(s) {
         } else {
             document.getElementById('familyResultsContainer').classList.toggle('hidden', s);
         }
+    } else if (currentTab === 'Sunday_School') {
+        if (currentSSView === 'live') {
+            document.getElementById('sundaySchoolLiveSection').classList.toggle('hidden', s);
+        } else {
+            document.getElementById('standardCardsContainer').classList.toggle('hidden', s);
+        }
     } else {
         document.getElementById('standardCardsContainer').classList.toggle('hidden', s);
     }
@@ -1059,12 +1325,10 @@ function setupPrintHeader(reportTitle) {
     document.getElementById('printCurrentDate').innerText = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
 }
 
-// دالة توليد أسطر الأسر النظيفة وطباعتها
 function buildAndPrintFamilies(familiesMap, reportTitle) {
     const printContainer = document.getElementById('printContainer');
     if (!printContainer) return;
 
-    // ترتيب أرباب الأسر أبجدياً بدقة
     const sortedHeads = Object.keys(familiesMap).sort((a, b) => a.localeCompare(b, 'ar'));
 
     if (sortedHeads.length === 0) {
@@ -1085,7 +1349,6 @@ function buildAndPrintFamilies(familiesMap, reportTitle) {
         
         const phoneStr = headRec["هاتف الاسرة"] || headRec["تليفون العمل/المحمول"] || "-";
         
-        // أفراد الأسرة: الاسم ثلاثي والتليفون فقط
         const membersStr = members.map((m, mIdx) => {
             const mPhone = m["تليفون العمل/المحمول"] || "-";
             return `<span>${mIdx + 1}. ${m["الاسم ثلاثي"] || "-"} <span class="member-phone">(${mPhone})</span></span>`;
@@ -1119,7 +1382,6 @@ function buildAndPrintFamilies(familiesMap, reportTitle) {
     }, 200);
 }
 
-// 1. طباعة نتائج الفرز التراكمي (تطبع حصرياً المنطقة أو الفلتر المختار)
 function printFilteredResults() {
     const headQ = document.getElementById('filterFamilyHead')?.value.trim().toLowerCase() || "";
     const nameQ = document.getElementById('filterFullName')?.value.trim().toLowerCase() || "";
@@ -1130,7 +1392,6 @@ function printFilteredResults() {
     const maritalQ = document.getElementById('filterMarital')?.value || "";
     const deceasedQ = document.getElementById('filterDeceased')?.value || "alive";
 
-    // تصفية السجلات بحسب الفلاتر النشطة بدقة (مثل منطقة "الامل")
     const matchedMembers = rawData.filter(item => {
         const deceased = isMemberDeceased(item);
         if (deceasedQ === "alive" && deceased) return false;
@@ -1159,7 +1420,6 @@ function printFilteredResults() {
         return;
     }
 
-    // تجميع الأفراد المطابقين فقط تحت أرباب أسرهم
     const familiesMap = {};
     matchedMembers.forEach(m => {
         const head = (m["اسم رب الاسرة"] || "").trim();
@@ -1175,7 +1435,6 @@ function printFilteredResults() {
     buildAndPrintFamilies(familiesMap, `بيان فرز السجلات: [${areaVal} - ${ageVal} - ${statusVal}]`);
 }
 
-// 2. طباعة الدليل الأبجدي الكامل
 function printRosterDirectory() {
     const query = document.getElementById('rosterSearchInput') ? document.getElementById('rosterSearchInput').value.trim().toLowerCase() : "";
 
@@ -1249,17 +1508,18 @@ async function generateAndPrintClassRoster() {
         return;
     }
 
-    let membersList = rawData;
-    if (currentTab !== 'Names') {
+    let membersList = namesCacheData;
+    if (membersList.length === 0) {
         const res = await (await fetch(`${API_URL}?sheet=Names`)).json();
         if (res.status === "success") membersList = res.data;
     }
 
     const classKids = membersList.filter(item => {
         if (isMemberDeceased(item)) return false;
+        if (item["مدارس الأحد"] === "غير مشترك") return false;
         if (item["المرحلة"] !== stage) return false;
         if (grade && item["الصف"] !== grade) return false;
-        if (className && !String(item["فصل مدارس الاحد"] || "").includes(className)) return false;
+        if (className && !String(item["فصل مدارس الاحد"] || item["أنهي مدارس الأحد"] || "").includes(className)) return false;
         return true;
     }).sort((a, b) => String(a["الاسم ثلاثي"]).localeCompare(String(b["الاسم ثلاثي"]), 'ar'));
 
@@ -1313,16 +1573,9 @@ async function generateAndPrintClassRoster() {
         </div>
     `;
 
-    const mainRoster = document.getElementById('namesRosterSection');
-    const mainCards = document.getElementById('standardCardsContainer');
-    if (mainRoster) mainRoster.classList.add('no-print');
-    if (mainCards) mainCards.classList.add('no-print');
-
     setTimeout(() => {
         window.print();
         printArea.innerHTML = "";
-        if (mainRoster) mainRoster.classList.remove('no-print');
-        if (mainCards) mainCards.classList.remove('no-print');
     }, 250);
 }
 
