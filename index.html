@@ -11,17 +11,67 @@
 </head>
 <body class="flex flex-col min-h-screen bg-slate-50">
 
-<!-- شاشة البداية فيديو (Splash Screen) -->
-<div id="splashScreen" class="fixed inset-0 bg-white z-[99999] flex items-center justify-center overflow-hidden">
-    <video id="splashVideo" autoplay muted playsinline preload="auto" class="w-full h-full object-contain">
-        <source src="intro.mp4" type="video/mp4">
-    </video>
-    <button type="button" id="skipSplashBtn" onclick="endSplashNow()"
-        class="absolute bottom-8 left-8 text-xs bg-slate-900/90 hover:bg-black text-white px-5 py-2.5 rounded-full backdrop-blur-md transition z-[100000] font-black shadow-2xl cursor-pointer">
-        تخطي ✕
-    </button>
+<!-- شاشة بداية ذكية وخفيفة (Splash Screen رسمية لكل الأجهزة) -->
+<div id="splashScreen" style="position: fixed; inset: 0; background-color: #ffffff; z-index: 999999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; transition: opacity 0.5s ease-out;">
+    <div style="display: flex; flex-direction: column; align-items: center; text-align: center;">
+        <!-- لوجو الكنيسة مع حركة نبض خفيفة -->
+        <img src="logo.png" alt="Logo" class="splash-logo" style="max-width: 140px; max-height: 140px; object-fit: contain; margin-bottom: 1.5rem; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.08));">
+        
+        <h1 style="font-size: 1.25rem; font-weight: 900; color: #1e293b; margin-bottom: 0.25rem;">منظومة الخدمة والرعاية الكنسية</h1>
+        <p style="font-size: 0.8rem; font-weight: 700; color: #64748b; margin-bottom: 2rem;">كنيسة العذراء مريم والشهيدة بربارة</p>
+        
+        <!-- خط تحميل انسيابي وأنيق -->
+        <div style="width: 180px; height: 4px; background: #f1f5f9; border-radius: 9999px; overflow: hidden; position: relative;">
+            <div class="splash-progress-bar"></div>
+        </div>
+    </div>
 </div>
 
+<style>
+/* حركة خط التحميل ولوجو الكنيسة */
+@keyframes loadingSlide {
+    0% { left: -40%; width: 30%; }
+    50% { left: 30%; width: 60%; }
+    100% { left: 100%; width: 30%; }
+}
+.splash-progress-bar {
+    position: absolute;
+    height: 100%;
+    background: #4f46e5;
+    border-radius: 9999px;
+    animation: loadingSlide 1.2s infinite ease-in-out;
+}
+@keyframes gentlePulse {
+    0%, 100% { transform: scale(0.96); opacity: 0.9; }
+    50% { transform: scale(1.02); opacity: 1; }
+}
+.splash-logo {
+    animation: gentlePulse 2s infinite ease-in-out;
+}
+</style>
+
+<!-- محرك إغلاق شاشة البداية بعد ثانية ونصف -->
+<script>
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        const splash = document.getElementById('splashScreen');
+        const login = document.getElementById('loginScreen');
+        
+        if (splash) {
+            splash.style.opacity = '0';
+            setTimeout(() => {
+                splash.remove();
+                if (login) {
+                    login.classList.remove('hidden');
+                    login.style.display = 'flex';
+                    const passInput = document.getElementById('loginPass');
+                    if (passInput) passInput.focus();
+                }
+            }, 500);
+        }
+    }, 1500); // تظهر لمدة 1.5 ثانية فقط ثم تنقلك مباشرة لنافذة الدخول
+});
+</script>
 <!-- نافذة تسجيل الدخول -->
 <div id="loginScreen" class="fixed inset-0 bg-white/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm hidden">
     <div class="bg-white rounded-3xl shadow-xl p-8 w-full max-w-md text-center border border-slate-200">
