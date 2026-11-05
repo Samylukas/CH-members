@@ -42,130 +42,133 @@ body {
 .members-accordion { max-height: 0; overflow: hidden; transition: max-height 0.35s ease-out, opacity 0.3s ease; opacity: 0; }
 .members-accordion.open { max-height: 2500px; opacity: 1; transition: max-height 0.5s ease-in, opacity 0.3s ease; }
 
-/* ================= تنسيقات الطباعة الكثيفة المصغرة درجتين إضافيتين (@media print) ================= */
+/* ================= تنسيقات الطباعة الكثيفة بسطر فاصل (@media print) ================= */
 @media print {
     @page {
         size: A4 portrait;
-        margin: 6mm 10mm;
+        margin: 8mm 10mm;
     }
 
     body {
         background-color: #ffffff !important;
         color: #000000 !important;
-        font-size: 7.5pt !important; /* تصغير الخط درجتين */
-        line-height: 1.1 !important;
+        font-size: 8pt !important;
+        line-height: 1.15 !important;
     }
     
+    /* إخفاء كافة الشاشات والكروت والأقسام التفاعلية نهائياً */
     header, #splashScreen, #loginScreen, #namesViewSwitcher, 
     #namesFilterSection, .alpha-pill, #alphabetBar, .no-print, 
-    button, input, select, .fixed {
+    button, input, select, .fixed, #dashboardView,
+    #namesRosterSection, #familyResultsContainer, #standardCardsContainer,
+    #rosterCardsContainer, #namesPlaceholder, #loader, #standardSearchContainer {
         display: none !important;
     }
 
-    #dataView, #namesRosterSection, #familyResultsContainer, #printContainer, #rosterCardsContainer {
-        display: block !important;
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-
-    /* الترويسة المطبوعة */
-    .print-header {
+    /* إظهار فقط ترويسة الكنيسة وحاوية الطباعة النظيفة */
+    #churchPrintHeader {
         display: flex !important;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1.5px solid #000000;
-        padding-bottom: 4px;
-        margin-bottom: 8px;
+        justify-content: space-between !important;
+        align-items: center !important;
+        border-bottom: 1.5px solid #000000 !important;
+        padding-bottom: 4px !important;
+        margin-bottom: 8px !important;
     }
 
     .print-header h2 {
-        font-size: 10.5pt !important;
+        font-size: 11pt !important;
         font-weight: 900 !important;
         margin: 0 !important;
     }
     .print-header p {
-        font-size: 7pt !important;
+        font-size: 7.5pt !important;
         margin: 1px 0 !important;
     }
     .print-header img {
-        height: 38px !important;
+        height: 40px !important;
         width: auto !important;
     }
 
-    /* كروت العائلات والأفراد (أقصى كثافة لملء أكثر من 45 سطراً في الورقة) */
-    .roster-card, .family-box {
-        border: 1px solid #777 !important;
-        border-radius: 0 !important;
-        box-shadow: none !important;
-        margin-bottom: 3px !important;
-        page-break-inside: avoid !important;
-    }
-    
-    .family-header, .roster-card > div:first-child {
-        background-color: #f1f5f9 !important;
-        border-bottom: 1px solid #888 !important;
-        padding: 2px 5px !important;
-        border-radius: 0 !important;
-    }
-
-    .member-row {
-        padding: 2px 5px !important;
-        border-bottom: 0.5px dashed #bbb !important;
-        page-break-inside: avoid !important;
-    }
-    
-    .member-row:last-child {
-        border-bottom: none !important;
-    }
-
-    .members-accordion {
-        max-height: none !important;
-        opacity: 1 !important;
+    #printContainer {
         display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
         padding: 0 !important;
     }
-    
-    /* تصغير درجات الخطوط داخل الكروت */
-    .text-sm { font-size: 8pt !important; }
-    .text-xs { font-size: 7pt !important; }
-    .text-\[11px\] { font-size: 6.5pt !important; }
-    .text-\[10px\] { font-size: 6pt !important; }
-    .text-lg, .text-base { font-size: 8.5pt !important; font-weight: 900 !important; }
-    
-    h3, h4 { margin: 0 !important; padding: 0 !important; line-height: 1.15 !important; }
-    p, span, div { line-height: 1.1 !important; }
-    
-    .gap-4 { gap: 3px !important; }
-    .gap-3 { gap: 2px !important; }
-    .gap-2 { gap: 2px !important; }
-    .mb-4, .mb-3, .mb-1 { margin-bottom: 1.5px !important; }
-    .p-4, .p-5, .p-6 { padding: 3px 5px !important; }
-    
-    /* الجداول */
+
+    /* سطر الأسرة البسيط الفاصل */
+    .print-family-row {
+        border-bottom: 0.75px solid #444 !important;
+        padding-top: 3px !important;
+        padding-bottom: 3px !important;
+        margin-bottom: 2px !important;
+        page-break-inside: avoid !important;
+    }
+
+    .print-fam-main {
+        display: flex !important;
+        align-items: baseline !important;
+        justify-content: space-between !important;
+        font-size: 8.5pt !important;
+    }
+
+    .print-fam-title {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+    }
+
+    .print-fam-num {
+        display: inline-block !important;
+        min-width: 20px !important;
+        font-weight: 900 !important;
+        text-align: center !important;
+        border: 0.75px solid #333 !important;
+        border-radius: 3px !important;
+        font-size: 7.5pt !important;
+        padding: 0 2px !important;
+    }
+
+    .print-fam-head {
+        font-weight: 900 !important;
+        color: #000 !important;
+    }
+
+    .print-fam-meta {
+        display: flex !important;
+        gap: 15px !important;
+        font-size: 7.5pt !important;
+        color: #222 !important;
+    }
+
+    .print-fam-members {
+        margin-top: 1.5px !important;
+        padding-right: 26px !important;
+        font-size: 7pt !important;
+        color: #333 !important;
+        line-height: 1.2 !important;
+    }
+
+    .member-phone {
+        font-family: monospace !important;
+        font-size: 7pt !important;
+        color: #111 !important;
+    }
+
+    /* جدول مدارس الأحد */
     table.print-table {
         width: 100% !important;
         border-collapse: collapse !important;
-        margin-top: 2px;
+        margin-top: 3px !important;
     }
     table.print-table th, table.print-table td {
         border: 1px solid #000 !important;
-        padding: 2px 3px !important;
+        padding: 2px 4px !important;
         text-align: right !important;
         font-size: 7.5pt !important;
     }
     table.print-table th {
         background-color: #e2e8f0 !important;
         font-weight: bold !important;
-    }
-    
-    .bg-indigo-50, .bg-rose-50, .bg-blue-50, .bg-amber-50, .bg-slate-50, .bg-emerald-50, .bg-purple-50 {
-        background-color: transparent !important;
-        border: 0.5px solid #888 !important;
-        color: #000 !important;
-    }
-    
-    .text-indigo-700, .text-rose-700, .text-emerald-700, .text-slate-800 {
-        color: #000 !important;
     }
 }
