@@ -9,7 +9,7 @@ let currentNamesView = "roster";
 let selectedLetter = "الكل";
 let splashEnded = false;
 
-// إيقاف السبلاش ونقل المستخدم لنافذة الدخول فوراً وبلا عودة
+// إيقاف السبلاش ونقل المستخدم لنافذة الدخول مع تفعيل الفوكس
 function endSplash(e) {
     if (e) {
         try {
@@ -43,6 +43,12 @@ function endSplash(e) {
     if (login) {
         login.classList.remove('hidden');
         login.style.display = 'flex';
+        
+        // وضع الفوكس التلقائي على خانة كلمة المرور بعد ظهور النافذة
+        setTimeout(() => {
+            const passInput = document.getElementById('loginPass');
+            if (passInput) passInput.focus();
+        }, 300);
     }
 }
 
@@ -52,7 +58,6 @@ window.onload = () => {
     const video = document.getElementById('splashVideo');
     if (video) {
         video.muted = true;
-        // تسريع الفيديو قليلاً لإنهاء الـ 11 ثانية في نحو 8 ثوانٍ
         video.playbackRate = 1.3;
 
         video.onended = () => {
@@ -66,7 +71,6 @@ window.onload = () => {
             });
         }
 
-        // صمام أمان أقصى 9 ثوانٍ يضمن الانتقال لنافذة الدخول مهما حدث
         setTimeout(() => {
             endSplash();
         }, 9000);
@@ -233,6 +237,7 @@ async function handleLogin(e) {
         err.innerText = "تعذر الاتصال بالخادم، يرجى المحاولة ثانية.";
         err.classList.remove('hidden');
     } finally {
+        // إعادة الزر لشكله الطبيعي في حالة الخطأ فقط
         btn.innerText = "تسجيل الدخول";
     }
 }
@@ -247,7 +252,11 @@ function logout() {
 }
 
 function initApp() {
-    document.getElementById('loginScreen').classList.add('hidden');
+    // إخفاء نافذة تسجيل الدخول بشكل قاطع بعد التحقق الناجح
+    const login = document.getElementById('loginScreen');
+    login.style.display = 'none';
+    login.classList.add('hidden');
+
     document.getElementById('userBadge').innerHTML = `<span>الخادم: <span class="font-black text-indigo-700">${currentUser.ServantName}</span></span> <span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded ml-2 font-mono text-[11px] font-bold border border-indigo-200">${currentUser.Role}</span>`;
     buildDashboard();
     showDashboard();
@@ -1039,7 +1048,6 @@ function showLoader(s) {
     }
 }
 
-// إعداد الترويسة للطباعة
 function setupPrintHeader(reportTitle) {
     document.getElementById('printReportTitle').innerText = reportTitle;
     document.getElementById('printServantName').innerText = currentUser ? `${currentUser.ServantName} (${currentUser.Role})` : "الأدمن";
