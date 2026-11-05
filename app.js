@@ -4,13 +4,16 @@ let currentUser = null;
 let currentTab = "";
 let rawData = [];
 let backendAreas = [];
-let namesCacheData = []; // كاش لأعضاء شيت Names لتوليد كشوف الفصول
+let namesCacheData = [];
+let servantsCacheData = [];
 let visitationsData = [];
 let currentNamesView = "roster";
-let currentSSView = "live"; // 'live' لرصد حضور اليوم، 'history' للسجل السابق
+let currentSSView = "live";
+let currentMeetingsView = "live";
 let selectedLetter = "الكل";
 let splashEnded = false;
 let currentSSLiveKids = [];
+let currentServantsMeetingList = [];
 
 function endSplash(e) {
     if (e) {
@@ -100,8 +103,8 @@ const TABS_INFO = {
     "Names": { label: "أعضاء الكنيسة", desc: "دليل أرباب الأسر، البيانات العائلية، والفرز المتقدم", svg: ICONS.users, colorClass: "card-names", roles: ["Admin", "SundaySchool_Admin"] },
     "Sunday_School": { label: "مدارس الأحد", desc: "كشف تحضير الفصول، الحضور، والتسميع", svg: ICONS.children, colorClass: "card-sunday", roles: ["Admin", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
     "Visitations": { label: "سجل الافتقاد", desc: "متابعة الزيارات ومواعيد الافتقاد", svg: ICONS.visitations, colorClass: "card-visitations", roles: ["Admin"] },
-    "Meetings_Attendance": { label: "حضور الاجتماعات", desc: "تسجيل حضور وغياب الاجتماعات", svg: ICONS.meetings, colorClass: "card-meetings", roles: ["Admin"] },
-    "Servants": { label: "إدارة الخدام", desc: "توزيع الصلاحيات والحسابات", svg: ICONS.servants, colorClass: "card-servants", roles: ["Admin"] }
+    "Meetings_Attendance": { label: "حضور الاجتماعات", desc: "رصد حضور اجتماع الخدام الأسبوعي والاجتماعات", svg: ICONS.meetings, colorClass: "card-meetings", roles: ["Admin", "SundaySchool_Admin"] },
+    "Servants": { label: "إدارة الخدام", desc: "توزيع الصلاحيات وربط الخدام بالأعضاء", svg: ICONS.servants, colorClass: "card-servants", roles: ["Admin"] }
 };
 
 const SCHEMAS = {
@@ -147,6 +150,14 @@ const SCHEMAS = {
         { id: "Points", label: "النقاط", type: "number" },
         { id: "Notes", label: "ملاحظات", type: "textarea", full: true }
     ],
+    "Meetings_Attendance": [
+        { id: "MeetingName", label: "اسم الاجتماع", type: "text", required: true },
+        { id: "MeetingDate", label: "التاريخ (DD/MM/YYYY)", type: "text", required: true },
+        { id: "MemberID", label: "كود العضو / الخادم", type: "number" },
+        { id: "MemberName", label: "الاسم", type: "text", required: true },
+        { id: "Status", label: "الحالة", type: "select", options: ["حاضر", "معتذر", "غائب"] },
+        { id: "Notes", label: "سبب الاعتذار / ملاحظات", type: "textarea", full: true }
+    ],
     "Visitations": [
         { id: "MemberID", label: "كود المخدوم", type: "number", required: true },
         { id: "MemberName", label: "اسم المخدوم", type: "text", required: true },
@@ -156,17 +167,9 @@ const SCHEMAS = {
         { id: "FollowUpDate", label: "تاريخ المتابعة (DD/MM/YYYY)", type: "text" },
         { id: "Notes", label: "تقرير وملاحظات", type: "textarea", full: true }
     ],
-    "Meetings_Attendance": [
-        { id: "MeetingName", label: "اسم الاجتماع", type: "text", required: true },
-        { id: "MeetingDate", label: "التاريخ (DD/MM/YYYY)", type: "text", required: true },
-        { id: "MemberID", label: "كود العضو", type: "number" },
-        { id: "MemberName", label: "الاسم", type: "text", required: true },
-        { id: "Status", label: "الحالة", type: "select", options: ["حاضر", "معتذر", "غائب"] },
-        { id: "Notes", label: "ملاحظات", type: "textarea", full: true }
-    ],
     "Servants": [
-        { id: "ServantName", label: "اسم الخادم", type: "text", required: true },
-        { id: "Username", label: "اسم المستخدم / الموبايل", type: "text", required: true },
+        { id: "ServantName", label: "اسم الخادم (من شيت الأعضاء)", type: "servant_name_autocomplete", required: true },
+        { id: "Username", label: "اسم المستخدم / رقم الموبايل", type: "text", required: true },
         { id: "Password", label: "كلمة المرور", type: "text", required: true },
         { id: "Role", label: "الصلاحية", type: "select", options: ["Admin", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
         { id: "AssignedStage", label: "المرحلة المسندة", type: "select", options: ["الكل", ...Object.keys(STAGE_GRADES)] },
@@ -180,6 +183,7 @@ async function loadServantsListForLogin() {
     try {
         const res = await (await fetch(`${API_URL}?sheet=Servants`)).json();
         if (res.status === "success" && res.data.length > 0) {
+            servantsCacheData = res.data;
             const select = document.getElementById('loginUser');
             select.innerHTML = `<option value="admin">أبونا الكاهن / الأدمن (admin)</option>`;
             res.data.forEach(s => {
@@ -295,23 +299,29 @@ function loadSection(sectionKey) {
     document.getElementById('currentTabTitle').innerHTML = `${info.label}`;
     
     const btnSS = document.getElementById('btnPrintSundaySchool');
+    const btnMeetingsPrint = document.getElementById('btnPrintMeetings');
     const btnFiltered = document.getElementById('btnPrintFiltered');
     const btnRoster = document.getElementById('btnPrintRoster');
     const btnAdd = document.getElementById('btnAddNewRecord');
 
-    // إخفاء كافة الواجهات الخاصة
+    // إخفاء الواجهات الخاصة افتراضياً
     document.getElementById('namesViewSwitcher').classList.add('hidden');
     document.getElementById('namesViewSwitcher').classList.remove('flex');
     document.getElementById('ssViewSwitcher').classList.add('hidden');
     document.getElementById('ssViewSwitcher').classList.remove('flex');
+    document.getElementById('meetingsViewSwitcher').classList.add('hidden');
+    document.getElementById('meetingsViewSwitcher').classList.remove('flex');
     document.getElementById('sundaySchoolLiveSection').classList.add('hidden');
+    document.getElementById('servantsMeetingLiveSection').classList.add('hidden');
     document.getElementById('namesRosterSection').classList.add('hidden');
     document.getElementById('namesFilterSection').classList.add('hidden');
     document.getElementById('namesPlaceholder').classList.add('hidden');
     document.getElementById('familyResultsContainer').classList.add('hidden');
     document.getElementById('standardSearchContainer').classList.add('hidden');
     document.getElementById('standardCardsContainer').classList.add('hidden');
+    
     btnSS.classList.add('hidden');
+    btnMeetingsPrint.classList.add('hidden');
     btnFiltered.classList.add('hidden');
     btnRoster.classList.add('hidden');
     btnAdd.classList.remove('hidden');
@@ -326,6 +336,11 @@ function loadSection(sectionKey) {
         document.getElementById('ssViewSwitcher').classList.add('flex');
         btnSS.classList.remove('hidden');
         switchSSView('live');
+    } else if (sectionKey === 'Meetings_Attendance') {
+        document.getElementById('meetingsViewSwitcher').classList.remove('hidden');
+        document.getElementById('meetingsViewSwitcher').classList.add('flex');
+        btnMeetingsPrint.classList.remove('hidden');
+        switchMeetingsView('live');
     } else {
         document.getElementById('standardSearchContainer').classList.remove('hidden');
         document.getElementById('standardCardsContainer').classList.remove('hidden');
@@ -335,7 +350,7 @@ function loadSection(sectionKey) {
     loadData();
 }
 
-// تبديل واجهات مدارس الأحد: رصد مباشر أو سجلات قديمة
+// تبديل واجهات مدارس الأحد
 function switchSSView(view) {
     currentSSView = view;
     const btnLive = document.getElementById('btnSSLiveRoster');
@@ -364,12 +379,239 @@ function switchSSView(view) {
     }
 }
 
+// تبديل واجهات حضور الاجتماعات (اجتماع الخدام)
+function switchMeetingsView(view) {
+    currentMeetingsView = view;
+    const btnLive = document.getElementById('btnMeetingsLiveRoster');
+    const btnHist = document.getElementById('btnMeetingsHistory');
+    const liveSec = document.getElementById('servantsMeetingLiveSection');
+    const cardsSec = document.getElementById('standardCardsContainer');
+    const searchSec = document.getElementById('standardSearchContainer');
+    const btnAdd = document.getElementById('btnAddNewRecord');
+
+    if (view === 'live') {
+        btnLive.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-amber-700 shadow-sm";
+        btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
+        liveSec.classList.remove('hidden');
+        cardsSec.classList.add('hidden');
+        searchSec.classList.add('hidden');
+        btnAdd.classList.add('hidden');
+        initServantsMeetingLiveView();
+    } else {
+        btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-amber-700 shadow-sm";
+        btnLive.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
+        liveSec.classList.add('hidden');
+        cardsSec.classList.remove('hidden');
+        searchSec.classList.remove('hidden');
+        btnAdd.classList.remove('hidden');
+        renderStandardCards();
+    }
+}
+
+// =========================================================================
+// محرك رصد حضور اجتماع الخدام الأسبوعي
+// =========================================================================
+
+async function initServantsMeetingLiveView() {
+    const dateInput = document.getElementById('servantsMeetingDate');
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    dateInput.value = `${day}/${month}/${year}`;
+
+    // ضمان تحميل بيانات الخدام
+    if (servantsCacheData.length === 0) {
+        try {
+            const res = await (await fetch(`${API_URL}?sheet=Servants`)).json();
+            if (res.status === "success") servantsCacheData = res.data;
+        } catch(e) {}
+    }
+
+    // تصفية الخدام النشطين فقط
+    const activeServants = servantsCacheData.filter(s => s["Status"] !== "موقوف" && s["Username"] !== "admin");
+
+    currentServantsMeetingList = activeServants.map(s => ({
+        id: s["ID"] || s[Object.keys(s)[0]],
+        name: s["ServantName"],
+        phone: s["Username"] || "-",
+        role: s["Role"] || "خادم",
+        scope: `${s["AssignedStage"] || "الكل"} ${s["AssignedGrade"] ? '- ' + s["AssignedGrade"] : ''} ${s["AssignedClass"] ? '(' + s["AssignedClass"] + ')' : ''}`,
+        status: "حاضر",
+        notes: ""
+    })).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+
+    renderServantsMeetingTable();
+}
+
+function renderServantsMeetingTable() {
+    const tbody = document.getElementById('servantsMeetingTableBody');
+    const emptyNotice = document.getElementById('servantsMeetingEmpty');
+    tbody.innerHTML = "";
+
+    document.getElementById('recordCount').innerText = `${currentServantsMeetingList.length} خادم مسجل`;
+
+    if (currentServantsMeetingList.length === 0) {
+        emptyNotice.classList.remove('hidden');
+        return;
+    }
+    emptyNotice.classList.add('hidden');
+
+    let presentCount = 0, excusedCount = 0, absentCount = 0;
+
+    currentServantsMeetingList.forEach((servant, idx) => {
+        if (servant.status === "حاضر") presentCount++;
+        else if (servant.status === "معتذر") excusedCount++;
+        else absentCount++;
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+        tr.innerHTML = `
+            <td class="p-3 text-center font-bold text-slate-400">${idx + 1}</td>
+            <td class="p-3 font-bold text-slate-800">${servant.name}</td>
+            <td class="p-3">
+                <span class="bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded text-[10px] font-bold">${servant.role}</span>
+                <span class="text-[11px] text-slate-600 font-semibold block mt-0.5">${servant.scope}</span>
+            </td>
+            <td class="p-3 font-mono text-slate-600 text-xs">${servant.phone}</td>
+            <td class="p-3 text-center">
+                <div class="inline-flex rounded-xl shadow-sm border border-slate-200 p-0.5 bg-slate-50">
+                    <button type="button" onclick="setServantMeetingStatus(${idx}, 'حاضر')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition ${servant.status === 'حاضر' ? 'bg-emerald-600 text-white shadow' : 'text-slate-600 hover:text-emerald-700'}">حاضر</button>
+                    <button type="button" onclick="setServantMeetingStatus(${idx}, 'معتذر')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition ${servant.status === 'معتذر' ? 'bg-amber-500 text-white shadow' : 'text-slate-600 hover:text-amber-700'}">معتذر</button>
+                    <button type="button" onclick="setServantMeetingStatus(${idx}, 'غائب')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition ${servant.status === 'غائب' ? 'bg-rose-600 text-white shadow' : 'text-slate-600 hover:text-rose-700'}">غائب</button>
+                </div>
+            </td>
+            <td class="p-3">
+                <input type="text" placeholder="اكتب سبب الاعتذار أو الملاحظة..." value="${servant.notes}" oninput="currentServantsMeetingList[${idx}].notes = this.value" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-amber-500">
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById('servantsAttendanceSummary').innerHTML = `
+        <span class="text-emerald-700">حاضر: ${presentCount}</span> &nbsp;|&nbsp; 
+        <span class="text-amber-700">معتذر: ${excusedCount}</span> &nbsp;|&nbsp; 
+        <span class="text-rose-700">غائب: ${absentCount}</span>
+    `;
+}
+
+function setServantMeetingStatus(index, status) {
+    currentServantsMeetingList[index].status = status;
+    renderServantsMeetingTable();
+}
+
+function markAllServantsMeeting(status) {
+    currentServantsMeetingList.forEach(s => s.status = status);
+    renderServantsMeetingTable();
+}
+
+async function saveServantsMeetingBatchAttendance() {
+    if (currentServantsMeetingList.length === 0) {
+        alert("لا يوجد خدام في الكشف للحفظ!");
+        return;
+    }
+
+    const meetingName = document.getElementById('servantsMeetingName').value.trim() || "اجتماع الخدام الأسبوعي";
+    const meetingDate = document.getElementById('servantsMeetingDate').value.trim();
+
+    if (!meetingDate) {
+        alert("يرجى كتابة تاريخ الاجتماع أولاً!");
+        return;
+    }
+
+    if (!confirm(`هل أنت متأكد من حفظ حضور (${currentServantsMeetingList.length}) خادم لاجتماع: ${meetingName} بتاريخ: ${meetingDate}؟`)) return;
+
+    const btn = document.getElementById('btnSaveServantsMeetingBatch');
+    btn.disabled = true;
+    btn.innerHTML = `جاري الحفظ بالسجلات...`;
+
+    const payload = currentServantsMeetingList.map(s => ({
+        "MeetingName": meetingName,
+        "MeetingDate": meetingDate,
+        "MemberID": s.id,
+        "MemberName": s.name,
+        "Status": s.status,
+        "Notes": s.notes
+    }));
+
+    try {
+        const res = await (await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                sheet: "Meetings_Attendance",
+                action: "batch_add",
+                data: payload
+            })
+        })).json();
+
+        if (res.status === "success") {
+            alert("✓ " + res.message);
+            loadData();
+        } else {
+            alert("خطأ أثناء الحفظ: " + res.message);
+        }
+    } catch(err) {
+        alert("تعذر الاتصال بالخادم لحفظ حضور الاجتماع.");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `💾 حفظ حضور اجتماع الخدام كاملاً`;
+    }
+}
+
+function printServantsMeetingRoster() {
+    const meetingName = document.getElementById('servantsMeetingName')?.value || "اجتماع الخدام الأسبوعي";
+    const meetingDate = document.getElementById('servantsMeetingDate')?.value || "";
+
+    if (currentServantsMeetingList.length === 0) {
+        alert("لا يوجد خدام في الكشف للطباعة!");
+        return;
+    }
+
+    setupPrintHeader(`كشف حضور ${meetingName} - تاريخ: ${meetingDate}`);
+    const printArea = document.getElementById('printContainer');
+    
+    printArea.innerHTML = `
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th style="width: 25px;">م</th>
+                    <th style="width: 170px;">اسم الخادم</th>
+                    <th style="width: 130px;">الخدمة المسندة</th>
+                    <th style="width: 85px;">المحمول</th>
+                    <th style="width: 70px;">الحالة</th>
+                    <th>سبب الاعتذار والملاحظات</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${currentServantsMeetingList.map((s, idx) => `
+                    <tr>
+                        <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
+                        <td style="font-weight: bold;">${s.name}</td>
+                        <td>${s.scope}</td>
+                        <td style="font-family: monospace;">${s.phone}</td>
+                        <td style="text-align: center; font-weight: bold;">${s.status}</td>
+                        <td>${s.notes || "-"}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+        <div style="margin-top: 15px; display: flex; justify-content: space-between; font-weight: bold; font-size: 8pt;" class="print-only">
+            <p>أمين اجتماع الخدام: .........................</p>
+            <p>أبونا المسؤول: .........................</p>
+        </div>
+    `;
+
+    setTimeout(() => {
+        window.print();
+        printArea.innerHTML = "";
+    }, 200);
+}
+
 // =========================================================================
 // محرك رصد حضور وغياب مدارس الأحد المباشر للفصول
 // =========================================================================
 
 async function initSundaySchoolLiveView() {
-    // 1. تعيين تاريخ اليوم كقيمة افتراضية (DD/MM/YYYY)
     const dateInput = document.getElementById('ssSessionDate');
     const now = new Date();
     const day = String(now.getDate()).padStart(2, '0');
@@ -377,7 +619,6 @@ async function initSundaySchoolLiveView() {
     const year = now.getFullYear();
     dateInput.value = `${day}/${month}/${year}`;
 
-    // 2. ضمان تحميل أعضاء شيت Names في الكاش
     if (namesCacheData.length === 0) {
         try {
             const res = await (await fetch(`${API_URL}?sheet=Names`)).json();
@@ -385,11 +626,9 @@ async function initSundaySchoolLiveView() {
         } catch(e) {}
     }
 
-    // 3. ملء قوائم المراحل والصفوف
     const stageSel = document.getElementById('ssFilterStage');
     stageSel.innerHTML = Object.keys(STAGE_GRADES).map(s => `<option value="${s}">${s}</option>`).join('');
 
-    // تطبيق صلاحية الخادم
     if (currentUser.Role === "Stage_Leader" || currentUser.Role === "Class_Servant") {
         if (currentUser.AssignedStage && currentUser.AssignedStage !== "الكل") {
             stageSel.value = currentUser.AssignedStage;
@@ -422,7 +661,6 @@ function onSSFilterGradeChange() {
     const grade = document.getElementById('ssFilterGrade').value;
     const classSel = document.getElementById('ssFilterClass');
 
-    // استخراج أسماء الفصول المتاحة من شيت الأعضاء ديناميكياً
     const classes = new Set();
     namesCacheData.forEach(kid => {
         if (kid["المرحلة"] === stage && (!grade || kid["الصف"] === grade)) {
@@ -449,7 +687,6 @@ function loadSSLiveClassKids() {
     const grade = document.getElementById('ssFilterGrade').value;
     const className = document.getElementById('ssFilterClass').value;
 
-    // استخراج المخدومين المطابقين من شيت Names حصرياً
     const matched = namesCacheData.filter(kid => {
         if (isMemberDeceased(kid)) return false;
         if (kid["مدارس الأحد"] === "غير مشترك") return false;
@@ -559,7 +796,6 @@ async function saveSundaySchoolBatchAttendance() {
     btn.disabled = true;
     btn.innerHTML = `جاري الحفظ بالسجلات...`;
 
-    // تحويل البيانات لتناسب شيت Sunday_School
     const payload = currentSSLiveKids.map(kid => ({
         "Stage": kid.stage,
         "Grade": kid.grade,
@@ -586,7 +822,6 @@ async function saveSundaySchoolBatchAttendance() {
 
         if (res.status === "success") {
             alert("✓ " + res.message);
-            // تحديث بيانات السجل القديم
             loadData();
         } else {
             alert("خطأ أثناء الحفظ: " + res.message);
@@ -596,6 +831,34 @@ async function saveSundaySchoolBatchAttendance() {
     } finally {
         btn.disabled = false;
         btn.innerHTML = `💾 حفظ حضور وتقييم الفصل كاملاً`;
+    }
+}
+
+// =========================================================================
+// ربط أسماء الخدام بشيت Names تلقائياً
+// =========================================================================
+
+async function populateServantsDatalist() {
+    if (namesCacheData.length === 0) {
+        try {
+            const res = await (await fetch(`${API_URL}?sheet=Names`)).json();
+            if (res.status === "success") namesCacheData = res.data;
+        } catch(e) {}
+    }
+
+    const dl = document.getElementById('servantsNamesList');
+    if (!dl) return;
+
+    const validMembers = namesCacheData.filter(m => !isMemberDeceased(m));
+    dl.innerHTML = validMembers.map(m => `<option value="${m['الاسم ثلاثي']}">`).join('');
+}
+
+function onServantNameSelected(selectedName) {
+    const member = namesCacheData.find(m => m["الاسم ثلاثي"] === selectedName);
+    const usernameInput = document.querySelector('input[name="Username"]');
+    if (member && usernameInput && !usernameInput.value) {
+        const phone = member["تليفون العمل/المحمول"] || "";
+        if (phone) usernameInput.value = phone;
     }
 }
 
@@ -666,6 +929,15 @@ async function loadData(force = false) {
                 } else {
                     renderStandardCards();
                 }
+            } else if (currentTab === 'Meetings_Attendance') {
+                if (currentMeetingsView === 'live') {
+                    initServantsMeetingLiveView();
+                } else {
+                    renderStandardCards();
+                }
+            } else if (currentTab === 'Servants') {
+                servantsCacheData = rawData;
+                renderStandardCards();
             } else {
                 renderStandardCards();
             }
@@ -1114,11 +1386,11 @@ function renderStandardCards() {
         if (currentTab === "Sunday_School") {
             details = `<p class="text-xs text-slate-600 mb-2"><span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-bold">${item["Stage"]}</span> ${item["Grade"]} (${item["ClassName"]})</p><div class="flex justify-between text-xs text-slate-500 font-semibold"><p>تاريخ: ${item["SessionDate"]}</p><p class="font-bold ${item["Attendance"]==='حاضر'?'text-emerald-600':'text-rose-600'}">${item["Attendance"]}</p></div>`;
         } else if (currentTab === "Servants") {
-            details = `<p class="text-xs text-slate-600 mb-1 font-bold">الصلاحية: <span class="text-indigo-700">${item["Role"]}</span></p><p class="text-xs text-slate-500 font-semibold">النطاق: ${item["AssignedStage"]} - ${item["AssignedGrade"]}</p>`;
+            details = `<p class="text-xs text-slate-600 mb-1 font-bold">الصلاحية: <span class="text-indigo-700">${item["Role"]}</span></p><p class="text-xs text-slate-500 font-semibold">النطاق: ${item["AssignedStage"]} - ${item["AssignedGrade"] || ""} (${item["AssignedClass"] || ""})</p><p class="text-[11px] font-mono text-slate-400">اسم المستخدم: ${item["Username"]}</p>`;
         } else if (currentTab === "Visitations") {
             details = `<p class="text-xs text-slate-600 mb-1 font-semibold">الخادم: ${item["VisitorName"]}</p><p class="text-xs text-slate-500">تاريخ الافتقاد: ${item["VisitDate"]}</p>`;
         } else if (currentTab === "Meetings_Attendance") {
-            details = `<p class="text-xs text-slate-600 mb-1 font-semibold">${item["MeetingName"]}</p><p class="text-xs text-slate-500">التاريخ: ${item["MeetingDate"]}</p>`;
+            details = `<p class="text-xs text-slate-600 mb-1 font-semibold">${item["MeetingName"]} - <span class="font-bold ${item["Status"]==='حاضر'?'text-emerald-600':item["Status"]==='معتذر'?'text-amber-600':'text-rose-600'}">${item["Status"]}</span></p><p class="text-xs text-slate-500">التاريخ: ${item["MeetingDate"]} ${item["Notes"] ? '| ملاحظة: ' + item["Notes"] : ''}</p>`;
         }
 
         card.innerHTML = `
@@ -1220,7 +1492,9 @@ function openModal(action, data={}) {
         let inpH = "";
         const cls = "w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs transition";
 
-        if (f.type === "family_head_select") {
+        if (f.type === "servant_name_autocomplete") {
+            inpH = `<input type="text" name="${f.id}" list="servantsNamesList" value="${val}" ${f.required?'required':''} onchange="onServantNameSelected(this.value)" placeholder="اختر الخادم من قائمة الأعضاء..." class="${cls}">`;
+        } else if (f.type === "family_head_select") {
             inpH = `<input type="text" name="${f.id}" value="${val}" ${f.required?'required':''} class="${cls}">`;
         } else if (f.type === "stage_select") {
             inpH = `<select name="${f.id}" onchange="updateGradeDropdown(this.value)" class="${cls}" ${f.required?'required':''}><option value="">اختر المرحلة...</option><option value="الكل">الكل</option>${f.options.map(o => `<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('')}</select>`;
@@ -1240,6 +1514,10 @@ function openModal(action, data={}) {
 
     if (currentTab === 'Names' && action === 'add') {
         toggleAddMode('new_head');
+    }
+
+    if (currentTab === 'Servants') {
+        populateServantsDatalist();
     }
 
     const stg = data["المرحلة"] || data["Stage"] || data["AssignedStage"] || "";
@@ -1306,6 +1584,12 @@ function showLoader(s) {
     } else if (currentTab === 'Sunday_School') {
         if (currentSSView === 'live') {
             document.getElementById('sundaySchoolLiveSection').classList.toggle('hidden', s);
+        } else {
+            document.getElementById('standardCardsContainer').classList.toggle('hidden', s);
+        }
+    } else if (currentTab === 'Meetings_Attendance') {
+        if (currentMeetingsView === 'live') {
+            document.getElementById('servantsMeetingLiveSection').classList.toggle('hidden', s);
         } else {
             document.getElementById('standardCardsContainer').classList.toggle('hidden', s);
         }
