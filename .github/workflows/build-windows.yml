@@ -22,7 +22,9 @@ jobs:
       run: npm install
 
     - name: Build Windows Installer (.exe)
-      run: npm run build:win
+      run: npx electron-builder --win --x64 -c.publish=never
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Upload Windows Setup (.exe)
       uses: actions/upload-artifact@v4
