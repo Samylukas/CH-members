@@ -129,8 +129,8 @@ body {
     /* تصغير درجات الخطوط داخل الكروت */
     .text-sm { font-size: 8pt !important; }
     .text-xs { font-size: 7pt !important; }
-    .text-[11px] { font-size: 6.5pt !important; }
-    .text-[10px] { font-size: 6pt !important; }
+    .text-\[11px\] { font-size: 6.5pt !important; }
+    .text-\[10px\] { font-size: 6pt !important; }
     .text-lg, .text-base { font-size: 8.5pt !important; font-weight: 900 !important; }
     
     h3, h4 { margin: 0 !important; padding: 0 !important; line-height: 1.15 !important; }
