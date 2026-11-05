@@ -10,18 +10,6 @@
     <link rel="icon" type="image/png" href="logo.png">
 </head>
 <body class="flex flex-col min-h-screen bg-slate-50">
-
-<!-- شاشة البداية فيديو (Splash Screen) -->
-<div id="splashScreen" class="fixed inset-0 bg-white z-[99999] flex items-center justify-center overflow-hidden">
-    <video id="splashVideo" autoplay muted playsinline preload="auto" class="w-full h-full object-contain pointer-events-none">
-        <source src="intro.mp4" type="video/mp4">
-    </video>
-    <button type="button" id="skipSplashBtn" onclick="endSplash(event)"
-        class="absolute bottom-8 left-8 text-xs bg-slate-900/90 hover:bg-black text-white px-5 py-2.5 rounded-full backdrop-blur-md transition z-[100000] font-black shadow-2xl cursor-pointer">
-        تخطي ✕
-    </button>
-</div>
-
 <!-- نافذة تسجيل الدخول -->
 <div id="loginScreen" class="fixed inset-0 bg-white/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm hidden">
     <div class="bg-white rounded-3xl shadow-xl p-8 w-full max-w-md text-center border border-slate-200">
