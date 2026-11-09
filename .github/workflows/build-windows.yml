@@ -18,6 +18,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
       - name: Install Dependencies
         run: npm install
@@ -26,9 +27,12 @@ jobs:
         run: npx electron-builder --win nsis portable --x64 --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ELECTRON_MIRROR: "https://npmmirror.com/mirrors/electron/"
+          ELECTRON_BUILDER_BINARIES_MIRROR: "https://npmmirror.com/mirrors/electron-builder-binaries/"
 
       - name: Upload Windows Output
         uses: actions/upload-artifact@v4
         with:
           name: Church-Care-Windows-App
           path: dist/*.exe
+          if-no-files-found: error
