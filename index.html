@@ -231,14 +231,17 @@ function handleLoginSubmit(e) {
                 </button>
             </div>
 
-            <div id="ssViewSwitcher" class="flex items-center gap-2 bg-slate-200/80 p-1 rounded-xl hidden">
-                <button id="btnSSLiveRoster" onclick="switchSSView('live')" class="px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm">
-                    📋 رصد حضور اليوم للفصل
-                </button>
-                <button id="btnSSHistory" onclick="switchSSView('history')" class="px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900">
-                    🗃️ سجل الحصص السابقة
-                </button>
-            </div>
+           <div id="ssViewSwitcher" class="flex items-center gap-2 bg-slate-200/80 p-1 rounded-xl hidden">
+    <button id="btnSSLiveRoster" onclick="switchSSView('live')" class="px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm">
+        📋 رصد حضور اليوم
+    </button>
+    <button id="btnSSHistory" onclick="switchSSView('history')" class="px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900">
+        🗃️ سجل الحصص السابقة
+    </button>
+    <button id="btnSSCharts" onclick="switchSSView('charts')" class="px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900">
+        📊 الإحصائيات البيانية
+    </button>
+</div>
 
             <div id="meetingsViewSwitcher" class="flex items-center gap-2 bg-slate-200/80 p-1 rounded-xl hidden">
                 <button id="btnMeetingsLiveRoster" onclick="switchMeetingsView('live')" class="px-4 py-2 rounded-lg text-xs font-black transition bg-white text-amber-700 shadow-sm">
@@ -318,7 +321,32 @@ function handleLoginSubmit(e) {
                     </button>
                 </div>
             </div>
+<div id="sundaySchoolChartsSection" class="hidden space-y-6 no-print mt-4">
+    <div id="ssChartsEmpty" class="hidden text-center py-16 text-slate-400 font-bold bg-white rounded-2xl border border-dashed border-slate-300">
+        لا توجد بيانات حضور سابقة كافية لإنشاء الرسوم البيانية.
+    </div>
+    
+    <div id="ssChartsContainer" class="hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- رسم إجمالي الحضور والغياب -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                <div class="w-full max-w-[300px]">
+                    <canvas id="attPieChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- رسم مقارنة البنين والبنات -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
+                <canvas id="genderBarChart"></canvas>
+            </div>
+        </div>
 
+        <!-- رسم التفاصيل لكل مرحلة وصف -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <canvas id="stageBarChart" style="max-height: 400px;"></canvas>
+        </div>
+    </div>
+</div>
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="w-full text-right text-xs">
