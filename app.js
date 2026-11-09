@@ -20,7 +20,7 @@ let currentVisitView = "dashboard";
 let selectedLetter = "الكل";
 let currentSSLiveKids = [];
 let currentServantsMeetingList = [];
-
+let ssChartInstances = {}; // لحفظ نُسخ الرسوم البيانية لمنع التداخل
 // تحميل قائمة الخدام تلقائياً عند فتح الصفحة
 window.addEventListener('load', () => {
     loadServantsListForLogin();
@@ -319,7 +319,7 @@ function loadSection(sectionKey) {
     btnRoster?.classList.add('hidden');
     btnVisitReport?.classList.add('hidden');
     btnAdd?.classList.remove('hidden');
-
+document.getElementById('sundaySchoolChartsSection')?.classList.add('hidden');
     if (sectionKey === 'Names') {
         document.getElementById('namesViewSwitcher')?.classList.remove('hidden');
         document.getElementById('namesViewSwitcher')?.classList.add('flex');
@@ -725,33 +725,46 @@ function applyNamesFilter() {
 }
 
 // ---------------------------------------------------------
-// 8. قسم مدارس الأحد (Sunday School Section)
+// 8. قسم مدارس الأحد والإحصائيات (Sunday School & Charts)
 // ---------------------------------------------------------
 function switchSSView(view) {
     currentSSView = view;
     const btnLive = document.getElementById('btnSSLiveRoster');
     const btnHist = document.getElementById('btnSSHistory');
+    const btnCharts = document.getElementById('btnSSCharts');
+    
     const liveSec = document.getElementById('sundaySchoolLiveSection');
     const cardsSec = document.getElementById('standardCardsContainer');
     const searchSec = document.getElementById('standardSearchContainer');
+    const chartsSec = document.getElementById('sundaySchoolChartsSection');
     const btnAdd = document.getElementById('btnAddNewRecord');
+
+    // تصفير تنسيق الأزرار
+    [btnLive, btnHist, btnCharts].forEach(btn => {
+        if (btn) btn.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
+    });
+
+    // إخفاء كافة الواجهات الفرعية
+    liveSec?.classList.add('hidden');
+    cardsSec?.classList.add('hidden');
+    searchSec?.classList.add('hidden');
+    chartsSec?.classList.add('hidden');
+    btnAdd?.classList.add('hidden');
 
     if (view === 'live') {
         if (btnLive) btnLive.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm";
-        if (btnHist) btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
         liveSec?.classList.remove('hidden');
-        cardsSec?.classList.add('hidden');
-        searchSec?.classList.add('hidden');
-        btnAdd?.classList.add('hidden');
         initSundaySchoolLiveView();
-    } else {
+    } else if (view === 'history') {
         if (btnHist) btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm";
-        if (btnLive) btnLive.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
-        liveSec?.classList.add('hidden');
         cardsSec?.classList.remove('hidden');
         searchSec?.classList.remove('hidden');
         btnAdd?.classList.remove('hidden');
         renderStandardCards();
+    } else if (view === 'charts') {
+        if (btnCharts) btnCharts.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm";
+        chartsSec?.classList.remove('hidden');
+        initSSChartsView();
     }
 }
 
@@ -833,7 +846,6 @@ function onSSFilterGradeChange() {
 function getLastKidAttendanceInfo(kidName, kidId) {
     if (!rawData || rawData.length === 0) return { text: "لا يوجد سجل سابق", status: "none" };
     
-    // البحث في سجلات مدارس الأحد السابقة
     const history = rawData.filter(r => 
         (r["ChildName"] && r["ChildName"].trim() === kidName.trim()) || 
         (r["ChildID"] && String(r["ChildID"]) === String(kidId))
@@ -841,7 +853,6 @@ function getLastKidAttendanceInfo(kidName, kidId) {
     
     if (history.length === 0) return { text: "أول حضور له", status: "none" };
     
-    // الترتيب بالتاريخ تنازلياً لجلب الأحدث
     history.sort((a, b) => parseDateForSort(b["SessionDate"]) - parseDateForSort(a["SessionDate"]));
     const latest = history[0];
     const isPresent = latest["Attendance"] === "حاضر";
@@ -854,7 +865,6 @@ function getLastKidAttendanceInfo(kidName, kidId) {
 function getLastKidVisitInfo(kidName, kidId, familyHead) {
     if (!visitationsData || visitationsData.length === 0) return { text: "لم يُفتقد بعد", isUrgent: true };
     
-    // البحث باسم المخدوم أو كوده أو اسم رب أسرته
     const visits = visitationsData.filter(v => 
         (v["MemberName"] && (v["MemberName"].trim() === kidName.trim() || (familyHead && v["MemberName"].trim() === familyHead.trim()))) ||
         (v["MemberID"] && String(v["MemberID"]) === String(kidId))
@@ -869,7 +879,7 @@ function getLastKidVisitInfo(kidName, kidId, familyHead) {
     
     return {
         text: latestDateStr,
-        isUrgent: diffDays > 60 // تنبيه إذا زادت المدة عن شهرين
+        isUrgent: diffDays > 60
     };
 }
 
@@ -878,7 +888,6 @@ async function loadSSLiveClassKids() {
     const grade = document.getElementById('ssFilterGrade')?.value || "";
     const className = document.getElementById('ssFilterClass')?.value || "";
 
-    // التأكد من جلب بيانات الافتقاد لمقارنتها بالكشف
     if (visitationsData.length === 0) {
         try {
             const res = await (await fetch(`${API_URL}?sheet=Visitations`)).json();
@@ -943,14 +952,12 @@ function renderSSLiveKidsTable() {
         const tr = document.createElement('tr');
         tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
         
-        // لون شارة آخر حضور
         const attBadge = kid.lastAttendance.status === "present"
             ? `<span class="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md font-bold">${kid.lastAttendance.text}</span>`
             : kid.lastAttendance.status === "absent"
             ? `<span class="text-[10px] bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-md font-bold">${kid.lastAttendance.text}</span>`
             : `<span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md font-bold">${kid.lastAttendance.text}</span>`;
 
-        // لون شارة آخر افتقاد
         const visitBadge = kid.lastVisit.isUrgent
             ? `<span class="text-[10px] bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 rounded-md font-black">🚨 ${kid.lastVisit.text}</span>`
             : `<span class="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-md font-bold">✓ ${kid.lastVisit.text}</span>`;
@@ -984,7 +991,7 @@ function renderSSLiveKidsTable() {
                 </button>
             </td>
             <td class="p-3 text-center">
-                <select onchange="currentSSLiveKids[${idx}].memorization = this.value" class="p-1.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:ring-1 focus:ring-blue-500">
+                <select onchange="currentSSLiveKids[${idx}].memorization = this.value" class="p-1.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="ممتاز" ${kid.memorization === 'ممتاز' ? 'selected' : ''}>ممتاز</option>
                     <option value="جيد" ${kid.memorization === 'جيد' ? 'selected' : ''}>جيد</option>
                     <option value="مقبول" ${kid.memorization === 'مقبول' ? 'selected' : ''}>مقبول</option>
@@ -992,7 +999,7 @@ function renderSSLiveKidsTable() {
                 </select>
             </td>
             <td class="p-3">
-                <input type="text" placeholder="ملاحظة..." value="${kid.notes}" oninput="currentSSLiveKids[${idx}].notes = this.value" class="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:ring-1 focus:ring-blue-500">
+                <input type="text" placeholder="ملاحظة..." value="${kid.notes}" oninput="currentSSLiveKids[${idx}].notes = this.value" class="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-blue-500">
             </td>
         `;
         tbody.appendChild(tr);
@@ -1191,6 +1198,134 @@ async function generateAndPrintClassRoster() {
         window.print();
         printArea.innerHTML = "";
     }, 250);
+}
+
+// دالة تحضير بيانات الرسوم البيانية وتطبيق الصلاحيات
+async function initSSChartsView() {
+    if (namesCacheData.length === 0) {
+        try {
+            const res = await (await fetch(`${API_URL}?sheet=Names`)).json();
+            if (res.status === "success") namesCacheData = res.data;
+        } catch(e) {}
+    }
+
+    let allowedRecords = rawData.filter(item => {
+        if (currentUser.Role === "Stage_Leader" && currentUser.AssignedStage !== "الكل" && item["Stage"] !== currentUser.AssignedStage) return false;
+        if (currentUser.Role === "Class_Servant" && ((currentUser.AssignedStage !== "الكل" && item["Stage"] !== currentUser.AssignedStage) || (currentUser.AssignedClass !== "الكل" && item["ClassName"] !== currentUser.AssignedClass))) return false;
+        return true;
+    });
+
+    if (allowedRecords.length === 0) {
+        document.getElementById('ssChartsEmpty')?.classList.remove('hidden');
+        document.getElementById('ssChartsContainer')?.classList.add('hidden');
+        return;
+    }
+    document.getElementById('ssChartsEmpty')?.classList.add('hidden');
+    document.getElementById('ssChartsContainer')?.classList.remove('hidden');
+
+    let stats = {
+        totalPresent: 0, totalAbsent: 0,
+        malePresent: 0, maleAbsent: 0,
+        femalePresent: 0, femaleAbsent: 0,
+        stagesMap: {}
+    };
+
+    allowedRecords.forEach(rec => {
+        const isPresent = rec["Attendance"] === "حاضر";
+        if (isPresent) stats.totalPresent++; else stats.totalAbsent++;
+        
+        const kidInfo = namesCacheData.find(m => m["الاسم ثلاثي"] === rec["ChildName"] || m["ID"] == rec["ChildID"]);
+        const gender = kidInfo ? kidInfo["ذكر/انثي"] : "";
+        
+        if (gender === "ذكر") {
+            if (isPresent) stats.malePresent++; else stats.maleAbsent++;
+        } else if (gender === "انثي") {
+            if (isPresent) stats.femalePresent++; else stats.femaleAbsent++;
+        }
+
+        const stage = rec["Stage"] || "غير محدد";
+        const grade = rec["Grade"] || "عام";
+        if (!stats.stagesMap[stage]) stats.stagesMap[stage] = {};
+        if (!stats.stagesMap[stage][grade]) stats.stagesMap[stage][grade] = { present: 0, absent: 0 };
+        
+        if (isPresent) stats.stagesMap[stage][grade].present++;
+        else stats.stagesMap[stage][grade].absent++;
+    });
+
+    renderSSCharts(stats);
+}
+
+// دالة رسم الشارتات باستخدام Chart.js
+function renderSSCharts(stats) {
+    if (ssChartInstances.pie) ssChartInstances.pie.destroy();
+    if (ssChartInstances.gender) ssChartInstances.gender.destroy();
+    if (ssChartInstances.stage) ssChartInstances.stage.destroy();
+
+    Chart.defaults.font.family = 'Cairo, sans-serif';
+    Chart.defaults.font.weight = 'bold';
+
+    const ctxPie = document.getElementById('attPieChart').getContext('2d');
+    ssChartInstances.pie = new Chart(ctxPie, {
+        type: 'doughnut',
+        data: {
+            labels: ['نسبة الحضور', 'نسبة الغياب'],
+            datasets: [{
+                data: [stats.totalPresent, stats.totalAbsent],
+                backgroundColor: ['#10b981', '#f43f5e'],
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            plugins: { title: { display: true, text: 'الإجمالي العام للخدمة (حسب وصولك)' } }
+        }
+    });
+
+    const ctxGender = document.getElementById('genderBarChart').getContext('2d');
+    ssChartInstances.gender = new Chart(ctxGender, {
+        type: 'bar',
+        data: {
+            labels: ['البنين (أولاد)', 'البنات'],
+            datasets: [
+                { label: 'إجمالي الحضور', data: [stats.malePresent, stats.femalePresent], backgroundColor: '#10b981', borderRadius: 6 },
+                { label: 'إجمالي الغياب', data: [stats.maleAbsent, stats.femaleAbsent], backgroundColor: '#f43f5e', borderRadius: 6 }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: { title: { display: true, text: 'النسبة بين الأولاد والبنات' } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    let labels = [];
+    let dataPresent = [];
+    let dataAbsent = [];
+    
+    Object.keys(stats.stagesMap).forEach(stage => {
+        Object.keys(stats.stagesMap[stage]).forEach(grade => {
+            labels.push(`${stage} - ${grade}`);
+            dataPresent.push(stats.stagesMap[stage][grade].present);
+            dataAbsent.push(stats.stagesMap[stage][grade].absent);
+        });
+    });
+
+    const ctxStage = document.getElementById('stageBarChart').getContext('2d');
+    ssChartInstances.stage = new Chart(ctxStage, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'حاضر', data: dataPresent, backgroundColor: '#3b82f6', borderRadius: 4 },
+                { label: 'غائب', data: dataAbsent, backgroundColor: '#cbd5e1', borderRadius: 4 }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { title: { display: true, text: 'تحليل الحضور لكل مرحلة وصف دراسي' } },
+            scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
+        }
+    });
 }
 
 // ---------------------------------------------------------
