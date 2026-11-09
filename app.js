@@ -2002,84 +2002,66 @@ async function deleteRecord(id) {
 // 12. دوال جلب البيانات العامة والمزامنة (محمية مع إعادة محاولة)
 // ---------------------------------------------------------
 async function loadData(force = false) {
-    if (!currentTab) return;
     showLoader(true);
-    
-    let attempts = 0;
-    const maxAttempts = 3; // محاولة الجلب 3 مرات قبل الاستسلام
-    let success = false;
-
-    while (attempts < maxAttempts && !success) {
-        attempts++;
-        try {
-            const url = `${API_URL}?sheet=${encodeURIComponent(currentTab)}&t=${Date.now()}`;
-            const response = await fetch(url, { method: 'GET', redirect: 'follow' });
+    try {
+        const res = await (await fetch(`${API_URL}?sheet=${currentTab}`)).json();
+        if (res.status === "success") {
+            rawData = res.data;
+            backendAreas = res.areas || [];
             
-            if (!response.ok) {
-                throw new Error(`خطأ استجابة السيرفر: ${response.status}`);
-            }
-
-            const res = await response.json();
-
-            if (res.status === "success") {
-                rawData = Array.isArray(res.data) ? res.data : [];
-                backendAreas = res.areas || [];
-                
-                if (currentTab === 'Names') {
-                    namesCacheData = rawData;
-                    populateAreasDropdown();
-                    if (currentNamesView === 'roster') {
-                        buildAlphabetBar();
-                        renderFamilyHeadsRoster();
-                    } else {
-                        applyNamesFilter();
-                    }
-                } else if (currentTab === 'Sunday_School') {
-                    if (currentSSView === 'live') {
-                        initSundaySchoolLiveView();
-                    } else if (currentSSView === 'charts') {
-                        initSSChartsView();
-                    } else {
-                        renderStandardCards();
-                    }
-                } else if (currentTab === 'Meetings_Attendance') {
-                    if (currentMeetingsView === 'live') {
-                        initServantsMeetingLiveView();
-                    } else {
-                        renderStandardCards();
-                    }
-                } else if (currentTab === 'Visitations') {
-                    visitationsData = rawData;
-                    if (currentVisitView === 'dashboard') {
-                        initVisitationsDashboard();
-                    } else {
-                        renderStandardCards();
-                    }
-                } else if (currentTab === 'Servants') {
-                    servantsCacheData = rawData;
-                    renderStandardCards();
+            if (currentTab === 'Names') {
+                namesCacheData = rawData;
+                populateAreasDropdown();
+                if (currentNamesView === 'roster') {
+                    buildAlphabetBar();
+                    renderFamilyHeadsRoster();
+                } else {
+                    applyNamesFilter();
+                }
+            } else if (currentTab === 'Sunday_School') {
+                if (currentSSView === 'live') {
+                    initSundaySchoolLiveView();
                 } else {
                     renderStandardCards();
                 }
-                success = true;
+            } else if (currentTab === 'Meetings_Attendance') {
+                if (currentMeetingsView === 'live') {
+                    initServantsMeetingLiveView();
+                } else {
+                    renderStandardCards();
+                }
+            } else if (currentTab === 'Visitations') {
+                visitationsData = rawData;
+                if (currentVisitView === 'dashboard') {
+                    initVisitationsDashboard();
+                } else {
+                    renderStandardCards();
+                }
+            } else if (currentTab === 'Servants') {
+                servantsCacheData = rawData;
+                renderStandardCards();
             } else {
-                throw new Error(res.message || "فشل معالجة البيانات");
+                renderStandardCards();
             }
-        } catch (err) {
-            console.error(`محاولة ${attempts} فشلت:`, err);
-            if (attempts >= maxAttempts) {
-                alert(`تعذر جلب البيانات. يرجى التحقق من اتصال الإنترنت وإعادة تحميل الصفحة.\nالسبب: ${err.message}`);
-            } else {
-                // الانتظار ثانية واحدة ثم إعادة المحاولة
-                await new Promise(r => setTimeout(r, 1000));
-            }
-        } finally {
-            if (success || attempts >= maxAttempts) {
-                showLoader(false);
-            }
+        } else {
+            alert("خطأ: " + res.message);
         }
+    } catch (err) {
+        alert("تعذر جلب البيانات");
+    } finally {
+        showLoader(false);
     }
 }
+
+function buildAlphabetBar() {
+    const bar = document.getElementById('alphabetBar');
+    if (!bar) return;
+    
+    const firstLetters = new Set();
+    rawData.forEach(r => {
+        const head = normalizeArabic(String(r["اسم رب الاسرة"] || "").trim());
+        if (head) firstLetters.add(head[0]);
+    });
 
 function showLoader(s) {
     document.getElementById('loader')?.classList.toggle('hidden', !s);
