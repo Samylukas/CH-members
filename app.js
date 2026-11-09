@@ -20,7 +20,8 @@ let currentVisitView = "dashboard";
 let selectedLetter = "الكل";
 let currentSSLiveKids = [];
 let currentServantsMeetingList = [];
-let ssChartInstances = {}; // لحفظ نُسخ الرسوم البيانية لمنع التداخل
+let ssChartInstances = {}; // لحفظ نُسخ الرسوم البيانية
+
 // تحميل قائمة الخدام تلقائياً عند فتح الصفحة
 window.addEventListener('load', () => {
     loadServantsListForLogin();
@@ -31,9 +32,9 @@ window.addEventListener('load', () => {
 // ---------------------------------------------------------
 function formatWhatsAppNumber(phone) {
     if (!phone) return '';
-    let cleaned = phone.toString().replace(/\D/g, ''); // إزالة المسافات والرموز
+    let cleaned = phone.toString().replace(/\D/g, '');
     if (cleaned.startsWith('01') && cleaned.length === 11) {
-        cleaned = '2' + cleaned; // إضافة كود مصر 20
+        cleaned = '2' + cleaned; 
     }
     return cleaned;
 }
@@ -82,9 +83,6 @@ const TABS_INFO = {
     "Servants": { label: "إدارة الخدام", desc: "توزيع الصلاحيات وربط الخدام بالأعضاء", svg: ICONS.servants, colorClass: "card-servants", roles: ["Admin"] }
 };
 
-// ---------------------------------------------------------
-// 4. هياكل البيانات ونماذج الإضافة والتعديل (Form Schemas)
-// ---------------------------------------------------------
 const SCHEMAS = {
     "Names": [
         { id: "اسم رب الاسرة", label: "اسم رب الأسرة", type: "family_head_select", required: true },
@@ -312,6 +310,7 @@ function loadSection(sectionKey) {
     document.getElementById('familyResultsContainer')?.classList.add('hidden');
     document.getElementById('standardSearchContainer')?.classList.add('hidden');
     document.getElementById('standardCardsContainer')?.classList.add('hidden');
+    document.getElementById('sundaySchoolChartsSection')?.classList.add('hidden');
     
     btnSS?.classList.add('hidden');
     btnMeetingsPrint?.classList.add('hidden');
@@ -319,7 +318,7 @@ function loadSection(sectionKey) {
     btnRoster?.classList.add('hidden');
     btnVisitReport?.classList.add('hidden');
     btnAdd?.classList.remove('hidden');
-document.getElementById('sundaySchoolChartsSection')?.classList.add('hidden');
+
     if (sectionKey === 'Names') {
         document.getElementById('namesViewSwitcher')?.classList.remove('hidden');
         document.getElementById('namesViewSwitcher')?.classList.add('flex');
@@ -744,7 +743,7 @@ function switchSSView(view) {
         if (btn) btn.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
     });
 
-    // إخفاء كافة الواجهات الفرعية
+    // إخفاء كل اللوحات
     liveSec?.classList.add('hidden');
     cardsSec?.classList.add('hidden');
     searchSec?.classList.add('hidden');
@@ -778,8 +777,9 @@ async function initSundaySchoolLiveView() {
 
     if (namesCacheData.length === 0) {
         try {
-            const res = await (await fetch(`${API_URL}?sheet=Names`)).json();
-            if (res.status === "success") namesCacheData = res.data;
+            const res = await fetch(`${API_URL}?sheet=Names`);
+            const data = await res.json();
+            if (data.status === "success") namesCacheData = data.data;
         } catch(e) {}
     }
 
@@ -890,8 +890,9 @@ async function loadSSLiveClassKids() {
 
     if (visitationsData.length === 0) {
         try {
-            const res = await (await fetch(`${API_URL}?sheet=Visitations`)).json();
-            if (res.status === "success") visitationsData = res.data;
+            const res = await fetch(`${API_URL}?sheet=Visitations`);
+            const data = await res.json();
+            if (data.status === "success") visitationsData = data.data;
         } catch(e) {}
     }
 
@@ -991,7 +992,7 @@ function renderSSLiveKidsTable() {
                 </button>
             </td>
             <td class="p-3 text-center">
-                <select onchange="currentSSLiveKids[${idx}].memorization = this.value" class="p-1.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                <select onchange="currentSSLiveKids[${idx}].memorization = this.value" class="p-1.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:ring-1 focus:ring-blue-500">
                     <option value="ممتاز" ${kid.memorization === 'ممتاز' ? 'selected' : ''}>ممتاز</option>
                     <option value="جيد" ${kid.memorization === 'جيد' ? 'selected' : ''}>جيد</option>
                     <option value="مقبول" ${kid.memorization === 'مقبول' ? 'selected' : ''}>مقبول</option>
@@ -999,7 +1000,7 @@ function renderSSLiveKidsTable() {
                 </select>
             </td>
             <td class="p-3">
-                <input type="text" placeholder="ملاحظة..." value="${kid.notes}" oninput="currentSSLiveKids[${idx}].notes = this.value" class="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="text" placeholder="ملاحظة..." value="${kid.notes}" oninput="currentSSLiveKids[${idx}].notes = this.value" class="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:ring-1 focus:ring-blue-500">
             </td>
         `;
         tbody.appendChild(tr);
@@ -1057,16 +1058,16 @@ async function saveSundaySchoolBatchAttendance() {
     }));
 
     try {
-        const res = await (await fetch(API_URL, {
+        const res = await fetch(API_URL, {
             method: 'POST',
             body: JSON.stringify({ sheet: "Sunday_School", action: "batch_add", data: payload })
-        })).json();
-
-        if (res.status === "success") {
-            alert("✓ " + res.message);
+        });
+        const data = await res.json();
+        if (data.status === "success") {
+            alert("✓ " + data.message);
             loadData();
         } else {
-            alert("خطأ أثناء الحفظ: " + res.message);
+            alert("خطأ أثناء الحفظ: " + data.message);
         }
     } catch(err) {
         alert("تعذر الاتصال بالخادم لحفظ الحضور.");
@@ -1075,6 +1076,143 @@ async function saveSundaySchoolBatchAttendance() {
             btn.disabled = false;
             btn.innerHTML = `💾 حفظ حضور وتقييم الفصل كاملاً`;
         }
+    }
+}
+
+// دالة تحضير بيانات الرسوم البيانية وتطبيق الصلاحيات
+async function initSSChartsView() {
+    if (namesCacheData.length === 0) {
+        try {
+            const res = await fetch(`${API_URL}?sheet=Names`);
+            const data = await res.json();
+            if (data.status === "success") namesCacheData = data.data;
+        } catch(e) {}
+    }
+
+    let allowedRecords = rawData.filter(item => {
+        if (currentUser.Role === "Stage_Leader" && currentUser.AssignedStage !== "الكل" && item["Stage"] !== currentUser.AssignedStage) return false;
+        if (currentUser.Role === "Class_Servant" && ((currentUser.AssignedStage !== "الكل" && item["Stage"] !== currentUser.AssignedStage) || (currentUser.AssignedClass !== "الكل" && item["ClassName"] !== currentUser.AssignedClass))) return false;
+        return true;
+    });
+
+    if (allowedRecords.length === 0) {
+        document.getElementById('ssChartsEmpty')?.classList.remove('hidden');
+        document.getElementById('ssChartsContainer')?.classList.add('hidden');
+        return;
+    }
+    document.getElementById('ssChartsEmpty')?.classList.add('hidden');
+    document.getElementById('ssChartsContainer')?.classList.remove('hidden');
+
+    let stats = {
+        totalPresent: 0, totalAbsent: 0,
+        malePresent: 0, maleAbsent: 0,
+        femalePresent: 0, femaleAbsent: 0,
+        stagesMap: {}
+    };
+
+    allowedRecords.forEach(rec => {
+        const isPresent = rec["Attendance"] === "حاضر";
+        if (isPresent) stats.totalPresent++; else stats.totalAbsent++;
+        
+        const kidInfo = namesCacheData.find(m => m["الاسم ثلاثي"] === rec["ChildName"] || m["ID"] == rec["ChildID"]);
+        const gender = kidInfo ? kidInfo["ذكر/انثي"] : "";
+        
+        if (gender === "ذكر") {
+            if (isPresent) stats.malePresent++; else stats.maleAbsent++;
+        } else if (gender === "انثي") {
+            if (isPresent) stats.femalePresent++; else stats.femaleAbsent++;
+        }
+
+        const stage = rec["Stage"] || "غير محدد";
+        const grade = rec["Grade"] || "عام";
+        if (!stats.stagesMap[stage]) stats.stagesMap[stage] = {};
+        if (!stats.stagesMap[stage][grade]) stats.stagesMap[stage][grade] = { present: 0, absent: 0 };
+        
+        if (isPresent) stats.stagesMap[stage][grade].present++;
+        else stats.stagesMap[stage][grade].absent++;
+    });
+
+    renderSSCharts(stats);
+}
+
+// دالة رسم الشارتات باستخدام Chart.js
+function renderSSCharts(stats) {
+    if (ssChartInstances.pie) ssChartInstances.pie.destroy();
+    if (ssChartInstances.gender) ssChartInstances.gender.destroy();
+    if (ssChartInstances.stage) ssChartInstances.stage.destroy();
+
+    if (typeof Chart === 'undefined') return;
+
+    Chart.defaults.font.family = 'Cairo, sans-serif';
+    Chart.defaults.font.weight = 'bold';
+
+    const ctxPie = document.getElementById('attPieChart')?.getContext('2d');
+    if (ctxPie) {
+        ssChartInstances.pie = new Chart(ctxPie, {
+            type: 'doughnut',
+            data: {
+                labels: ['نسبة الحضور', 'نسبة الغياب'],
+                datasets: [{
+                    data: [stats.totalPresent, stats.totalAbsent],
+                    backgroundColor: ['#10b981', '#f43f5e'],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                plugins: { title: { display: true, text: 'الإجمالي العام للخدمة (حسب وصولك)' } }
+            }
+        });
+    }
+
+    const ctxGender = document.getElementById('genderBarChart')?.getContext('2d');
+    if (ctxGender) {
+        ssChartInstances.gender = new Chart(ctxGender, {
+            type: 'bar',
+            data: {
+                labels: ['البنين (أولاد)', 'البنات'],
+                datasets: [
+                    { label: 'إجمالي الحضور', data: [stats.malePresent, stats.femalePresent], backgroundColor: '#10b981', borderRadius: 6 },
+                    { label: 'إجمالي الغياب', data: [stats.maleAbsent, stats.femaleAbsent], backgroundColor: '#f43f5e', borderRadius: 6 }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: { title: { display: true, text: 'النسبة بين الأولاد والبنات' } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+
+    let labels = [];
+    let dataPresent = [];
+    let dataAbsent = [];
+    
+    Object.keys(stats.stagesMap).forEach(stage => {
+        Object.keys(stats.stagesMap[stage]).forEach(grade => {
+            labels.push(`${stage} - ${grade}`);
+            dataPresent.push(stats.stagesMap[stage][grade].present);
+            dataAbsent.push(stats.stagesMap[stage][grade].absent);
+        });
+    });
+
+    const ctxStage = document.getElementById('stageBarChart')?.getContext('2d');
+    if (ctxStage) {
+        ssChartInstances.stage = new Chart(ctxStage, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'حاضر', data: dataPresent, backgroundColor: '#3b82f6', borderRadius: 4 },
+                    { label: 'غائب', data: dataAbsent, backgroundColor: '#cbd5e1', borderRadius: 4 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { title: { display: true, text: 'تحليل الحضور لكل مرحلة وصف دراسي' } },
+                scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
+            }
+        });
     }
 }
 
@@ -1111,13 +1249,6 @@ function closeSundaySchoolPrintModal() {
     document.getElementById('ssPrintModal')?.classList.add('hidden');
 }
 
-function updatePrintGradesDropdown(stage) {
-    const grdSel = document.getElementById('ssPrintGrade');
-    if (!grdSel) return;
-    const grades = STAGE_GRADES[stage] || [];
-    grdSel.innerHTML = `<option value="">كل الصفوف</option>` + grades.map(g => `<option value="${g}">${g}</option>`).join('');
-}
-
 async function generateAndPrintClassRoster() {
     const stage = document.getElementById('ssPrintStage')?.value || "";
     const grade = document.getElementById('ssPrintGrade')?.value || "";
@@ -1130,8 +1261,11 @@ async function generateAndPrintClassRoster() {
 
     let membersList = namesCacheData;
     if (membersList.length === 0) {
-        const res = await (await fetch(`${API_URL}?sheet=Names`)).json();
-        if (res.status === "success") membersList = res.data;
+        try {
+            const res = await fetch(`${API_URL}?sheet=Names`);
+            const data = await res.json();
+            if (data.status === "success") membersList = data.data;
+        } catch(e) {}
     }
 
     const classKids = membersList.filter(item => {
@@ -1200,134 +1334,6 @@ async function generateAndPrintClassRoster() {
     }, 250);
 }
 
-// دالة تحضير بيانات الرسوم البيانية وتطبيق الصلاحيات
-async function initSSChartsView() {
-    if (namesCacheData.length === 0) {
-        try {
-            const res = await (await fetch(`${API_URL}?sheet=Names`)).json();
-            if (res.status === "success") namesCacheData = res.data;
-        } catch(e) {}
-    }
-
-    let allowedRecords = rawData.filter(item => {
-        if (currentUser.Role === "Stage_Leader" && currentUser.AssignedStage !== "الكل" && item["Stage"] !== currentUser.AssignedStage) return false;
-        if (currentUser.Role === "Class_Servant" && ((currentUser.AssignedStage !== "الكل" && item["Stage"] !== currentUser.AssignedStage) || (currentUser.AssignedClass !== "الكل" && item["ClassName"] !== currentUser.AssignedClass))) return false;
-        return true;
-    });
-
-    if (allowedRecords.length === 0) {
-        document.getElementById('ssChartsEmpty')?.classList.remove('hidden');
-        document.getElementById('ssChartsContainer')?.classList.add('hidden');
-        return;
-    }
-    document.getElementById('ssChartsEmpty')?.classList.add('hidden');
-    document.getElementById('ssChartsContainer')?.classList.remove('hidden');
-
-    let stats = {
-        totalPresent: 0, totalAbsent: 0,
-        malePresent: 0, maleAbsent: 0,
-        femalePresent: 0, femaleAbsent: 0,
-        stagesMap: {}
-    };
-
-    allowedRecords.forEach(rec => {
-        const isPresent = rec["Attendance"] === "حاضر";
-        if (isPresent) stats.totalPresent++; else stats.totalAbsent++;
-        
-        const kidInfo = namesCacheData.find(m => m["الاسم ثلاثي"] === rec["ChildName"] || m["ID"] == rec["ChildID"]);
-        const gender = kidInfo ? kidInfo["ذكر/انثي"] : "";
-        
-        if (gender === "ذكر") {
-            if (isPresent) stats.malePresent++; else stats.maleAbsent++;
-        } else if (gender === "انثي") {
-            if (isPresent) stats.femalePresent++; else stats.femaleAbsent++;
-        }
-
-        const stage = rec["Stage"] || "غير محدد";
-        const grade = rec["Grade"] || "عام";
-        if (!stats.stagesMap[stage]) stats.stagesMap[stage] = {};
-        if (!stats.stagesMap[stage][grade]) stats.stagesMap[stage][grade] = { present: 0, absent: 0 };
-        
-        if (isPresent) stats.stagesMap[stage][grade].present++;
-        else stats.stagesMap[stage][grade].absent++;
-    });
-
-    renderSSCharts(stats);
-}
-
-// دالة رسم الشارتات باستخدام Chart.js
-function renderSSCharts(stats) {
-    if (ssChartInstances.pie) ssChartInstances.pie.destroy();
-    if (ssChartInstances.gender) ssChartInstances.gender.destroy();
-    if (ssChartInstances.stage) ssChartInstances.stage.destroy();
-
-    Chart.defaults.font.family = 'Cairo, sans-serif';
-    Chart.defaults.font.weight = 'bold';
-
-    const ctxPie = document.getElementById('attPieChart').getContext('2d');
-    ssChartInstances.pie = new Chart(ctxPie, {
-        type: 'doughnut',
-        data: {
-            labels: ['نسبة الحضور', 'نسبة الغياب'],
-            datasets: [{
-                data: [stats.totalPresent, stats.totalAbsent],
-                backgroundColor: ['#10b981', '#f43f5e'],
-                hoverOffset: 4
-            }]
-        },
-        options: {
-            plugins: { title: { display: true, text: 'الإجمالي العام للخدمة (حسب وصولك)' } }
-        }
-    });
-
-    const ctxGender = document.getElementById('genderBarChart').getContext('2d');
-    ssChartInstances.gender = new Chart(ctxGender, {
-        type: 'bar',
-        data: {
-            labels: ['البنين (أولاد)', 'البنات'],
-            datasets: [
-                { label: 'إجمالي الحضور', data: [stats.malePresent, stats.femalePresent], backgroundColor: '#10b981', borderRadius: 6 },
-                { label: 'إجمالي الغياب', data: [stats.maleAbsent, stats.femaleAbsent], backgroundColor: '#f43f5e', borderRadius: 6 }
-            ]
-        },
-        options: {
-            responsive: true,
-            plugins: { title: { display: true, text: 'النسبة بين الأولاد والبنات' } },
-            scales: { y: { beginAtZero: true } }
-        }
-    });
-
-    let labels = [];
-    let dataPresent = [];
-    let dataAbsent = [];
-    
-    Object.keys(stats.stagesMap).forEach(stage => {
-        Object.keys(stats.stagesMap[stage]).forEach(grade => {
-            labels.push(`${stage} - ${grade}`);
-            dataPresent.push(stats.stagesMap[stage][grade].present);
-            dataAbsent.push(stats.stagesMap[stage][grade].absent);
-        });
-    });
-
-    const ctxStage = document.getElementById('stageBarChart').getContext('2d');
-    ssChartInstances.stage = new Chart(ctxStage, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [
-                { label: 'حاضر', data: dataPresent, backgroundColor: '#3b82f6', borderRadius: 4 },
-                { label: 'غائب', data: dataAbsent, backgroundColor: '#cbd5e1', borderRadius: 4 }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { title: { display: true, text: 'تحليل الحضور لكل مرحلة وصف دراسي' } },
-            scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
-        }
-    });
-}
-
 // ---------------------------------------------------------
 // 9. قسم رصد اجتماع الخدام (Servants Meeting Section)
 // ---------------------------------------------------------
@@ -1369,14 +1375,16 @@ async function initServantsMeetingLiveView() {
 
     if (servantsCacheData.length === 0) {
         try {
-            const res = await (await fetch(`${API_URL}?sheet=Servants`)).json();
-            if (res.status === "success") servantsCacheData = res.data;
+            const res = await fetch(`${API_URL}?sheet=Servants`);
+            const data = await res.json();
+            if (data.status === "success") servantsCacheData = data.data;
         } catch(e) {}
     }
     if (namesCacheData.length === 0) {
         try {
-            const res = await (await fetch(`${API_URL}?sheet=Names`)).json();
-            if (res.status === "success") namesCacheData = res.data;
+            const res = await fetch(`${API_URL}?sheet=Names`);
+            const data = await res.json();
+            if (data.status === "success") namesCacheData = data.data;
         } catch(e) {}
     }
 
@@ -1503,16 +1511,17 @@ async function saveServantsMeetingBatchAttendance() {
     }));
 
     try {
-        const res = await (await fetch(API_URL, {
+        const res = await fetch(API_URL, {
             method: 'POST',
             body: JSON.stringify({ sheet: "Meetings_Attendance", action: "batch_add", data: payload })
-        })).json();
-
-        if (res.status === "success") {
-            alert("✓ " + res.message);
+        });
+        const data = await res.json();
+        
+        if (data.status === "success") {
+            alert("✓ " + data.message);
             loadData();
         } else {
-            alert("خطأ أثناء الحفظ: " + res.message);
+            alert("خطأ أثناء الحفظ: " + data.message);
         }
     } catch(err) {
         alert("تعذر الاتصال بالخادم لحفظ حضور الاجتماع.");
@@ -1582,8 +1591,9 @@ function openAddServantQuickModal() {
 async function populateServantsDatalist() {
     if (namesCacheData.length === 0) {
         try {
-            const res = await (await fetch(`${API_URL}?sheet=Names`)).json();
-            if (res.status === "success") namesCacheData = res.data;
+            const res = await fetch(`${API_URL}?sheet=Names`);
+            const data = await res.json();
+            if (data.status === "success") namesCacheData = data.data;
         } catch(e) {}
     }
     const dl = document.getElementById('servantsNamesList');
@@ -1638,14 +1648,16 @@ function switchVisitationsView(view) {
 async function initVisitationsDashboard() {
     if (namesCacheData.length === 0) {
         try {
-            const res = await (await fetch(`${API_URL}?sheet=Names`)).json();
-            if (res.status === "success") namesCacheData = res.data;
+            const res = await fetch(`${API_URL}?sheet=Names`);
+            const data = await res.json();
+            if (data.status === "success") namesCacheData = data.data;
         } catch(e) {}
     }
     if (visitationsData.length === 0) {
         try {
-            const res = await (await fetch(`${API_URL}?sheet=Visitations`)).json();
-            if (res.status === "success") visitationsData = res.data;
+            const res = await fetch(`${API_URL}?sheet=Visitations`);
+            const data = await res.json();
+            if (data.status === "success") visitationsData = data.data;
         } catch(e) {}
     }
 
@@ -1957,11 +1969,14 @@ async function handleFormSubmit(e) {
     }
 
     try {
-        const res = await (await fetch(API_URL, { method: 'POST', body: JSON.stringify({ sheet: currentTab, action: action, data: payload }) })).json();
-        if (res.status === "success") {
+        const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ sheet: currentTab, action: action, data: payload }) });
+        const data = await res.json();
+        if (data.status === "success") {
             closeModal();
             await loadData();
-        } else alert("خطأ: " + res.message);
+        } else {
+            alert("خطأ: " + data.message);
+        }
     } catch (err) {
         alert("حدث خطأ أثناء الحفظ.");
     } finally {
@@ -1984,57 +1999,85 @@ async function deleteRecord(id) {
 }
 
 // ---------------------------------------------------------
-// 12. دوال جلب البيانات العامة والمزامنة (Data Fetch & Sync)
+// 12. دوال جلب البيانات العامة والمزامنة (محمية مع إعادة محاولة)
 // ---------------------------------------------------------
 async function loadData(force = false) {
+    if (!currentTab) return;
     showLoader(true);
-    try {
-        const res = await (await fetch(`${API_URL}?sheet=${currentTab}`)).json();
-        if (res.status === "success") {
-            rawData = res.data;
-            backendAreas = res.areas || [];
+    
+    let attempts = 0;
+    const maxAttempts = 3; // محاولة الجلب 3 مرات قبل الاستسلام
+    let success = false;
+
+    while (attempts < maxAttempts && !success) {
+        attempts++;
+        try {
+            const url = `${API_URL}?sheet=${encodeURIComponent(currentTab)}&t=${Date.now()}`;
+            const response = await fetch(url, { method: 'GET', redirect: 'follow' });
             
-            if (currentTab === 'Names') {
-                namesCacheData = rawData;
-                populateAreasDropdown();
-                if (currentNamesView === 'roster') {
-                    buildAlphabetBar();
-                    renderFamilyHeadsRoster();
-                } else {
-                    applyNamesFilter();
-                }
-            } else if (currentTab === 'Sunday_School') {
-                if (currentSSView === 'live') {
-                    initSundaySchoolLiveView();
-                } else {
-                    renderStandardCards();
-                }
-            } else if (currentTab === 'Meetings_Attendance') {
-                if (currentMeetingsView === 'live') {
-                    initServantsMeetingLiveView();
-                } else {
-                    renderStandardCards();
-                }
-            } else if (currentTab === 'Visitations') {
-                visitationsData = rawData;
-                if (currentVisitView === 'dashboard') {
-                    initVisitationsDashboard();
-                } else {
-                    renderStandardCards();
-                }
-            } else if (currentTab === 'Servants') {
-                servantsCacheData = rawData;
-                renderStandardCards();
-            } else {
-                renderStandardCards();
+            if (!response.ok) {
+                throw new Error(`خطأ استجابة السيرفر: ${response.status}`);
             }
-        } else {
-            alert("خطأ: " + res.message);
+
+            const res = await response.json();
+
+            if (res.status === "success") {
+                rawData = Array.isArray(res.data) ? res.data : [];
+                backendAreas = res.areas || [];
+                
+                if (currentTab === 'Names') {
+                    namesCacheData = rawData;
+                    populateAreasDropdown();
+                    if (currentNamesView === 'roster') {
+                        buildAlphabetBar();
+                        renderFamilyHeadsRoster();
+                    } else {
+                        applyNamesFilter();
+                    }
+                } else if (currentTab === 'Sunday_School') {
+                    if (currentSSView === 'live') {
+                        initSundaySchoolLiveView();
+                    } else if (currentSSView === 'charts') {
+                        initSSChartsView();
+                    } else {
+                        renderStandardCards();
+                    }
+                } else if (currentTab === 'Meetings_Attendance') {
+                    if (currentMeetingsView === 'live') {
+                        initServantsMeetingLiveView();
+                    } else {
+                        renderStandardCards();
+                    }
+                } else if (currentTab === 'Visitations') {
+                    visitationsData = rawData;
+                    if (currentVisitView === 'dashboard') {
+                        initVisitationsDashboard();
+                    } else {
+                        renderStandardCards();
+                    }
+                } else if (currentTab === 'Servants') {
+                    servantsCacheData = rawData;
+                    renderStandardCards();
+                } else {
+                    renderStandardCards();
+                }
+                success = true;
+            } else {
+                throw new Error(res.message || "فشل معالجة البيانات");
+            }
+        } catch (err) {
+            console.error(`محاولة ${attempts} فشلت:`, err);
+            if (attempts >= maxAttempts) {
+                alert(`تعذر جلب البيانات. يرجى التحقق من اتصال الإنترنت وإعادة تحميل الصفحة.\nالسبب: ${err.message}`);
+            } else {
+                // الانتظار ثانية واحدة ثم إعادة المحاولة
+                await new Promise(r => setTimeout(r, 1000));
+            }
+        } finally {
+            if (success || attempts >= maxAttempts) {
+                showLoader(false);
+            }
         }
-    } catch (err) {
-        alert("تعذر جلب البيانات");
-    } finally {
-        showLoader(false);
     }
 }
 
@@ -2049,6 +2092,8 @@ function showLoader(s) {
     } else if (currentTab === 'Sunday_School') {
         if (currentSSView === 'live') {
             document.getElementById('sundaySchoolLiveSection')?.classList.toggle('hidden', s);
+        } else if (currentSSView === 'charts') {
+            document.getElementById('sundaySchoolChartsSection')?.classList.toggle('hidden', s);
         } else {
             document.getElementById('standardCardsContainer')?.classList.toggle('hidden', s);
         }
@@ -2068,6 +2113,7 @@ function showLoader(s) {
         document.getElementById('standardCardsContainer')?.classList.toggle('hidden', s);
     }
 }
+
 // ---------------------------------------------------------
 // 13. دوال الطباعة واستخراج التقارير (Printing & Reports)
 // ---------------------------------------------------------
