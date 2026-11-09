@@ -1933,7 +1933,6 @@ function showLoader(s) {
         document.getElementById('standardCardsContainer')?.classList.toggle('hidden', s);
     }
 }
-
 // ---------------------------------------------------------
 // 13. دوال الطباعة واستخراج التقارير (Printing & Reports)
 // ---------------------------------------------------------
