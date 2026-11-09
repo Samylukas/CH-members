@@ -20,7 +20,7 @@ let currentVisitView = "dashboard";
 let selectedLetter = "الكل";
 let currentSSLiveKids = [];
 let currentServantsMeetingList = [];
-let ssChartInstances = {}; // لحفظ نُسخ الرسوم البيانية
+let ssChartInstances = {};
 
 // تحميل قائمة الخدام تلقائياً عند فتح الصفحة
 window.addEventListener('load', () => {
@@ -420,6 +420,57 @@ function normalizeArabic(text) {
     return text.trim().replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي");
 }
 
+function filterRoster() { renderFamilyHeadsRoster(); }
+
+function populateAreasDropdown() {
+    const areaSelect = document.getElementById('filterArea');
+    if (!areaSelect) return;
+    let areas = new Set(backendAreas);
+    if (areas.size === 0) {
+        rawData.forEach(item => {
+            const a = (item["المنطقة"] || "").trim();
+            if (a) areas.add(a);
+        });
+    }
+    areaSelect.innerHTML = `<option value="">كل المناطق السكنية (${areas.size})</option>` + 
+        Array.from(areas).sort().map(a => `<option value="${a}">${a}</option>`).join('');
+}
+
+function isMemberDeceased(member) {
+    const deathDate = String(member["تاريخ الوفاة"] || "").trim();
+    const status = String(member["حالة القيد"] || "").trim();
+    return (deathDate !== "" && deathDate !== "-" && deathDate !== "لا يوجد") || status.includes("متوف") || status.includes("منتقل");
+}
+
+function parseDateForSort(dStr) {
+    if (!dStr) return new Date(0);
+    const str = String(dStr).trim();
+    const parts = str.split('/');
+    if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]);
+    return new Date(str);
+}
+
+function getLastFamilyVisitDate(familyMembers) {
+    if (!visitationsData || visitationsData.length === 0) return "لا يوجد سجل";
+    const memberNames = familyMembers.map(m => m["الاسم ثلاثي"]);
+    const memberIds = familyMembers.map(m => String(m["ID"]));
+    const familyVisits = visitationsData.filter(v => memberNames.includes(v.MemberName) || memberIds.includes(String(v.MemberID)));
+    if (familyVisits.length === 0) return "لم يُفتقد بعد";
+    familyVisits.sort((a, b) => parseDateForSort(b.VisitDate) - parseDateForSort(a.VisitDate));
+    return familyVisits[0].VisitDate || "لم يُفتقد بعد";
+}
+
+function quickAddMemberToFamily(familyHeadName) {
+    openModal('add');
+    const radio = document.querySelector('input[name="addMode"][value="add_member"]');
+    if (radio) {
+        radio.checked = true;
+        toggleAddMode('add_member');
+    }
+    const headInput = document.querySelector('input[name="اسم رب الاسرة"]');
+    if (headInput) headInput.value = familyHeadName;
+}
+
 function renderFamilyHeadsRoster() {
     const container = document.getElementById('rosterCardsContainer');
     if (!container) return;
@@ -464,8 +515,8 @@ function renderFamilyHeadsRoster() {
         const headMemberRecord = familyMembers.find(m => m["الاسم ثلاثي"] === headName || m["صلة القرابة"] === "زوج" || m["صلة القرابة"] === "رب أسرة") || familyMembers[0];
         const headId = headMemberRecord ? (headMemberRecord["ID"] || headMemberRecord[Object.keys(headMemberRecord)[0]]) : null;
         
-        const area = headMemberRecord["المنطقة"] || "غير محددة";
-        const phone = headMemberRecord["هاتف الاسرة"] || headMemberRecord["تليفون العمل/المحمول"] || "-";
+        const area = headMemberRecord ? (headMemberRecord["المنطقة"] || "غير محددة") : "غير محددة";
+        const phone = headMemberRecord ? (headMemberRecord["هاتف الاسرة"] || headMemberRecord["تليفون العمل/المحمول"] || "-") : "-";
         const lastVisit = getLastFamilyVisitDate(familyMembers);
 
         const card = document.createElement('div');
@@ -499,7 +550,7 @@ function renderFamilyHeadsRoster() {
                         <svg id="icon_toggle_${index}" class="w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                     </button>
                     ${headId ? `<button onclick="editRecord(${headId})" class="text-xs font-bold bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 px-2.5 py-1.5 rounded-xl transition">✏️ تعديل</button>` : ''}
-                    <button onclick="quickAddMemberToFamily('${headName.replace(/'/g, "\\\\'")}')" class="text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1.5 rounded-xl transition">+ فرد</button>
+                    <button onclick="quickAddMemberToFamily('${headName.replace(/'/g, "\\'")}')" class="text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1.5 rounded-xl transition">+ فرد</button>
                 </div>
             </div>
 
@@ -570,8 +621,6 @@ function expandAllFamilies(expand = true) {
         }
     });
 }
-
-function filterRoster() { renderFamilyHeadsRoster(); }
 
 function resetNamesFilters() {
     const fh = document.getElementById('filterFamilyHead');
@@ -723,6 +772,86 @@ function applyNamesFilter() {
     });
 }
 
+function printFilteredResults() {
+    const headQ = (document.getElementById('filterFamilyHead')?.value || "").trim().toLowerCase();
+    const nameQ = (document.getElementById('filterFullName')?.value || "").trim().toLowerCase();
+    const areaQ = (document.getElementById('filterArea')?.value || "").trim();
+    const ageGroupQ = document.getElementById('filterAgeGroup')?.value || "";
+    const genderQ = document.getElementById('filterGender')?.value || "";
+    const electionQ = document.getElementById('filterElection')?.value || "";
+    const maritalQ = document.getElementById('filterMarital')?.value || "";
+    const deceasedQ = document.getElementById('filterDeceased')?.value || "alive";
+
+    const matchedMembers = rawData.filter(item => {
+        const deceased = isMemberDeceased(item);
+        if (deceasedQ === "alive" && deceased) return false;
+        if (deceasedQ === "deceased" && !deceased) return false;
+        if (areaQ && (item["المنطقة"] || "").trim() !== areaQ) return false;
+        if (genderQ && item["ذكر/انثي"] !== genderQ) return false;
+        if (maritalQ && (item["الحالة الاجتماعية"] || "").trim() !== maritalQ) return false;
+        if (electionQ && (item["البطاقة الانتخابية"] || "").trim() !== electionQ) return false;
+        if (ageGroupQ) {
+            const age = calculateAge(item["تاريخ الميلاد"], item["الرقم القومي"]);
+            if (age === null) return false;
+            if (ageGroupQ === "children" && age >= 12) return false;
+            if (ageGroupQ === "prep" && (age < 12 || age > 15)) return false;
+            if (ageGroupQ === "sec" && (age < 16 || age > 18)) return false;
+            if (ageGroupQ === "youth" && (age < 19 || age > 25)) return false;
+            if (ageGroupQ === "adults" && (age < 26 || age > 50)) return false;
+            if (ageGroupQ === "seniors" && age <= 50) return false;
+        }
+        if (headQ && !String(item["اسم رب الاسرة"] || "").toLowerCase().includes(headQ)) return false;
+        if (nameQ && !String(item["الاسم ثلاثي"] || "").toLowerCase().includes(nameQ)) return false;
+        return true;
+    });
+
+    if (matchedMembers.length === 0) {
+        alert("لا توجد سجلات مطابقة للفرز المحدد للطباعة!");
+        return;
+    }
+
+    const familiesMap = {};
+    matchedMembers.forEach(m => {
+        const head = (m["اسم رب الاسرة"] || "").trim();
+        if (!head) return;
+        if (!familiesMap[head]) familiesMap[head] = [];
+        familiesMap[head].push(m);
+    });
+
+    const areaVal = areaQ || "كل المناطق";
+    const ageVal = document.getElementById('filterAgeGroup')?.options[document.getElementById('filterAgeGroup')?.selectedIndex]?.text || "كل الأعمار";
+    const statusVal = document.getElementById('filterDeceased')?.options[document.getElementById('filterDeceased')?.selectedIndex]?.text || "الأحياء";
+    
+    buildAndPrintFamilies(familiesMap, `بيان فرز السجلات: [${areaVal} - ${ageVal} - ${statusVal}]`);
+}
+
+function printRosterDirectory() {
+    const query = (document.getElementById('rosterSearchInput')?.value || "").trim().toLowerCase();
+
+    const familiesMap = {};
+    rawData.forEach(m => {
+        const head = (m["اسم رب الاسرة"] || "").trim();
+        if (!head) return;
+
+        const normHead = normalizeArabic(head).toLowerCase();
+        if (selectedLetter !== "الكل") {
+            const targetChar = normalizeArabic(selectedLetter)[0];
+            if (normHead[0] !== targetChar) return;
+        }
+
+        if (query) {
+            const hasHeadMatch = normHead.includes(normalizeArabic(query).toLowerCase());
+            const hasMemberMatch = normalizeArabic(m["الاسم ثلاثي"]).toLowerCase().includes(normalizeArabic(query).toLowerCase());
+            if (!hasHeadMatch && !hasMemberMatch) return;
+        }
+
+        if (!familiesMap[head]) familiesMap[head] = [];
+        familiesMap[head].push(m);
+    });
+
+    buildAndPrintFamilies(familiesMap, `دليل أرباب الأسر والعائلات الأبجدي (حرف: ${selectedLetter})`);
+}
+
 // ---------------------------------------------------------
 // 8. قسم مدارس الأحد والإحصائيات (Sunday School & Charts)
 // ---------------------------------------------------------
@@ -738,12 +867,10 @@ function switchSSView(view) {
     const chartsSec = document.getElementById('sundaySchoolChartsSection');
     const btnAdd = document.getElementById('btnAddNewRecord');
 
-    // تصفير تنسيق الأزرار
     [btnLive, btnHist, btnCharts].forEach(btn => {
         if (btn) btn.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
     });
 
-    // إخفاء كل اللوحات
     liveSec?.classList.add('hidden');
     cardsSec?.classList.add('hidden');
     searchSec?.classList.add('hidden');
@@ -842,7 +969,6 @@ function onSSFilterGradeChange() {
     loadSSLiveClassKids();
 }
 
-// دوال استخراج آخر حضور وآخر افتقاد للمخدوم
 function getLastKidAttendanceInfo(kidName, kidId) {
     if (!rawData || rawData.length === 0) return { text: "لا يوجد سجل سابق", status: "none" };
     
@@ -1000,7 +1126,7 @@ function renderSSLiveKidsTable() {
                 </select>
             </td>
             <td class="p-3">
-                <input type="text" placeholder="ملاحظة..." value="${kid.notes}" oninput="currentSSLiveKids[${idx}].notes = this.value" class="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:ring-1 focus:ring-blue-500">
+                <input type="text" placeholder="ملاحظة..." value="${kid.notes}" oninput="currentSSLiveKids[${idx}].notes = this.value" class="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-blue-500">
             </td>
         `;
         tbody.appendChild(tr);
@@ -1079,7 +1205,6 @@ async function saveSundaySchoolBatchAttendance() {
     }
 }
 
-// دالة تحضير بيانات الرسوم البيانية وتطبيق الصلاحيات
 async function initSSChartsView() {
     if (namesCacheData.length === 0) {
         try {
@@ -1135,7 +1260,6 @@ async function initSSChartsView() {
     renderSSCharts(stats);
 }
 
-// دالة رسم الشارتات باستخدام Chart.js
 function renderSSCharts(stats) {
     if (ssChartInstances.pie) ssChartInstances.pie.destroy();
     if (ssChartInstances.gender) ssChartInstances.gender.destroy();
@@ -1247,6 +1371,13 @@ function openSundaySchoolPrintModal() {
 
 function closeSundaySchoolPrintModal() {
     document.getElementById('ssPrintModal')?.classList.add('hidden');
+}
+
+function updatePrintGradesDropdown(stage) {
+    const grdSel = document.getElementById('ssPrintGrade');
+    if (!grdSel) return;
+    const grades = STAGE_GRADES[stage] || [];
+    grdSel.innerHTML = `<option value="">كل الصفوف</option>` + grades.map(g => `<option value="${g}">${g}</option>`).join('');
 }
 
 async function generateAndPrintClassRoster() {
@@ -1706,11 +1837,11 @@ function renderVisitationRecommendations() {
             const headRec = familyMembers.find(m => m["الاسم ثلاثي"] === headName || m["صلة القرابة"] === "زوج" || m["صلة القرابة"] === "رب أسرة") || familyMembers[0];
             recommendations.push({
                 headName: headName,
-                area: headRec["المنطقة"] || "غير محددة",
-                phone: headRec["هاتف الاسرة"] || headRec["تليفون العمل/المحمول"] || "-",
+                area: headRec ? (headRec["المنطقة"] || "غير محددة") : "غير محددة",
+                phone: headRec ? (headRec["هاتف الاسرة"] || headRec["تليفون العمل/المحمول"] || "-") : "-",
                 lastVisit: lastVisitDateStr,
                 daysSince: daysSince,
-                headId: headRec["ID"] || headRec[Object.keys(headRec)[0]]
+                headId: headRec ? (headRec["ID"] || headRec[Object.keys(headRec)[0]]) : null
             });
         }
     });
@@ -1736,7 +1867,7 @@ function renderVisitationRecommendations() {
                     <p class="text-[11px] text-slate-500 font-semibold mt-0.5">📍 ${rec.area} | 📞 <span class="font-mono">${rec.phone}</span></p>
                     <p class="text-[11px] text-rose-600 font-bold mt-1">⏳ التأخير: ${sinceText}</p>
                 </div>
-                <button onclick="quickAddVisitation('${rec.headId}', '${rec.headName.replace(/'/g, "\\\\'")}')" class="bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition shadow-sm whitespace-nowrap">
+                <button onclick="quickAddVisitation('${rec.headId}', '${rec.headName.replace(/'/g, "\\'")}')" class="bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition shadow-sm whitespace-nowrap">
                     + تسجيل زيارة
                 </button>
             </div>
@@ -1787,7 +1918,7 @@ function renderVisitationFollowups() {
                 <p class="text-[11px] text-slate-500 font-semibold mt-0.5">👤 الخادم المتابع: ${rec.VisitorName}</p>
                 <p class="text-[11px] text-indigo-600 font-bold mt-1">🗓️ موعد المتابعة: ${rec.FollowUpDate}</p>
             </div>
-            <button onclick="quickAddVisitation('${rec.MemberID}', '${rec.MemberName.replace(/'/g, "\\\\'")}')" class="bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition shadow-sm">
+            <button onclick="quickAddVisitation('${rec.MemberID}', '${rec.MemberName.replace(/'/g, "\\'")}')" class="bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition shadow-sm">
                 + تحديث الحالة
             </button>
         `;
@@ -1998,70 +2129,142 @@ async function deleteRecord(id) {
     } catch (err) { alert("فشل الحذف"); } finally { showLoader(false); }
 }
 
-// ---------------------------------------------------------
-// 12. دوال جلب البيانات العامة والمزامنة (محمية مع إعادة محاولة)
-// ---------------------------------------------------------
-async function loadData(force = false) {
-    showLoader(true);
-    try {
-        const res = await (await fetch(`${API_URL}?sheet=${currentTab}`)).json();
-        if (res.status === "success") {
-            rawData = res.data;
-            backendAreas = res.areas || [];
-            
-            if (currentTab === 'Names') {
-                namesCacheData = rawData;
-                populateAreasDropdown();
-                if (currentNamesView === 'roster') {
-                    buildAlphabetBar();
-                    renderFamilyHeadsRoster();
-                } else {
-                    applyNamesFilter();
-                }
-            } else if (currentTab === 'Sunday_School') {
-                if (currentSSView === 'live') {
-                    initSundaySchoolLiveView();
-                } else {
-                    renderStandardCards();
-                }
-            } else if (currentTab === 'Meetings_Attendance') {
-                if (currentMeetingsView === 'live') {
-                    initServantsMeetingLiveView();
-                } else {
-                    renderStandardCards();
-                }
-            } else if (currentTab === 'Visitations') {
-                visitationsData = rawData;
-                if (currentVisitView === 'dashboard') {
-                    initVisitationsDashboard();
-                } else {
-                    renderStandardCards();
-                }
-            } else if (currentTab === 'Servants') {
-                servantsCacheData = rawData;
-                renderStandardCards();
-            } else {
-                renderStandardCards();
-            }
-        } else {
-            alert("خطأ: " + res.message);
+function renderStandardCards() {
+    if (currentTab === 'Names') return;
+    const query = (document.getElementById('searchInput')?.value || "").trim().toLowerCase();
+    const container = document.getElementById('standardCardsContainer');
+    if (!container) return;
+    container.innerHTML = "";
+
+    let filtered = rawData.filter(item => {
+        if (currentTab === "Sunday_School") {
+            if (currentUser.Role === "Stage_Leader" && currentUser.AssignedStage !== "الكل" && item["Stage"] !== currentUser.AssignedStage) return false;
+            if (currentUser.Role === "Class_Servant" && ((currentUser.AssignedStage !== "الكل" && item["Stage"] !== currentUser.AssignedStage) || (currentUser.AssignedClass !== "الكل" && item["ClassName"] !== currentUser.AssignedClass))) return false;
         }
-    } catch (err) {
-        alert("تعذر جلب البيانات");
-    } finally {
-        showLoader(false);
+        return Object.values(item).some(val => String(val).toLowerCase().includes(query));
+    });
+
+    const recCount = document.getElementById('recordCount');
+    if (recCount) recCount.innerText = `${filtered.length} سجل`;
+    if (!filtered.length) {
+        container.innerHTML = `<div class="col-span-full text-center py-16 text-slate-400 font-bold bg-white rounded-2xl border border-dashed border-slate-300">لا توجد سجلات مطابقة</div>`;
+        return;
     }
+
+    filtered.forEach(item => {
+        const idVal = item[Object.keys(item)[0]];
+        const card = document.createElement('div');
+        card.className = "bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hover:shadow-md transition flex flex-col justify-between";
+        let details = "", title = item["ChildName"] || item["ServantName"] || item["MemberName"] || "سجل";
+
+        if (currentTab === "Sunday_School") {
+            details = `<p class="text-xs text-slate-600 mb-2"><span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-bold">${item["Stage"]}</span> ${item["Grade"]} (${item["ClassName"]})</p><div class="flex justify-between text-xs text-slate-500 font-semibold"><p>تاريخ: ${item["SessionDate"]}</p><p class="font-bold ${item["Attendance"]==='حاضر'?'text-emerald-600':'text-rose-600'}">${item["Attendance"]}</p></div>`;
+        } else if (currentTab === "Servants") {
+            details = `<p class="text-xs text-slate-600 mb-1 font-bold">الصلاحية: <span class="text-indigo-700">${item["Role"]}</span></p><p class="text-xs text-slate-500 font-semibold">النطاق: ${item["AssignedStage"]} - ${item["AssignedGrade"] || ""} (${item["AssignedClass"] || ""})</p><p class="text-[11px] font-mono text-slate-400">اسم المستخدم: ${item["Username"]}</p>`;
+        } else if (currentTab === "Visitations") {
+            details = `<p class="text-xs text-slate-600 mb-1 font-semibold">الخادم: ${item["VisitorName"]}</p><p class="text-xs text-slate-500">تاريخ الافتقاد: ${item["VisitDate"]}</p>`;
+        } else if (currentTab === "Meetings_Attendance") {
+            details = `<p class="text-xs text-slate-600 mb-1 font-semibold">${item["MeetingName"]} - <span class="font-bold ${item["Status"]==='حاضر'?'text-emerald-600':item["Status"]==='معتذر'?'text-amber-600':'text-rose-600'}">${item["Status"]}</span></p><p class="text-xs text-slate-500">التاريخ: ${item["MeetingDate"]} ${item["Notes"] ? '| ملاحظة: ' + item["Notes"] : ''}</p>`;
+        }
+
+        card.innerHTML = `
+            <div>
+                <div class="flex justify-between items-start mb-3">
+                    <h4 class="font-black text-sm text-slate-800 truncate">${title}</h4>
+                    <span class="text-[10px] font-mono font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded">#${idVal}</span>
+                </div>
+                <div class="mb-4">${details}</div>
+            </div>
+            <div class="flex justify-end gap-2 pt-3 border-t border-slate-100 no-print">
+                <button onclick="editRecord(${idVal})" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2.5 py-1.5 rounded-lg transition">تعديل</button>
+                ${currentUser.Role === "Admin" ? `<button onclick="deleteRecord(${idVal})" class="text-xs font-bold text-rose-600 hover:text-rose-800 bg-rose-50 px-2.5 py-1.5 rounded-lg transition">حذف</button>` : ''}
+            </div>
+        `;
+        container.appendChild(card);
+    });
 }
 
-function buildAlphabetBar() {
-    const bar = document.getElementById('alphabetBar');
-    if (!bar) return;
+// ---------------------------------------------------------
+// 12. دوال جلب البيانات العامة والمزامنة (Data Fetch & Sync)
+// ---------------------------------------------------------
+async function loadData(force = false) {
+    if (!currentTab) return;
+    showLoader(true);
     
-    const firstLetters = new Set();
-    rawData.forEach(r => {
-        const head = normalizeArabic(String(r["اسم رب الاسرة"] || "").trim());
-        if (head) firstLetters.add(head[0]);
-    });
+    let attempts = 0;
+    const maxAttempts = 3;
+    let success = false;
+
+    while (attempts < maxAttempts && !success) {
+        attempts++;
+        try {
+            const url = `${API_URL}?sheet=${encodeURIComponent(currentTab)}&t=${Date.now()}`;
+            const response = await fetch(url, { method: 'GET', redirect: 'follow' });
+            
+            if (!response.ok) {
+                throw new Error(`خطأ استجابة السيرفر: ${response.status}`);
+            }
+
+            const res = await response.json();
+
+            if (res.status === "success") {
+                rawData = Array.isArray(res.data) ? res.data : [];
+                backendAreas = res.areas || [];
+                
+                if (currentTab === 'Names') {
+                    namesCacheData = rawData;
+                    populateAreasDropdown();
+                    if (currentNamesView === 'roster') {
+                        buildAlphabetBar();
+                        renderFamilyHeadsRoster();
+                    } else {
+                        applyNamesFilter();
+                    }
+                } else if (currentTab === 'Sunday_School') {
+                    if (currentSSView === 'live') {
+                        initSundaySchoolLiveView();
+                    } else if (currentSSView === 'charts') {
+                        initSSChartsView();
+                    } else {
+                        renderStandardCards();
+                    }
+                } else if (currentTab === 'Meetings_Attendance') {
+                    if (currentMeetingsView === 'live') {
+                        initServantsMeetingLiveView();
+                    } else {
+                        renderStandardCards();
+                    }
+                } else if (currentTab === 'Visitations') {
+                    visitationsData = rawData;
+                    if (currentVisitView === 'dashboard') {
+                        initVisitationsDashboard();
+                    } else {
+                        renderStandardCards();
+                    }
+                } else if (currentTab === 'Servants') {
+                    servantsCacheData = rawData;
+                    renderStandardCards();
+                } else {
+                    renderStandardCards();
+                }
+                success = true;
+            } else {
+                throw new Error(res.message || "فشل معالجة البيانات");
+            }
+        } catch (err) {
+            console.error(`محاولة ${attempts} فشلت:`, err);
+            if (attempts >= maxAttempts) {
+                alert(`تعذر جلب البيانات. يرجى التحقق من اتصال الإنترنت وإعادة تحميل الصفحة.\nالسبب: ${err.message}`);
+            } else {
+                await new Promise(r => setTimeout(r, 1000));
+            }
+        } finally {
+            if (success || attempts >= maxAttempts) {
+                showLoader(false);
+            }
+        }
+    }
+}
 
 function showLoader(s) {
     document.getElementById('loader')?.classList.toggle('hidden', !s);
@@ -2126,12 +2329,12 @@ function buildAndPrintFamilies(familiesMap, reportTitle) {
         const members = familiesMap[headName];
         const headRec = members.find(m => m["الاسم ثلاثي"] === headName || m["صلة القرابة"] === "زوج" || m["صلة القرابة"] === "رب أسرة") || members[0];
         
-        const area = (headRec["المنطقة"] || "").trim();
-        const street = (headRec["اسم الشارع"] || "").trim();
-        const house = (headRec["رقم المنزل"] || headRec["العنوان رقم المنزل"] || "").trim();
+        const area = headRec ? ((headRec["المنطقة"] || "").trim()) : "غير محدد";
+        const street = headRec ? ((headRec["اسم الشارع"] || "").trim()) : "";
+        const house = headRec ? ((headRec["رقم المنزل"] || headRec["العنوان رقم المنزل"] || "").trim()) : "";
         const addressParts = [area, street, house].filter(Boolean);
         const addressStr = addressParts.length > 0 ? addressParts.join(' - ') : "غير محدد";
-        const phoneStr = headRec["هاتف الاسرة"] || headRec["تليفون العمل/المحمول"] || "-";
+        const phoneStr = headRec ? (headRec["هاتف الاسرة"] || headRec["تليفون العمل/المحمول"] || "-") : "-";
         
         const membersStr = members.map((m, mIdx) => {
             const mPhone = m["تليفون العمل/المحمول"] || "-";
