@@ -855,6 +855,25 @@ function printRosterDirectory() {
 // ---------------------------------------------------------
 // 8. قسم مدارس الأحد والإحصائيات (Sunday School & Charts)
 // ---------------------------------------------------------
+let selectedChartStage = "الكل";
+
+function ensureChartJsLoaded() {
+    return new Promise((resolve, reject) => {
+        if (typeof Chart !== 'undefined') return resolve();
+        const existing = document.querySelector('script[src*="chart.js"]');
+        if (existing) {
+            existing.addEventListener('load', () => resolve());
+            existing.addEventListener('error', () => reject(new Error("تعذر تحميل مكتبة الرسوم البيانية")));
+            return;
+        }
+        const s = document.createElement('script');
+        s.src = "https://cdn.jsdelivr.net/npm/chart.js";
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error("تعذر تحميل مكتبة الرسوم البيانية، تأكد من الاتصال بالإنترنت"));
+        document.head.appendChild(s);
+    });
+}
+
 function switchSSView(view) {
     currentSSView = view;
     const btnLive = document.getElementById('btnSSLiveRoster');
@@ -974,14 +993,14 @@ function getLastKidAttendanceInfo(kidName, kidId) {
     
     const history = rawData.filter(r => 
         (r["ChildName"] && r["ChildName"].trim() === kidName.trim()) || 
-        (r["ChildID"] && String(r["ChildID"]) === String(kidId))
+        (r["ChildID"] && String(r["ChildID"]).trim() !== "" && String(r["ChildID"]).trim() === String(kidId).trim())
     );
     
     if (history.length === 0) return { text: "أول حضور له", status: "none" };
     
     history.sort((a, b) => parseDateForSort(b["SessionDate"]) - parseDateForSort(a["SessionDate"]));
     const latest = history[0];
-    const isPresent = latest["Attendance"] === "حاضر";
+    const isPresent = String(latest["Attendance"] || "").trim() === "حاضر";
     return {
         text: `${latest["SessionDate"]} (${latest["Attendance"]})`,
         status: isPresent ? "present" : "absent"
@@ -993,7 +1012,7 @@ function getLastKidVisitInfo(kidName, kidId, familyHead) {
     
     const visits = visitationsData.filter(v => 
         (v["MemberName"] && (v["MemberName"].trim() === kidName.trim() || (familyHead && v["MemberName"].trim() === familyHead.trim()))) ||
-        (v["MemberID"] && String(v["MemberID"]) === String(kidId))
+        (v["MemberID"] && String(v["MemberID"]).trim() !== "" && String(v["MemberID"]).trim() === String(kidId).trim())
     );
     
     if (visits.length === 0) return { text: "لم يُفتقد بعد", isUrgent: true };
@@ -1097,18 +1116,12 @@ function renderSSLiveKidsTable() {
                     الأسرة: ${kid.familyHead || '-'} | الصف: <span class="text-indigo-600">${kid.grade}</span>
                 </p>
             </td>
-            <td class="p-3 text-center whitespace-nowrap">
-                ${attBadge}
-            </td>
-            <td class="p-3 text-center whitespace-nowrap">
-                ${visitBadge}
-            </td>
+            <td class="p-3 text-center whitespace-nowrap">${attBadge}</td>
+            <td class="p-3 text-center whitespace-nowrap">${visitBadge}</td>
             <td class="p-3">
                 <div class="flex flex-col gap-1">
                     <span class="font-mono text-xs font-bold text-slate-700" dir="ltr">${kid.phone}</span>
-                    <div class="flex items-center gap-1.5 flex-wrap">
-                        ${renderContactButtons(kid.phone)}
-                    </div>
+                    <div class="flex items-center gap-1.5 flex-wrap">${renderContactButtons(kid.phone)}</div>
                 </div>
             </td>
             <td class="p-3 text-center">
@@ -1205,7 +1218,52 @@ async function saveSundaySchoolBatchAttendance() {
     }
 }
 
+// ---------------------------------------------------------
+// محرك الإحصائيات والرسوم البيانية لمدارس الأحد
+// ---------------------------------------------------------
+function calcChartPercent(part, total) {
+    return total > 0 ? Math.round((part / total) * 100) : 0;
+}
+
+function buildChartsStageTabs() {
+    const tabsEl = document.getElementById('ssChartsStageTabs');
+    const badgeEl = document.getElementById('ssChartsScopeBadge');
+    if (!tabsEl) return;
+
+    const hasFullAccess = currentUser.Role === "Admin" || currentUser.Role === "SundaySchool_Admin" || currentUser.AssignedStage === "الكل";
+    let availableStages = [];
+
+    if (hasFullAccess) {
+        availableStages = ["الكل", ...Object.keys(STAGE_GRADES)];
+        if (badgeEl) badgeEl.innerText = "نطاق الصلاحية: الخدمة بالكامل";
+    } else {
+        availableStages = [currentUser.AssignedStage];
+        selectedChartStage = currentUser.AssignedStage;
+        if (badgeEl) {
+            badgeEl.innerText = `نطاق الصلاحية: ${currentUser.AssignedStage}${currentUser.AssignedGrade && currentUser.AssignedGrade !== 'الكل' ? ' - ' + currentUser.AssignedGrade : ''}${currentUser.AssignedClass && currentUser.AssignedClass !== 'الكل' ? ' (' + currentUser.AssignedClass + ')' : ''}`;
+        }
+    }
+
+    tabsEl.innerHTML = availableStages.map(st => {
+        const active = selectedChartStage === st;
+        const label = st === "الكل" ? "🌐 الخدمة كلها" : st;
+        return `<button type="button" onclick="selectChartStage('${st}')" class="px-3.5 py-1.5 rounded-xl text-xs font-black transition ${active ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">${label}</button>`;
+    }).join('');
+}
+
+function selectChartStage(stage) {
+    selectedChartStage = stage;
+    initSSChartsView();
+}
+
 async function initSSChartsView() {
+    try {
+        await ensureChartJsLoaded();
+    } catch (e) {
+        alert(e.message);
+        return;
+    }
+
     if (namesCacheData.length === 0) {
         try {
             const res = await fetch(`${API_URL}?sheet=Names`);
@@ -1214,11 +1272,30 @@ async function initSSChartsView() {
         } catch(e) {}
     }
 
+    buildChartsStageTabs();
+
+    // 1. تطبيق قيود صلاحيات الخادم
     let allowedRecords = rawData.filter(item => {
-        if (currentUser.Role === "Stage_Leader" && currentUser.AssignedStage !== "الكل" && item["Stage"] !== currentUser.AssignedStage) return false;
-        if (currentUser.Role === "Class_Servant" && ((currentUser.AssignedStage !== "الكل" && item["Stage"] !== currentUser.AssignedStage) || (currentUser.AssignedClass !== "الكل" && item["ClassName"] !== currentUser.AssignedClass))) return false;
+        const stg = String(item["Stage"] || "").trim();
+        const grd = String(item["Grade"] || "").trim();
+        const cls = String(item["ClassName"] || "").trim();
+
+        if (currentUser.Role === "Stage_Leader" && currentUser.AssignedStage !== "الكل" && stg !== currentUser.AssignedStage) return false;
+        if (currentUser.Role === "Class_Servant") {
+            if (currentUser.AssignedStage !== "الكل" && stg !== currentUser.AssignedStage) return false;
+            if (currentUser.AssignedGrade && currentUser.AssignedGrade !== "الكل" && grd !== currentUser.AssignedGrade) return false;
+            if (currentUser.AssignedClass && currentUser.AssignedClass !== "الكل" && cls !== currentUser.AssignedClass) return false;
+        }
         return true;
     });
+
+    // 2. تطبيق فلتر المرحلة المختارة من الأزرار العلوية
+    if (selectedChartStage && selectedChartStage !== "الكل") {
+        allowedRecords = allowedRecords.filter(item => String(item["Stage"] || "").trim() === selectedChartStage);
+    }
+
+    const recCount = document.getElementById('recordCount');
+    if (recCount) recCount.innerText = `${allowedRecords.length} سجل حضور محلل`;
 
     if (allowedRecords.length === 0) {
         document.getElementById('ssChartsEmpty')?.classList.remove('hidden');
@@ -1228,33 +1305,66 @@ async function initSSChartsView() {
     document.getElementById('ssChartsEmpty')?.classList.add('hidden');
     document.getElementById('ssChartsContainer')?.classList.remove('hidden');
 
+    // تجهيز خريطة الأسماء والنوع لسرعة البحث
+    const genderById = {};
+    const genderByName = {};
+    namesCacheData.forEach(m => {
+        const g = String(m["ذكر/انثي"] || "").trim();
+        const id = String(m["ID"] || "").trim();
+        const name = String(m["الاسم ثلاثي"] || "").trim();
+        if (id) genderById[id] = g;
+        if (name) genderByName[name] = g;
+    });
+
     let stats = {
         totalPresent: 0, totalAbsent: 0,
         malePresent: 0, maleAbsent: 0,
         femalePresent: 0, femaleAbsent: 0,
-        stagesMap: {}
+        breakdownMap: {} // إما مراحل (عند اختيار الكل) أو صفوف (عند اختيار مرحلة محددة)
     };
 
+    // تهيئة الصفوف مسبقاً إذا تم اختيار مرحلة محددة (حضانة / ابتدائي 6 صفوف / إعدادي 3 / ثانوي 3)
+    if (selectedChartStage !== "الكل" && STAGE_GRADES[selectedChartStage]) {
+        STAGE_GRADES[selectedChartStage].forEach(g => {
+            stats.breakdownMap[g] = { present: 0, absent: 0, malePresent: 0, maleAbsent: 0, femalePresent: 0, femaleAbsent: 0 };
+        });
+    } else if (selectedChartStage === "الكل") {
+        Object.keys(STAGE_GRADES).forEach(st => {
+            stats.breakdownMap[st] = { present: 0, absent: 0, malePresent: 0, maleAbsent: 0, femalePresent: 0, femaleAbsent: 0 };
+        });
+    }
+
     allowedRecords.forEach(rec => {
-        const isPresent = rec["Attendance"] === "حاضر";
+        const isPresent = String(rec["Attendance"] || "").trim() === "حاضر";
         if (isPresent) stats.totalPresent++; else stats.totalAbsent++;
-        
-        const kidInfo = namesCacheData.find(m => m["الاسم ثلاثي"] === rec["ChildName"] || m["ID"] == rec["ChildID"]);
-        const gender = kidInfo ? kidInfo["ذكر/انثي"] : "";
-        
+
+        const cId = String(rec["ChildID"] || "").trim();
+        const cName = String(rec["ChildName"] || "").trim();
+        const gender = (cId && genderById[cId]) ? genderById[cId] : (genderByName[cName] || "");
+
         if (gender === "ذكر") {
             if (isPresent) stats.malePresent++; else stats.maleAbsent++;
         } else if (gender === "انثي") {
             if (isPresent) stats.femalePresent++; else stats.femaleAbsent++;
         }
 
-        const stage = rec["Stage"] || "غير محدد";
-        const grade = rec["Grade"] || "عام";
-        if (!stats.stagesMap[stage]) stats.stagesMap[stage] = {};
-        if (!stats.stagesMap[stage][grade]) stats.stagesMap[stage][grade] = { present: 0, absent: 0 };
-        
-        if (isPresent) stats.stagesMap[stage][grade].present++;
-        else stats.stagesMap[stage][grade].absent++;
+        const stg = String(rec["Stage"] || "غير محدد").trim();
+        const grd = String(rec["Grade"] || "عام").trim();
+        const bucketKey = (selectedChartStage === "الكل") ? stg : grd;
+
+        if (!stats.breakdownMap[bucketKey]) {
+            stats.breakdownMap[bucketKey] = { present: 0, absent: 0, malePresent: 0, maleAbsent: 0, femalePresent: 0, femaleAbsent: 0 };
+        }
+
+        if (isPresent) {
+            stats.breakdownMap[bucketKey].present++;
+            if (gender === "ذكر") stats.breakdownMap[bucketKey].malePresent++;
+            else if (gender === "انثي") stats.breakdownMap[bucketKey].femalePresent++;
+        } else {
+            stats.breakdownMap[bucketKey].absent++;
+            if (gender === "ذكر") stats.breakdownMap[bucketKey].maleAbsent++;
+            else if (gender === "انثي") stats.breakdownMap[bucketKey].femaleAbsent++;
+        }
     });
 
     renderSSCharts(stats);
@@ -1264,61 +1374,103 @@ function renderSSCharts(stats) {
     if (ssChartInstances.pie) ssChartInstances.pie.destroy();
     if (ssChartInstances.gender) ssChartInstances.gender.destroy();
     if (ssChartInstances.stage) ssChartInstances.stage.destroy();
+    if (ssChartInstances.genderGrade) ssChartInstances.genderGrade.destroy();
 
-    if (typeof Chart === 'undefined') return;
+    const totalAll = stats.totalPresent + stats.totalAbsent;
+    const maleAll = stats.malePresent + stats.maleAbsent;
+    const femaleAll = stats.femalePresent + stats.femaleAbsent;
 
-    Chart.defaults.font.family = 'Cairo, sans-serif';
-    Chart.defaults.font.weight = 'bold';
+    const presentPct = calcChartPercent(stats.totalPresent, totalAll);
+    const absentPct = calcChartPercent(stats.totalAbsent, totalAll);
+    const malePresentPct = calcChartPercent(stats.malePresent, maleAll);
+    const femalePresentPct = calcChartPercent(stats.femalePresent, femaleAll);
 
+    // تحديث بطاقات النسب المئوية العلوية
+    const kpiContainer = document.getElementById('ssChartsKpiCards');
+    if (kpiContainer) {
+        kpiContainer.innerHTML = `
+            <div class="bg-white p-4 rounded-2xl border border-emerald-200 shadow-sm text-center">
+                <span class="block text-xs font-bold text-slate-500 mb-1">نسبة الحضور العامة</span>
+                <span class="text-2xl font-black text-emerald-600">${presentPct}%</span>
+                <span class="block text-[11px] font-bold text-slate-400 mt-0.5">(${stats.totalPresent} من ${totalAll})</span>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border border-rose-200 shadow-sm text-center">
+                <span class="block text-xs font-bold text-slate-500 mb-1">نسبة الغياب العامة</span>
+                <span class="text-2xl font-black text-rose-600">${absentPct}%</span>
+                <span class="block text-[11px] font-bold text-slate-400 mt-0.5">(${stats.totalAbsent} من ${totalAll})</span>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border border-blue-200 shadow-sm text-center">
+                <span class="block text-xs font-bold text-slate-500 mb-1">نسبة حضور الأولاد</span>
+                <span class="text-2xl font-black text-blue-600">${malePresentPct}%</span>
+                <span class="block text-[11px] font-bold text-slate-400 mt-0.5">حاضر: ${stats.malePresent} | غائب: ${stats.maleAbsent}</span>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border border-pink-200 shadow-sm text-center">
+                <span class="block text-xs font-bold text-slate-500 mb-1">نسبة حضور البنات</span>
+                <span class="text-2xl font-black text-pink-600">${femalePresentPct}%</span>
+                <span class="block text-[11px] font-bold text-slate-400 mt-0.5">حاضر: ${stats.femalePresent} | غائب: ${stats.femaleAbsent}</span>
+            </div>
+        `;
+    }
+
+    // 1. شارت الإجمالي الدائري
     const ctxPie = document.getElementById('attPieChart')?.getContext('2d');
     if (ctxPie) {
         ssChartInstances.pie = new Chart(ctxPie, {
             type: 'doughnut',
             data: {
-                labels: ['نسبة الحضور', 'نسبة الغياب'],
+                labels: [`الحضور (${presentPct}%)`, `الغياب (${absentPct}%)`],
                 datasets: [{
                     data: [stats.totalPresent, stats.totalAbsent],
                     backgroundColor: ['#10b981', '#f43f5e'],
-                    hoverOffset: 4
+                    borderWidth: 2
                 }]
             },
             options: {
-                plugins: { title: { display: true, text: 'الإجمالي العام للخدمة (حسب وصولك)' } }
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
             }
         });
     }
 
+    // 2. شارت مقارنة البنين والبنات
     const ctxGender = document.getElementById('genderBarChart')?.getContext('2d');
     if (ctxGender) {
         ssChartInstances.gender = new Chart(ctxGender, {
             type: 'bar',
             data: {
-                labels: ['البنين (أولاد)', 'البنات'],
+                labels: [`الأولاد (حضور ${malePresentPct}%)`, `البنات (حضور ${femalePresentPct}%)`],
                 datasets: [
-                    { label: 'إجمالي الحضور', data: [stats.malePresent, stats.femalePresent], backgroundColor: '#10b981', borderRadius: 6 },
-                    { label: 'إجمالي الغياب', data: [stats.maleAbsent, stats.femaleAbsent], backgroundColor: '#f43f5e', borderRadius: 6 }
+                    { label: 'حاضر', data: [stats.malePresent, stats.femalePresent], backgroundColor: '#10b981', borderRadius: 6 },
+                    { label: 'غائب', data: [stats.maleAbsent, stats.femaleAbsent], backgroundColor: '#f43f5e', borderRadius: 6 }
                 ]
             },
             options: {
                 responsive: true,
-                plugins: { title: { display: true, text: 'النسبة بين الأولاد والبنات' } },
+                maintainAspectRatio: false,
                 scales: { y: { beginAtZero: true } }
             }
         });
     }
 
-    let labels = [];
-    let dataPresent = [];
-    let dataAbsent = [];
-    
-    Object.keys(stats.stagesMap).forEach(stage => {
-        Object.keys(stats.stagesMap[stage]).forEach(grade => {
-            labels.push(`${stage} - ${grade}`);
-            dataPresent.push(stats.stagesMap[stage][grade].present);
-            dataAbsent.push(stats.stagesMap[stage][grade].absent);
-        });
+    // تجهيز بيانات المراحل / الصفوف
+    const keys = Object.keys(stats.breakdownMap);
+    const labels = keys.map(k => {
+        const item = stats.breakdownMap[k];
+        const pct = calcChartPercent(item.present, item.present + item.absent);
+        return `${k} (${pct}%)`;
     });
+    const presentArr = keys.map(k => stats.breakdownMap[k].present);
+    const absentArr = keys.map(k => stats.breakdownMap[k].absent);
 
+    const title1 = document.getElementById('stageChartTitle');
+    if (title1) {
+        title1.innerText = selectedChartStage === "الكل" 
+            ? "نسب الحضور والغياب لكل مرحلة على حدة (الخدمة كلها)" 
+            : `نسب الحضور والغياب لكل صف في مرحلة: ${selectedChartStage}`;
+    }
+
+    // 3. شارت المراحل / الصفوف
     const ctxStage = document.getElementById('stageBarChart')?.getContext('2d');
     if (ctxStage) {
         ssChartInstances.stage = new Chart(ctxStage, {
@@ -1326,15 +1478,43 @@ function renderSSCharts(stats) {
             data: {
                 labels: labels,
                 datasets: [
-                    { label: 'حاضر', data: dataPresent, backgroundColor: '#3b82f6', borderRadius: 4 },
-                    { label: 'غائب', data: dataAbsent, backgroundColor: '#cbd5e1', borderRadius: 4 }
+                    { label: 'حاضر', data: presentArr, backgroundColor: '#3b82f6', borderRadius: 5 },
+                    { label: 'غائب', data: absentArr, backgroundColor: '#cbd5e1', borderRadius: 5 }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { title: { display: true, text: 'تحليل الحضور لكل مرحلة وصف دراسي' } },
                 scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
+            }
+        });
+    }
+
+    // 4. شارت تفصيل البنين والبنات لكل صف / مرحلة
+    const title2 = document.getElementById('genderGradeChartTitle');
+    if (title2) {
+        title2.innerText = selectedChartStage === "الكل"
+            ? "مقارنة حضور وغياب الأولاد والبنات في كل مرحلة"
+            : `مقارنة حضور وغياب الأولاد والبنات لكل صف في مرحلة: ${selectedChartStage}`;
+    }
+
+    const ctxGenderGrade = document.getElementById('genderByGradeChart')?.getContext('2d');
+    if (ctxGenderGrade) {
+        ssChartInstances.genderGrade = new Chart(ctxGenderGrade, {
+            type: 'bar',
+            data: {
+                labels: keys,
+                datasets: [
+                    { label: 'حضور أولاد', data: keys.map(k => stats.breakdownMap[k].malePresent), backgroundColor: '#2563eb', borderRadius: 4 },
+                    { label: 'غياب أولاد', data: keys.map(k => stats.breakdownMap[k].maleAbsent), backgroundColor: '#93c5fd', borderRadius: 4 },
+                    { label: 'حضور بنات', data: keys.map(k => stats.breakdownMap[k].femalePresent), backgroundColor: '#db2777', borderRadius: 4 },
+                    { label: 'غياب بنات', data: keys.map(k => stats.breakdownMap[k].femaleAbsent), backgroundColor: '#f9a8d4', borderRadius: 4 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true } }
             }
         });
     }
@@ -1464,7 +1644,6 @@ async function generateAndPrintClassRoster() {
         printArea.innerHTML = "";
     }, 250);
 }
-
 // ---------------------------------------------------------
 // 9. قسم رصد اجتماع الخدام (Servants Meeting Section)
 // ---------------------------------------------------------
