@@ -857,6 +857,69 @@ function printRosterDirectory() {
 // ---------------------------------------------------------
 let selectedChartStage = "الكل";
 
+function ensureChartsSectionExists() {
+    let chartsSec = document.getElementById('sundaySchoolChartsSection');
+    if (chartsSec) return chartsSec;
+
+    const liveSec = document.getElementById('sundaySchoolLiveSection');
+    const dataView = document.getElementById('dataView');
+    if (!liveSec && !dataView) return null;
+
+    chartsSec = document.createElement('div');
+    chartsSec.id = 'sundaySchoolChartsSection';
+    chartsSec.className = 'hidden space-y-6 no-print';
+    chartsSec.innerHTML = `
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2 flex-wrap" id="ssChartsStageTabs"></div>
+            <span id="ssChartsScopeBadge" class="text-xs font-black bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-xl"></span>
+        </div>
+
+        <div id="ssChartsEmpty" class="hidden text-center py-16 text-slate-400 font-bold bg-white rounded-2xl border border-dashed border-slate-300">
+            لا توجد سجلات حضور مسجلة لهذا النطاق لعرض الرسوم البيانية.
+        </div>
+
+        <div id="ssChartsContainer" class="hidden space-y-6">
+            <div id="ssChartsKpiCards" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 class="text-sm font-black text-slate-800 mb-3 text-center">نسبة الحضور والغياب الإجمالية</h3>
+                    <div class="relative w-full h-[280px] flex items-center justify-center">
+                        <canvas id="attPieChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 class="text-sm font-black text-slate-800 mb-3 text-center">نسب الأولاد والبنات في الحضور والغياب</h3>
+                    <div class="relative w-full h-[280px]">
+                        <canvas id="genderBarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 id="stageChartTitle" class="text-sm font-black text-slate-800 mb-3">تحليل الحضور والغياب حسب الصفوف والمراحل</h3>
+                <div class="relative w-full h-[360px]">
+                    <canvas id="stageBarChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 id="genderGradeChartTitle" class="text-sm font-black text-slate-800 mb-3">نسب حضور الأولاد والبنات داخل كل صف دراسي</h3>
+                <div class="relative w-full h-[380px]">
+                    <canvas id="genderByGradeChart"></canvas>
+                </div>
+            </div>
+        </div>
+    `;
+
+    if (liveSec && liveSec.parentNode) {
+        liveSec.parentNode.insertBefore(chartsSec, liveSec.nextSibling);
+    } else if (dataView) {
+        dataView.appendChild(chartsSec);
+    }
+    return chartsSec;
+}
+
 function ensureChartJsLoaded() {
     return new Promise((resolve, reject) => {
         if (typeof Chart !== 'undefined') return resolve();
@@ -883,7 +946,7 @@ function switchSSView(view) {
     const liveSec = document.getElementById('sundaySchoolLiveSection');
     const cardsSec = document.getElementById('standardCardsContainer');
     const searchSec = document.getElementById('standardSearchContainer');
-    const chartsSec = document.getElementById('sundaySchoolChartsSection');
+    const chartsSec = ensureChartsSectionExists();
     const btnAdd = document.getElementById('btnAddNewRecord');
 
     [btnLive, btnHist, btnCharts].forEach(btn => {
@@ -1221,6 +1284,13 @@ async function saveSundaySchoolBatchAttendance() {
 // ---------------------------------------------------------
 // محرك الإحصائيات والرسوم البيانية لمدارس الأحد
 // ---------------------------------------------------------
+function normalizeGender(g) {
+    const s = String(g || "").trim();
+    if (s === "ذكر" || s === "ولد") return "ذكر";
+    if (s === "انثي" || s === "انثى" || s === "أنثى" || s === "أنثي" || s === "بنت") return "انثي";
+    return "";
+}
+
 function calcChartPercent(part, total) {
     return total > 0 ? Math.round((part / total) * 100) : 0;
 }
@@ -1257,6 +1327,8 @@ function selectChartStage(stage) {
 }
 
 async function initSSChartsView() {
+    ensureChartsSectionExists();
+
     try {
         await ensureChartJsLoaded();
     } catch (e) {
@@ -1274,7 +1346,6 @@ async function initSSChartsView() {
 
     buildChartsStageTabs();
 
-    // 1. تطبيق قيود صلاحيات الخادم
     let allowedRecords = rawData.filter(item => {
         const stg = String(item["Stage"] || "").trim();
         const grd = String(item["Grade"] || "").trim();
@@ -1289,7 +1360,6 @@ async function initSSChartsView() {
         return true;
     });
 
-    // 2. تطبيق فلتر المرحلة المختارة من الأزرار العلوية
     if (selectedChartStage && selectedChartStage !== "الكل") {
         allowedRecords = allowedRecords.filter(item => String(item["Stage"] || "").trim() === selectedChartStage);
     }
@@ -1305,11 +1375,10 @@ async function initSSChartsView() {
     document.getElementById('ssChartsEmpty')?.classList.add('hidden');
     document.getElementById('ssChartsContainer')?.classList.remove('hidden');
 
-    // تجهيز خريطة الأسماء والنوع لسرعة البحث
     const genderById = {};
     const genderByName = {};
     namesCacheData.forEach(m => {
-        const g = String(m["ذكر/انثي"] || "").trim();
+        const g = normalizeGender(m["ذكر/انثي"]);
         const id = String(m["ID"] || "").trim();
         const name = String(m["الاسم ثلاثي"] || "").trim();
         if (id) genderById[id] = g;
@@ -1320,10 +1389,9 @@ async function initSSChartsView() {
         totalPresent: 0, totalAbsent: 0,
         malePresent: 0, maleAbsent: 0,
         femalePresent: 0, femaleAbsent: 0,
-        breakdownMap: {} // إما مراحل (عند اختيار الكل) أو صفوف (عند اختيار مرحلة محددة)
+        breakdownMap: {}
     };
 
-    // تهيئة الصفوف مسبقاً إذا تم اختيار مرحلة محددة (حضانة / ابتدائي 6 صفوف / إعدادي 3 / ثانوي 3)
     if (selectedChartStage !== "الكل" && STAGE_GRADES[selectedChartStage]) {
         STAGE_GRADES[selectedChartStage].forEach(g => {
             stats.breakdownMap[g] = { present: 0, absent: 0, malePresent: 0, maleAbsent: 0, femalePresent: 0, femaleAbsent: 0 };
@@ -1385,7 +1453,6 @@ function renderSSCharts(stats) {
     const malePresentPct = calcChartPercent(stats.malePresent, maleAll);
     const femalePresentPct = calcChartPercent(stats.femalePresent, femaleAll);
 
-    // تحديث بطاقات النسب المئوية العلوية
     const kpiContainer = document.getElementById('ssChartsKpiCards');
     if (kpiContainer) {
         kpiContainer.innerHTML = `
@@ -1412,7 +1479,6 @@ function renderSSCharts(stats) {
         `;
     }
 
-    // 1. شارت الإجمالي الدائري
     const ctxPie = document.getElementById('attPieChart')?.getContext('2d');
     if (ctxPie) {
         ssChartInstances.pie = new Chart(ctxPie, {
@@ -1433,7 +1499,6 @@ function renderSSCharts(stats) {
         });
     }
 
-    // 2. شارت مقارنة البنين والبنات
     const ctxGender = document.getElementById('genderBarChart')?.getContext('2d');
     if (ctxGender) {
         ssChartInstances.gender = new Chart(ctxGender, {
@@ -1453,7 +1518,6 @@ function renderSSCharts(stats) {
         });
     }
 
-    // تجهيز بيانات المراحل / الصفوف
     const keys = Object.keys(stats.breakdownMap);
     const labels = keys.map(k => {
         const item = stats.breakdownMap[k];
@@ -1470,7 +1534,6 @@ function renderSSCharts(stats) {
             : `نسب الحضور والغياب لكل صف في مرحلة: ${selectedChartStage}`;
     }
 
-    // 3. شارت المراحل / الصفوف
     const ctxStage = document.getElementById('stageBarChart')?.getContext('2d');
     if (ctxStage) {
         ssChartInstances.stage = new Chart(ctxStage, {
@@ -1490,7 +1553,6 @@ function renderSSCharts(stats) {
         });
     }
 
-    // 4. شارت تفصيل البنين والبنات لكل صف / مرحلة
     const title2 = document.getElementById('genderGradeChartTitle');
     if (title2) {
         title2.innerText = selectedChartStage === "الكل"
