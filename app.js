@@ -861,13 +861,13 @@ function ensureChartsSectionExists() {
     let chartsSec = document.getElementById('sundaySchoolChartsSection');
     if (chartsSec) return chartsSec;
 
-    const liveSec = document.getElementById('sundaySchoolLiveSection');
+    const cardsSec = document.getElementById('standardCardsContainer');
     const dataView = document.getElementById('dataView');
-    if (!liveSec && !dataView) return null;
+    if (!cardsSec && !dataView) return null;
 
     chartsSec = document.createElement('div');
     chartsSec.id = 'sundaySchoolChartsSection';
-    chartsSec.className = 'hidden space-y-6 no-print';
+    chartsSec.className = 'hidden space-y-6 no-print mt-4';
     chartsSec.innerHTML = `
         <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-2 flex-wrap" id="ssChartsStageTabs"></div>
@@ -912,8 +912,8 @@ function ensureChartsSectionExists() {
         </div>
     `;
 
-    if (liveSec && liveSec.parentNode) {
-        liveSec.parentNode.insertBefore(chartsSec, liveSec.nextSibling);
+    if (cardsSec && cardsSec.parentNode) {
+        cardsSec.parentNode.insertBefore(chartsSec, cardsSec);
     } else if (dataView) {
         dataView.appendChild(chartsSec);
     }
@@ -923,16 +923,16 @@ function ensureChartsSectionExists() {
 function ensureChartJsLoaded() {
     return new Promise((resolve, reject) => {
         if (typeof Chart !== 'undefined') return resolve();
-        const existing = document.querySelector('script[src*="chart.js"]');
-        if (existing) {
-            existing.addEventListener('load', () => resolve());
-            existing.addEventListener('error', () => reject(new Error("تعذر تحميل مكتبة الرسوم البيانية")));
-            return;
-        }
         const s = document.createElement('script');
         s.src = "https://cdn.jsdelivr.net/npm/chart.js";
         s.onload = () => resolve();
-        s.onerror = () => reject(new Error("تعذر تحميل مكتبة الرسوم البيانية، تأكد من الاتصال بالإنترنت"));
+        s.onerror = () => {
+            const fallback = document.createElement('script');
+            fallback.src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js";
+            fallback.onload = () => resolve();
+            fallback.onerror = () => reject(new Error("تعذر تحميل مكتبة الرسوم البيانية، تأكد من الاتصال بالإنترنت"));
+            document.head.appendChild(fallback);
+        };
         document.head.appendChild(s);
     });
 }
@@ -1327,7 +1327,8 @@ function selectChartStage(stage) {
 }
 
 async function initSSChartsView() {
-    ensureChartsSectionExists();
+    const chartsSec = ensureChartsSectionExists();
+    if (chartsSec) chartsSec.classList.remove('hidden');
 
     try {
         await ensureChartJsLoaded();
@@ -1347,21 +1348,22 @@ async function initSSChartsView() {
     buildChartsStageTabs();
 
     let allowedRecords = rawData.filter(item => {
-        const stg = String(item["Stage"] || "").trim();
-        const grd = String(item["Grade"] || "").trim();
-        const cls = String(item["ClassName"] || "").trim();
+        const stg = normalizeArabic(item["Stage"]);
+        const grd = normalizeArabic(item["Grade"]);
+        const cls = normalizeArabic(item["ClassName"]);
 
-        if (currentUser.Role === "Stage_Leader" && currentUser.AssignedStage !== "الكل" && stg !== currentUser.AssignedStage) return false;
+        if (currentUser.Role === "Stage_Leader" && currentUser.AssignedStage !== "الكل" && stg !== normalizeArabic(currentUser.AssignedStage)) return false;
         if (currentUser.Role === "Class_Servant") {
-            if (currentUser.AssignedStage !== "الكل" && stg !== currentUser.AssignedStage) return false;
-            if (currentUser.AssignedGrade && currentUser.AssignedGrade !== "الكل" && grd !== currentUser.AssignedGrade) return false;
-            if (currentUser.AssignedClass && currentUser.AssignedClass !== "الكل" && cls !== currentUser.AssignedClass) return false;
+            if (currentUser.AssignedStage !== "الكل" && stg !== normalizeArabic(currentUser.AssignedStage)) return false;
+            if (currentUser.AssignedGrade && currentUser.AssignedGrade !== "الكل" && grd !== normalizeArabic(currentUser.AssignedGrade)) return false;
+            if (currentUser.AssignedClass && currentUser.AssignedClass !== "الكل" && cls !== normalizeArabic(currentUser.AssignedClass)) return false;
         }
         return true;
     });
 
     if (selectedChartStage && selectedChartStage !== "الكل") {
-        allowedRecords = allowedRecords.filter(item => String(item["Stage"] || "").trim() === selectedChartStage);
+        const targetStageNorm = normalizeArabic(selectedChartStage);
+        allowedRecords = allowedRecords.filter(item => normalizeArabic(item["Stage"]) === targetStageNorm);
     }
 
     const recCount = document.getElementById('recordCount');
@@ -1380,7 +1382,7 @@ async function initSSChartsView() {
     namesCacheData.forEach(m => {
         const g = normalizeGender(m["ذكر/انثي"]);
         const id = String(m["ID"] || "").trim();
-        const name = String(m["الاسم ثلاثي"] || "").trim();
+        const name = normalizeArabic(m["الاسم ثلاثي"]);
         if (id) genderById[id] = g;
         if (name) genderByName[name] = g;
     });
@@ -1392,9 +1394,14 @@ async function initSSChartsView() {
         breakdownMap: {}
     };
 
+    const normToCanonicalStage = {};
+    Object.keys(STAGE_GRADES).forEach(st => { normToCanonicalStage[normalizeArabic(st)] = st; });
+
+    const normToCanonicalGrade = {};
     if (selectedChartStage !== "الكل" && STAGE_GRADES[selectedChartStage]) {
         STAGE_GRADES[selectedChartStage].forEach(g => {
             stats.breakdownMap[g] = { present: 0, absent: 0, malePresent: 0, maleAbsent: 0, femalePresent: 0, femaleAbsent: 0 };
+            normToCanonicalGrade[normalizeArabic(g)] = g;
         });
     } else if (selectedChartStage === "الكل") {
         Object.keys(STAGE_GRADES).forEach(st => {
@@ -1407,8 +1414,8 @@ async function initSSChartsView() {
         if (isPresent) stats.totalPresent++; else stats.totalAbsent++;
 
         const cId = String(rec["ChildID"] || "").trim();
-        const cName = String(rec["ChildName"] || "").trim();
-        const gender = (cId && genderById[cId]) ? genderById[cId] : (genderByName[cName] || "");
+        const cNameNorm = normalizeArabic(rec["ChildName"]);
+        const gender = (cId && genderById[cId]) ? genderById[cId] : (genderByName[cNameNorm] || "");
 
         if (gender === "ذكر") {
             if (isPresent) stats.malePresent++; else stats.maleAbsent++;
@@ -1416,9 +1423,11 @@ async function initSSChartsView() {
             if (isPresent) stats.femalePresent++; else stats.femaleAbsent++;
         }
 
-        const stg = String(rec["Stage"] || "غير محدد").trim();
-        const grd = String(rec["Grade"] || "عام").trim();
-        const bucketKey = (selectedChartStage === "الكل") ? stg : grd;
+        const rawStg = String(rec["Stage"] || "غير محدد").trim();
+        const rawGrd = String(rec["Grade"] || "عام").trim();
+        const bucketKey = (selectedChartStage === "الكل")
+            ? (normToCanonicalStage[normalizeArabic(rawStg)] || rawStg)
+            : (normToCanonicalGrade[normalizeArabic(rawGrd)] || rawGrd);
 
         if (!stats.breakdownMap[bucketKey]) {
             stats.breakdownMap[bucketKey] = { present: 0, absent: 0, malePresent: 0, maleAbsent: 0, femalePresent: 0, femaleAbsent: 0 };
@@ -1705,8 +1714,7 @@ async function generateAndPrintClassRoster() {
         window.print();
         printArea.innerHTML = "";
     }, 250);
-}
-// ---------------------------------------------------------
+}// ---------------------------------------------------------
 // 9. قسم رصد اجتماع الخدام (Servants Meeting Section)
 // ---------------------------------------------------------
 function switchMeetingsView(view) {
