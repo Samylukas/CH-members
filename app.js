@@ -121,7 +121,7 @@ async function handleLogin(e) {
 
 function logout() { location.reload(); }
 
-// 6. تهيئة التطبيق وتوجيه لوحة التحكم
+// 6. تهيئة التطبيق وتوجيه لوحة التحكم (بنفس التنسيق الأصلي للكروت)
 function initApp() {
     const login = document.getElementById('loginScreen'), badge = document.getElementById('userBadge');
     if (login) { login.style.display = 'none'; login.classList.add('hidden'); }
@@ -137,7 +137,7 @@ function buildDashboard() {
         const info = TABS_INFO[key];
         if (info.roles.includes(currentUser.Role)) {
             const card = document.createElement('div');
-            card.className = `dashboard-card ${info.colorClass} bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition p-8 flex flex-col items-center justify-center text-center cursor-pointer min-h-[200px]`;
+            card.className = `dashboard-card ${info.colorClass} p-8 flex flex-col items-center justify-center text-center cursor-pointer min-h-[200px]`;
             card.onclick = () => loadSection(key);
             card.innerHTML = `<div class="mb-4">${info.svg}</div><h3 class="text-xl font-black text-slate-800 mb-2">${info.label}</h3><p class="text-xs text-slate-500 font-bold">${info.desc}</p>`;
             grid.appendChild(card);
@@ -155,7 +155,10 @@ function loadSection(sectionKey) {
     if (info) document.getElementById('currentTabTitle').innerHTML = `${info.label}`;
 
     ['namesViewSwitcher', 'ssViewSwitcher', 'meetingsViewSwitcher', 'visitationsViewSwitcher'].forEach(id => { const el = document.getElementById(id); el?.classList.add('hidden'); el?.classList.remove('flex'); });
-    ['sundaySchoolLiveSection', 'sundaySchoolChartsSection', 'servantsMeetingLiveSection', 'visitationDashboardSection', 'namesRosterSection', 'namesFilterSection', 'namesPlaceholder', 'familyResultsContainer', 'standardSearchContainer', 'standardCardsContainer'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
+    ['sundaySchoolLiveSection', 'sundaySchoolChartsSection', 'servantsMeetingLiveSection', 'visitationDashboardSection', 'namesRosterSection', 'namesFilterSection', 'namesPlaceholder', 'familyResultsContainer', 'standardSearchContainer', 'standardCardsContainer'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.classList.add('hidden'); if (id === 'sundaySchoolChartsSection') el.style.display = 'none'; }
+    });
     ['btnPrintSundaySchool', 'btnPrintMeetings', 'btnPrintFiltered', 'btnPrintRoster', 'btnPrintVisitReport'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
     document.getElementById('btnAddNewRecord')?.classList.remove('hidden');
 
@@ -471,20 +474,68 @@ function printRosterDirectory() {
     buildAndPrintFamilies(familiesMap, `دليل أرباب الأسر والعائلات الأبجدي (حرف: ${selectedLetter})`);
 }
 
-// 8. قسم مدارس الأحد (الكشوف + الإحصائيات + الرسوم البيانية)
+// 8. قسم مدارس الأحد (الكشوف + الإحصائيات + الرسوم البيانية ذاتية الإنشاء)
+function ensureChartsSectionExists() {
+    let chartsSec = document.getElementById('sundaySchoolChartsSection');
+    const dataView = document.getElementById('dataView');
+    if (!chartsSec) {
+        chartsSec = document.createElement('div');
+        chartsSec.id = 'sundaySchoolChartsSection';
+        chartsSec.className = 'hidden space-y-6 no-print mt-4';
+        chartsSec.innerHTML = `
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2 flex-wrap" id="ssChartsStageTabs"></div>
+                <span id="ssChartsScopeBadge" class="text-xs font-black bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-xl"></span>
+            </div>
+            <div id="ssChartsEmpty" class="hidden text-center py-16 text-slate-400 font-bold bg-white rounded-2xl border border-dashed border-slate-300">لا توجد سجلات حضور مسجلة لهذا النطاق لعرض الرسوم البيانية.</div>
+            <div id="ssChartsContainer" class="hidden space-y-6">
+                <div id="ssChartsKpiCards" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"><h3 class="text-sm font-black text-slate-800 mb-3 text-center">نسبة الحضور والغياب الإجمالية</h3><div class="relative w-full h-[280px] flex items-center justify-center"><canvas id="attPieChart"></canvas></div></div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"><h3 class="text-sm font-black text-slate-800 mb-3 text-center">نسب الأولاد والبنات في الحضور والغياب</h3><div class="relative w-full h-[280px]"><canvas id="genderBarChart"></canvas></div></div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"><h3 id="stageChartTitle" class="text-sm font-black text-slate-800 mb-3">تحليل الحضور والغياب حسب الصفوف والمراحل</h3><div class="relative w-full h-[360px]"><canvas id="stageBarChart"></canvas></div></div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"><h3 id="genderGradeChartTitle" class="text-sm font-black text-slate-800 mb-3">نسب حضور الأولاد والبنات داخل كل صف دراسي</h3><div class="relative w-full h-[380px]"><canvas id="genderByGradeChart"></canvas></div></div>
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"><div class="p-4 border-b border-slate-100 bg-slate-50"><h3 class="text-sm font-black text-slate-800">جدول النسب المئوية التفصيلي</h3></div><div class="overflow-x-auto"><table class="w-full text-right text-xs"><thead class="bg-slate-100 text-slate-700 font-black border-b border-slate-200"><tr><th class="p-3">المرحلة / الصف</th><th class="p-3 text-center">إجمالي السجلات</th><th class="p-3 text-center text-emerald-700">نسبة الحضور</th><th class="p-3 text-center text-rose-700">نسبة الغياب</th><th class="p-3 text-center text-blue-700">حضور الأولاد</th><th class="p-3 text-center text-pink-700">حضور البنات</th></tr></thead><tbody id="ssChartsSummaryTableBody" class="divide-y divide-slate-100 font-bold"></tbody></table></div></div>
+            </div>
+        `;
+        if (dataView) dataView.appendChild(chartsSec);
+    }
+    return chartsSec;
+}
+
+function ensureChartJsLoaded() {
+    return new Promise((resolve, reject) => {
+        if (typeof Chart !== 'undefined') return resolve();
+        const s = document.createElement('script');
+        s.src = "https://cdn.jsdelivr.net/npm/chart.js";
+        s.onload = () => resolve();
+        s.onerror = () => {
+            const fallback = document.createElement('script');
+            fallback.src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js";
+            fallback.onload = () => resolve();
+            fallback.onerror = () => reject(new Error("تعذر تحميل مكتبة الرسوم البيانية، تأكد من الاتصال بالإنترنت"));
+            document.head.appendChild(fallback);
+        };
+        document.head.appendChild(s);
+    });
+}
+
 function switchSSView(view) {
     currentSSView = view;
     const btnLive = document.getElementById('btnSSLiveRoster'), btnHist = document.getElementById('btnSSHistory'), btnCharts = document.getElementById('btnSSCharts');
     const liveSec = document.getElementById('sundaySchoolLiveSection'), cardsSec = document.getElementById('standardCardsContainer');
-    const searchSec = document.getElementById('standardSearchContainer'), chartsSec = document.getElementById('sundaySchoolChartsSection');
+    const searchSec = document.getElementById('standardSearchContainer'), chartsSec = ensureChartsSectionExists();
     const btnAdd = document.getElementById('btnAddNewRecord');
 
     [btnLive, btnHist, btnCharts].forEach(btn => { if (btn) btn.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900"; });
-    liveSec?.classList.add('hidden'); cardsSec?.classList.add('hidden'); searchSec?.classList.add('hidden'); chartsSec?.classList.add('hidden'); btnAdd?.classList.add('hidden');
+    liveSec?.classList.add('hidden'); cardsSec?.classList.add('hidden'); searchSec?.classList.add('hidden');
+    if (chartsSec) { chartsSec.classList.add('hidden'); chartsSec.style.display = 'none'; }
+    btnAdd?.classList.add('hidden');
 
     if (view === 'live') { if (btnLive) btnLive.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm"; liveSec?.classList.remove('hidden'); initSundaySchoolLiveView(); }
     else if (view === 'history') { if (btnHist) btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm"; cardsSec?.classList.remove('hidden'); searchSec?.classList.remove('hidden'); btnAdd?.classList.remove('hidden'); renderStandardCards(); }
-    else if (view === 'charts') { if (btnCharts) btnCharts.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm"; chartsSec?.classList.remove('hidden'); initSSChartsView(); }
+    else if (view === 'charts') { if (btnCharts) btnCharts.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm"; if (chartsSec) { chartsSec.classList.remove('hidden'); chartsSec.style.display = 'block'; } initSSChartsView(); }
 }
 
 async function initSundaySchoolLiveView() {
@@ -564,6 +615,13 @@ async function loadSSLiveClassKids() {
 function renderSSLiveKidsTable() {
     const tbody = document.getElementById('ssLiveKidsTableBody'), emptyNotice = document.getElementById('ssLiveKidsEmpty');
     if (!tbody) return;
+    
+    // ضمان تحديث ترويسة الجدول لتطابق الـ 9 أعمدة حتى مع النسخ القديمة من HTML
+    const thead = tbody.closest('table')?.querySelector('thead');
+    if (thead) {
+        thead.innerHTML = `<tr><th class="p-3 w-10 text-center">م</th><th class="p-3">اسم المخدوم والصف</th><th class="p-3 text-center">آخر حضور</th><th class="p-3 text-center">آخر افتقاد</th><th class="p-3">التواصل والمحمول</th><th class="p-3 text-center">حضور اليوم</th><th class="p-3 text-center">التسميع</th><th class="p-3 text-center w-20">النقاط</th><th class="p-3">ملاحظات الافتقاد</th></tr>`;
+    }
+
     tbody.innerHTML = "";
     const recCount = document.getElementById('recordCount');
     if (recCount) recCount.innerText = `${currentSSLiveKids.length} مخدوم بالفصل`;
@@ -631,6 +689,9 @@ function buildChartsStageTabs() {
 function selectChartStage(stage) { selectedChartStage = stage; initSSChartsView(); }
 
 async function initSSChartsView() {
+    const chartsSec = ensureChartsSectionExists();
+    if (chartsSec) { chartsSec.classList.remove('hidden'); chartsSec.style.display = 'block'; }
+    try { await ensureChartJsLoaded(); } catch (e) { alert(e.message); return; }
     if (namesCacheData.length === 0) { try { const res = await fetch(`${API_URL}?sheet=Names`); const data = await res.json(); if (data.status === "success") namesCacheData = data.data; } catch(e) {} }
     buildChartsStageTabs();
 
@@ -653,8 +714,13 @@ async function initSSChartsView() {
     const recCount = document.getElementById('recordCount');
     if (recCount) recCount.innerText = `${allowedRecords.length} سجل حضور محلل`;
     const emptyEl = document.getElementById('ssChartsEmpty'), contEl = document.getElementById('ssChartsContainer');
-    if (allowedRecords.length === 0) { emptyEl?.classList.remove('hidden'); contEl?.classList.add('hidden'); return; }
-    emptyEl?.classList.add('hidden'); contEl?.classList.remove('hidden');
+    if (allowedRecords.length === 0) {
+        if (emptyEl) { emptyEl.classList.remove('hidden'); emptyEl.style.display = 'block'; }
+        if (contEl) { contEl.classList.add('hidden'); contEl.style.display = 'none'; }
+        return;
+    }
+    if (emptyEl) { emptyEl.classList.add('hidden'); emptyEl.style.display = 'none'; }
+    if (contEl) { contEl.classList.remove('hidden'); contEl.style.display = 'block'; }
 
     const genderById = {}, genderByName = {};
     namesCacheData.forEach(m => {
