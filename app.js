@@ -859,64 +859,62 @@ let selectedChartStage = "الكل";
 
 function ensureChartsSectionExists() {
     let chartsSec = document.getElementById('sundaySchoolChartsSection');
-    if (chartsSec) return chartsSec;
-
-    const cardsSec = document.getElementById('standardCardsContainer');
     const dataView = document.getElementById('dataView');
-    if (!cardsSec && !dataView) return null;
 
-    chartsSec = document.createElement('div');
-    chartsSec.id = 'sundaySchoolChartsSection';
-    chartsSec.className = 'hidden space-y-6 no-print mt-4';
-    chartsSec.innerHTML = `
-        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-2 flex-wrap" id="ssChartsStageTabs"></div>
-            <span id="ssChartsScopeBadge" class="text-xs font-black bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-xl"></span>
-        </div>
+    if (!chartsSec) {
+        chartsSec = document.createElement('div');
+        chartsSec.id = 'sundaySchoolChartsSection';
+        chartsSec.className = 'hidden space-y-6 no-print mt-4';
+        chartsSec.innerHTML = `
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2 flex-wrap" id="ssChartsStageTabs"></div>
+                <span id="ssChartsScopeBadge" class="text-xs font-black bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-xl"></span>
+            </div>
 
-        <div id="ssChartsEmpty" class="hidden text-center py-16 text-slate-400 font-bold bg-white rounded-2xl border border-dashed border-slate-300">
-            لا توجد سجلات حضور مسجلة لهذا النطاق لعرض الرسوم البيانية.
-        </div>
+            <div id="ssChartsEmpty" class="hidden text-center py-16 text-slate-400 font-bold bg-white rounded-2xl border border-dashed border-slate-300">
+                لا توجد سجلات حضور مسجلة لهذا النطاق لعرض الرسوم البيانية.
+            </div>
 
-        <div id="ssChartsContainer" class="hidden space-y-6">
-            <div id="ssChartsKpiCards" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
+            <div id="ssChartsContainer" class="hidden space-y-6">
+                <div id="ssChartsKpiCards" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                    <h3 class="text-sm font-black text-slate-800 mb-3 text-center">نسبة الحضور والغياب الإجمالية</h3>
-                    <div class="relative w-full h-[280px] flex items-center justify-center">
-                        <canvas id="attPieChart"></canvas>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <h3 class="text-sm font-black text-slate-800 mb-3 text-center">نسبة الحضور والغياب الإجمالية</h3>
+                        <div class="relative w-full h-[280px] flex items-center justify-center">
+                            <canvas id="attPieChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <h3 class="text-sm font-black text-slate-800 mb-3 text-center">نسب الأولاد والبنات في الحضور والغياب</h3>
+                        <div class="relative w-full h-[280px]">
+                            <canvas id="genderBarChart"></canvas>
+                        </div>
                     </div>
                 </div>
+
                 <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                    <h3 class="text-sm font-black text-slate-800 mb-3 text-center">نسب الأولاد والبنات في الحضور والغياب</h3>
-                    <div class="relative w-full h-[280px]">
-                        <canvas id="genderBarChart"></canvas>
+                    <h3 id="stageChartTitle" class="text-sm font-black text-slate-800 mb-3">تحليل الحضور والغياب حسب الصفوف والمراحل</h3>
+                    <div class="relative w-full h-[360px]">
+                        <canvas id="stageBarChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 id="genderGradeChartTitle" class="text-sm font-black text-slate-800 mb-3">نسب حضور الأولاد والبنات داخل كل صف دراسي</h3>
+                    <div class="relative w-full h-[380px]">
+                        <canvas id="genderByGradeChart"></canvas>
                     </div>
                 </div>
             </div>
+        `;
+    }
 
-            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                <h3 id="stageChartTitle" class="text-sm font-black text-slate-800 mb-3">تحليل الحضور والغياب حسب الصفوف والمراحل</h3>
-                <div class="relative w-full h-[360px]">
-                    <canvas id="stageBarChart"></canvas>
-                </div>
-            </div>
-
-            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                <h3 id="genderGradeChartTitle" class="text-sm font-black text-slate-800 mb-3">نسب حضور الأولاد والبنات داخل كل صف دراسي</h3>
-                <div class="relative w-full h-[380px]">
-                    <canvas id="genderByGradeChart"></canvas>
-                </div>
-            </div>
-        </div>
-    `;
-
-    if (cardsSec && cardsSec.parentNode) {
-        cardsSec.parentNode.insertBefore(chartsSec, cardsSec);
-    } else if (dataView) {
+    // نقل الحاوية مباشرة إلى القسم الرئيسي الظاهر لضمان عدم وجودها داخل أي عنصر مخفي
+    if (dataView && chartsSec.parentNode !== dataView) {
         dataView.appendChild(chartsSec);
     }
+
     return chartsSec;
 }
 
@@ -956,7 +954,10 @@ function switchSSView(view) {
     liveSec?.classList.add('hidden');
     cardsSec?.classList.add('hidden');
     searchSec?.classList.add('hidden');
-    chartsSec?.classList.add('hidden');
+    if (chartsSec) {
+        chartsSec.classList.add('hidden');
+        chartsSec.style.display = 'none';
+    }
     btnAdd?.classList.add('hidden');
 
     if (view === 'live') {
@@ -971,7 +972,10 @@ function switchSSView(view) {
         renderStandardCards();
     } else if (view === 'charts') {
         if (btnCharts) btnCharts.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm";
-        chartsSec?.classList.remove('hidden');
+        if (chartsSec) {
+            chartsSec.classList.remove('hidden');
+            chartsSec.style.display = 'block';
+        }
         initSSChartsView();
     }
 }
@@ -1328,7 +1332,10 @@ function selectChartStage(stage) {
 
 async function initSSChartsView() {
     const chartsSec = ensureChartsSectionExists();
-    if (chartsSec) chartsSec.classList.remove('hidden');
+    if (chartsSec) {
+        chartsSec.classList.remove('hidden');
+        chartsSec.style.display = 'block';
+    }
 
     try {
         await ensureChartJsLoaded();
@@ -1356,364 +1363,6 @@ async function initSSChartsView() {
         if (currentUser.Role === "Class_Servant") {
             if (currentUser.AssignedStage !== "الكل" && stg !== normalizeArabic(currentUser.AssignedStage)) return false;
             if (currentUser.AssignedGrade && currentUser.AssignedGrade !== "الكل" && grd !== normalizeArabic(currentUser.AssignedGrade)) return false;
-            if (currentUser.AssignedClass && currentUser.AssignedClass !== "الكل" && cls !== normalizeArabic(currentUser.AssignedClass)) return false;
-        }
-        return true;
-    });
-
-    if (selectedChartStage && selectedChartStage !== "الكل") {
-        const targetStageNorm = normalizeArabic(selectedChartStage);
-        allowedRecords = allowedRecords.filter(item => normalizeArabic(item["Stage"]) === targetStageNorm);
-    }
-
-    const recCount = document.getElementById('recordCount');
-    if (recCount) recCount.innerText = `${allowedRecords.length} سجل حضور محلل`;
-
-    if (allowedRecords.length === 0) {
-        document.getElementById('ssChartsEmpty')?.classList.remove('hidden');
-        document.getElementById('ssChartsContainer')?.classList.add('hidden');
-        return;
-    }
-    document.getElementById('ssChartsEmpty')?.classList.add('hidden');
-    document.getElementById('ssChartsContainer')?.classList.remove('hidden');
-
-    const genderById = {};
-    const genderByName = {};
-    namesCacheData.forEach(m => {
-        const g = normalizeGender(m["ذكر/انثي"]);
-        const id = String(m["ID"] || "").trim();
-        const name = normalizeArabic(m["الاسم ثلاثي"]);
-        if (id) genderById[id] = g;
-        if (name) genderByName[name] = g;
-    });
-
-    let stats = {
-        totalPresent: 0, totalAbsent: 0,
-        malePresent: 0, maleAbsent: 0,
-        femalePresent: 0, femaleAbsent: 0,
-        breakdownMap: {}
-    };
-
-    const normToCanonicalStage = {};
-    Object.keys(STAGE_GRADES).forEach(st => { normToCanonicalStage[normalizeArabic(st)] = st; });
-
-    const normToCanonicalGrade = {};
-    if (selectedChartStage !== "الكل" && STAGE_GRADES[selectedChartStage]) {
-        STAGE_GRADES[selectedChartStage].forEach(g => {
-            stats.breakdownMap[g] = { present: 0, absent: 0, malePresent: 0, maleAbsent: 0, femalePresent: 0, femaleAbsent: 0 };
-            normToCanonicalGrade[normalizeArabic(g)] = g;
-        });
-    } else if (selectedChartStage === "الكل") {
-        Object.keys(STAGE_GRADES).forEach(st => {
-            stats.breakdownMap[st] = { present: 0, absent: 0, malePresent: 0, maleAbsent: 0, femalePresent: 0, femaleAbsent: 0 };
-        });
-    }
-
-    allowedRecords.forEach(rec => {
-        const isPresent = String(rec["Attendance"] || "").trim() === "حاضر";
-        if (isPresent) stats.totalPresent++; else stats.totalAbsent++;
-
-        const cId = String(rec["ChildID"] || "").trim();
-        const cNameNorm = normalizeArabic(rec["ChildName"]);
-        const gender = (cId && genderById[cId]) ? genderById[cId] : (genderByName[cNameNorm] || "");
-
-        if (gender === "ذكر") {
-            if (isPresent) stats.malePresent++; else stats.maleAbsent++;
-        } else if (gender === "انثي") {
-            if (isPresent) stats.femalePresent++; else stats.femaleAbsent++;
-        }
-
-        const rawStg = String(rec["Stage"] || "غير محدد").trim();
-        const rawGrd = String(rec["Grade"] || "عام").trim();
-        const bucketKey = (selectedChartStage === "الكل")
-            ? (normToCanonicalStage[normalizeArabic(rawStg)] || rawStg)
-            : (normToCanonicalGrade[normalizeArabic(rawGrd)] || rawGrd);
-
-        if (!stats.breakdownMap[bucketKey]) {
-            stats.breakdownMap[bucketKey] = { present: 0, absent: 0, malePresent: 0, maleAbsent: 0, femalePresent: 0, femaleAbsent: 0 };
-        }
-
-        if (isPresent) {
-            stats.breakdownMap[bucketKey].present++;
-            if (gender === "ذكر") stats.breakdownMap[bucketKey].malePresent++;
-            else if (gender === "انثي") stats.breakdownMap[bucketKey].femalePresent++;
-        } else {
-            stats.breakdownMap[bucketKey].absent++;
-            if (gender === "ذكر") stats.breakdownMap[bucketKey].maleAbsent++;
-            else if (gender === "انثي") stats.breakdownMap[bucketKey].femaleAbsent++;
-        }
-    });
-
-    renderSSCharts(stats);
-}
-
-function renderSSCharts(stats) {
-    if (ssChartInstances.pie) ssChartInstances.pie.destroy();
-    if (ssChartInstances.gender) ssChartInstances.gender.destroy();
-    if (ssChartInstances.stage) ssChartInstances.stage.destroy();
-    if (ssChartInstances.genderGrade) ssChartInstances.genderGrade.destroy();
-
-    const totalAll = stats.totalPresent + stats.totalAbsent;
-    const maleAll = stats.malePresent + stats.maleAbsent;
-    const femaleAll = stats.femalePresent + stats.femaleAbsent;
-
-    const presentPct = calcChartPercent(stats.totalPresent, totalAll);
-    const absentPct = calcChartPercent(stats.totalAbsent, totalAll);
-    const malePresentPct = calcChartPercent(stats.malePresent, maleAll);
-    const femalePresentPct = calcChartPercent(stats.femalePresent, femaleAll);
-
-    const kpiContainer = document.getElementById('ssChartsKpiCards');
-    if (kpiContainer) {
-        kpiContainer.innerHTML = `
-            <div class="bg-white p-4 rounded-2xl border border-emerald-200 shadow-sm text-center">
-                <span class="block text-xs font-bold text-slate-500 mb-1">نسبة الحضور العامة</span>
-                <span class="text-2xl font-black text-emerald-600">${presentPct}%</span>
-                <span class="block text-[11px] font-bold text-slate-400 mt-0.5">(${stats.totalPresent} من ${totalAll})</span>
-            </div>
-            <div class="bg-white p-4 rounded-2xl border border-rose-200 shadow-sm text-center">
-                <span class="block text-xs font-bold text-slate-500 mb-1">نسبة الغياب العامة</span>
-                <span class="text-2xl font-black text-rose-600">${absentPct}%</span>
-                <span class="block text-[11px] font-bold text-slate-400 mt-0.5">(${stats.totalAbsent} من ${totalAll})</span>
-            </div>
-            <div class="bg-white p-4 rounded-2xl border border-blue-200 shadow-sm text-center">
-                <span class="block text-xs font-bold text-slate-500 mb-1">نسبة حضور الأولاد</span>
-                <span class="text-2xl font-black text-blue-600">${malePresentPct}%</span>
-                <span class="block text-[11px] font-bold text-slate-400 mt-0.5">حاضر: ${stats.malePresent} | غائب: ${stats.maleAbsent}</span>
-            </div>
-            <div class="bg-white p-4 rounded-2xl border border-pink-200 shadow-sm text-center">
-                <span class="block text-xs font-bold text-slate-500 mb-1">نسبة حضور البنات</span>
-                <span class="text-2xl font-black text-pink-600">${femalePresentPct}%</span>
-                <span class="block text-[11px] font-bold text-slate-400 mt-0.5">حاضر: ${stats.femalePresent} | غائب: ${stats.femaleAbsent}</span>
-            </div>
-        `;
-    }
-
-    const ctxPie = document.getElementById('attPieChart')?.getContext('2d');
-    if (ctxPie) {
-        ssChartInstances.pie = new Chart(ctxPie, {
-            type: 'doughnut',
-            data: {
-                labels: [`الحضور (${presentPct}%)`, `الغياب (${absentPct}%)`],
-                datasets: [{
-                    data: [stats.totalPresent, stats.totalAbsent],
-                    backgroundColor: ['#10b981', '#f43f5e'],
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom' } }
-            }
-        });
-    }
-
-    const ctxGender = document.getElementById('genderBarChart')?.getContext('2d');
-    if (ctxGender) {
-        ssChartInstances.gender = new Chart(ctxGender, {
-            type: 'bar',
-            data: {
-                labels: [`الأولاد (حضور ${malePresentPct}%)`, `البنات (حضور ${femalePresentPct}%)`],
-                datasets: [
-                    { label: 'حاضر', data: [stats.malePresent, stats.femalePresent], backgroundColor: '#10b981', borderRadius: 6 },
-                    { label: 'غائب', data: [stats.maleAbsent, stats.femaleAbsent], backgroundColor: '#f43f5e', borderRadius: 6 }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: { y: { beginAtZero: true } }
-            }
-        });
-    }
-
-    const keys = Object.keys(stats.breakdownMap);
-    const labels = keys.map(k => {
-        const item = stats.breakdownMap[k];
-        const pct = calcChartPercent(item.present, item.present + item.absent);
-        return `${k} (${pct}%)`;
-    });
-    const presentArr = keys.map(k => stats.breakdownMap[k].present);
-    const absentArr = keys.map(k => stats.breakdownMap[k].absent);
-
-    const title1 = document.getElementById('stageChartTitle');
-    if (title1) {
-        title1.innerText = selectedChartStage === "الكل" 
-            ? "نسب الحضور والغياب لكل مرحلة على حدة (الخدمة كلها)" 
-            : `نسب الحضور والغياب لكل صف في مرحلة: ${selectedChartStage}`;
-    }
-
-    const ctxStage = document.getElementById('stageBarChart')?.getContext('2d');
-    if (ctxStage) {
-        ssChartInstances.stage = new Chart(ctxStage, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [
-                    { label: 'حاضر', data: presentArr, backgroundColor: '#3b82f6', borderRadius: 5 },
-                    { label: 'غائب', data: absentArr, backgroundColor: '#cbd5e1', borderRadius: 5 }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
-            }
-        });
-    }
-
-    const title2 = document.getElementById('genderGradeChartTitle');
-    if (title2) {
-        title2.innerText = selectedChartStage === "الكل"
-            ? "مقارنة حضور وغياب الأولاد والبنات في كل مرحلة"
-            : `مقارنة حضور وغياب الأولاد والبنات لكل صف في مرحلة: ${selectedChartStage}`;
-    }
-
-    const ctxGenderGrade = document.getElementById('genderByGradeChart')?.getContext('2d');
-    if (ctxGenderGrade) {
-        ssChartInstances.genderGrade = new Chart(ctxGenderGrade, {
-            type: 'bar',
-            data: {
-                labels: keys,
-                datasets: [
-                    { label: 'حضور أولاد', data: keys.map(k => stats.breakdownMap[k].malePresent), backgroundColor: '#2563eb', borderRadius: 4 },
-                    { label: 'غياب أولاد', data: keys.map(k => stats.breakdownMap[k].maleAbsent), backgroundColor: '#93c5fd', borderRadius: 4 },
-                    { label: 'حضور بنات', data: keys.map(k => stats.breakdownMap[k].femalePresent), backgroundColor: '#db2777', borderRadius: 4 },
-                    { label: 'غياب بنات', data: keys.map(k => stats.breakdownMap[k].femaleAbsent), backgroundColor: '#f9a8d4', borderRadius: 4 }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: { y: { beginAtZero: true } }
-            }
-        });
-    }
-}
-
-function openSundaySchoolPrintModal() {
-    const modal = document.getElementById('ssPrintModal');
-    const stageSel = document.getElementById('ssPrintStage');
-    if (!modal || !stageSel) return;
-    
-    stageSel.innerHTML = `<option value="">اختر المرحلة...</option>` + 
-        Object.keys(STAGE_GRADES).map(s => `<option value="${s}">${s}</option>`).join('');
-
-    if (currentUser.Role === "Stage_Leader" || currentUser.Role === "Class_Servant") {
-        if (currentUser.AssignedStage && currentUser.AssignedStage !== "الكل") {
-            stageSel.value = currentUser.AssignedStage;
-            stageSel.disabled = true;
-            updatePrintGradesDropdown(currentUser.AssignedStage);
-            if (currentUser.AssignedGrade && currentUser.AssignedGrade !== "الكل") {
-                const grd = document.getElementById('ssPrintGrade');
-                if (grd) grd.value = currentUser.AssignedGrade;
-            }
-            if (currentUser.AssignedClass && currentUser.AssignedClass !== "الكل") {
-                const cls = document.getElementById('ssPrintClass');
-                if (cls) cls.value = currentUser.AssignedClass;
-            }
-        }
-    } else {
-        stageSel.disabled = false;
-    }
-
-    modal.classList.remove('hidden');
-}
-
-function closeSundaySchoolPrintModal() {
-    document.getElementById('ssPrintModal')?.classList.add('hidden');
-}
-
-function updatePrintGradesDropdown(stage) {
-    const grdSel = document.getElementById('ssPrintGrade');
-    if (!grdSel) return;
-    const grades = STAGE_GRADES[stage] || [];
-    grdSel.innerHTML = `<option value="">كل الصفوف</option>` + grades.map(g => `<option value="${g}">${g}</option>`).join('');
-}
-
-async function generateAndPrintClassRoster() {
-    const stage = document.getElementById('ssPrintStage')?.value || "";
-    const grade = document.getElementById('ssPrintGrade')?.value || "";
-    const className = (document.getElementById('ssPrintClass')?.value || "").trim();
-
-    if (!stage) {
-        alert("يرجى اختيار المرحلة الدراسية أولاً!");
-        return;
-    }
-
-    let membersList = namesCacheData;
-    if (membersList.length === 0) {
-        try {
-            const res = await fetch(`${API_URL}?sheet=Names`);
-            const data = await res.json();
-            if (data.status === "success") membersList = data.data;
-        } catch(e) {}
-    }
-
-    const classKids = membersList.filter(item => {
-        if (isMemberDeceased(item)) return false;
-        if (item["مدارس الأحد"] === "غير مشترك") return false;
-        if (item["المرحلة"] !== stage) return false;
-        if (grade && item["الصف"] !== grade) return false;
-        if (className && !String(item["فصل مدارس الاحد"] || item["أنهي مدارس الأحد"] || "").includes(className)) return false;
-        return true;
-    }).sort((a, b) => String(a["الاسم ثلاثي"]).localeCompare(String(b["الاسم ثلاثي"]), 'ar'));
-
-    if (classKids.length === 0) {
-        alert("لم يتم العثور على مخدومين مسجلين بهذه المواصفات!");
-        return;
-    }
-
-    closeSundaySchoolPrintModal();
-    setupPrintHeader(`كشف حضور وغياب مدارس الأحد - مرحلة: ${stage} ${grade ? '| ' + grade : ''} ${className ? '| فصل: ' + className : ''}`);
-    
-    const printArea = document.getElementById('printContainer');
-    if (!printArea) return;
-    printArea.innerHTML = `
-        <table class="print-table">
-            <thead>
-                <tr>
-                    <th style="width: 25px;">م</th>
-                    <th style="width: 170px;">اسم المخدوم ثلاثي</th>
-                    <th style="width: 85px;">المحمول</th>
-                    <th style="width: 50px;">السن</th>
-                    <th style="width: 70px;">الجمعة 1</th>
-                    <th style="width: 70px;">الجمعة 2</th>
-                    <th style="width: 70px;">الجمعة 3</th>
-                    <th style="width: 70px;">الجمعة 4</th>
-                    <th>ملاحظات الافتقاد</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${classKids.map((kid, idx) => {
-                    const age = calculateAge(kid["تاريخ الميلاد"], kid["الرقم القومي"]);
-                    return `
-                        <tr>
-                            <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
-                            <td style="font-weight: bold;">${kid["الاسم ثلاثي"]}</td>
-                            <td style="font-family: monospace;">${kid["تليفون العمل/المحمول"] || "-"}</td>
-                            <td style="text-align: center;">${age ? age + ' سنة' : '-'}</td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                        </tr>
-                    `;
-                }).join('')}
-            </tbody>
-        </table>
-        <div style="margin-top: 15px; display: flex; justify-content: space-between; font-weight: bold; font-size: 8pt;" class="print-only">
-            <p>خادم الفصل: .........................</p>
-            <p>أمين المرحلة: .........................</p>
-            <p>أمين عام الخدمة: .........................</p>
-        </div>
-    `;
-
-    setTimeout(() => {
-        window.print();
-        printArea.innerHTML = "";
-    }, 250);
 }// ---------------------------------------------------------
 // 9. قسم رصد اجتماع الخدام (Servants Meeting Section)
 // ---------------------------------------------------------
