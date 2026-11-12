@@ -231,15 +231,15 @@ function handleLoginSubmit(e) {
                 </button>
             </div>
 
-           <div id="ssViewSwitcher" class="flex items-center gap-2 bg-slate-200/80 p-1 rounded-xl hidden">
+         <div id="ssViewSwitcher" class="flex items-center gap-2 bg-slate-200/80 p-1 rounded-xl hidden">
     <button id="btnSSLiveRoster" onclick="switchSSView('live')" class="px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm">
-        📋 رصد حضور اليوم
+        📋 رصد حضور اليوم للفصل
     </button>
     <button id="btnSSHistory" onclick="switchSSView('history')" class="px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900">
         🗃️ سجل الحصص السابقة
     </button>
     <button id="btnSSCharts" onclick="switchSSView('charts')" class="px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900">
-        📊 الإحصائيات البيانية
+        📊 الإحصائيات والرسوم البيانية
     </button>
 </div>
 
@@ -297,6 +297,54 @@ function handleLoginSubmit(e) {
                         <label class="block text-xs font-bold text-slate-600 mb-1">الصف الدراسي</label>
                         <select id="ssFilterGrade" onchange="onSSFilterGradeChange()" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"></select>
                     </div>
+                    <div id="sundaySchoolChartsSection" class="hidden space-y-6 no-print">
+    <!-- شريط تصفية المراحل حسب صلاحية الخادم -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2 flex-wrap" id="ssChartsStageTabs"></div>
+        <span id="ssChartsScopeBadge" class="text-xs font-black bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-xl"></span>
+    </div>
+
+    <div id="ssChartsEmpty" class="hidden text-center py-16 text-slate-400 font-bold bg-white rounded-2xl border border-dashed border-slate-300">
+        لا توجد سجلات حضور مسجلة لهذا النطاق لعرض الرسوم البيانية.
+    </div>
+
+    <div id="ssChartsContainer" class="hidden space-y-6">
+        <!-- بطاقات النسب المئوية السريعة -->
+        <div id="ssChartsKpiCards" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
+
+        <!-- الصف الأول: الإجمالي العام + مقارنة البنين والبنات -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 class="text-sm font-black text-slate-800 mb-3 text-center">نسبة الحضور والغياب الإجمالية</h3>
+                <div class="relative w-full h-[280px] flex items-center justify-center">
+                    <canvas id="attPieChart"></canvas>
+                </div>
+            </div>
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 class="text-sm font-black text-slate-800 mb-3 text-center">نسب الأولاد والبنات في الحضور والغياب</h3>
+                <div class="relative w-full h-[280px]">
+                    <canvas id="genderBarChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- الصف الثاني: تحليل الحضور والغياب لكل صف / مرحلة -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 id="stageChartTitle" class="text-sm font-black text-slate-800 mb-3">تحليل الحضور والغياب حسب الصفوف والمراحل</h3>
+            <div class="relative w-full h-[360px]">
+                <canvas id="stageBarChart"></canvas>
+            </div>
+        </div>
+
+        <!-- الصف الثالث: تفصيل الأولاد والبنات لكل صف دراسي -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 id="genderGradeChartTitle" class="text-sm font-black text-slate-800 mb-3">نسب حضور الأولاد والبنات داخل كل صف دراسي</h3>
+            <div class="relative w-full h-[380px]">
+                <canvas id="genderByGradeChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
                     <div>
                         <label class="block text-xs font-bold text-slate-600 mb-1">اسم الفصل</label>
                         <select id="ssFilterClass" onchange="loadSSLiveClassKids()" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"></select>
