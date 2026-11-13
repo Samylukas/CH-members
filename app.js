@@ -9,19 +9,8 @@ let loginUsersList = [{ username: "admin", label: "الأدمن" }];
 
 // استرجاع الجلسة المحفوظة عند تحديث الصفحة وتحميل قائمة الخدام
 window.addEventListener('load', () => {
-    const savedUser = sessionStorage.getItem('church_current_user');
-    const savedToken = sessionStorage.getItem('church_session_token');
-    if (savedUser && savedToken) {
-        try {
-            currentUser = JSON.parse(savedUser);
-            sessionToken = savedToken;
-            const splash = document.getElementById('splashScreen');
-            if (splash) splash.remove();
-            initApp(true);
-        } catch (e) {
-            sessionStorage.clear();
-        }
-    }
+    sessionStorage.removeItem('church_current_user');
+    sessionStorage.removeItem('church_session_token');
     loadServantsListForLogin();
 });
 
@@ -59,12 +48,12 @@ const ICONS = {
 };
 const STAGE_GRADES = { "حضانة": ["بيبي كلاس", "أولى حضانة", "ثانية حضانة"], "ابتدائي": ["الصف الأول", "الصف الثاني", "الصف الثالث", "الصف الرابع", "الصف الخامس", "الصف السادس"], "إعدادي": ["الصف الأول الإعدادي", "الصف الثاني الإعدادي", "الصف الثالث الإعدادي"], "ثانوي": ["الصف الأول الثانوي", "الصف الثاني الثانوي", "الصف الثالث الثانوي"], "جامعي": ["الفرقة الأولى", "الفرقة الثانية", "الفرقة الثالثة", "الفرقة الرابعة", "بكالوريوس / تخرج"], "خريجين": ["خريج"] };
 const TABS_INFO = {
-    "Names": { label: "أعضاء الكنيسة", desc: "دليل أرباب الأسر، البيانات العائلية، والفرز المتقدم", svg: ICONS.users, colorClass: "card-names", roles: ["Admin", "SundaySchool_Admin"] },
-    "Sunday_School": { label: "مدارس الأحد", desc: "كشوف الفصول، الحضور، الإحصائيات والرسوم البيانية", svg: ICONS.children, colorClass: "card-sunday", roles: ["Admin", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
-    "Visitations": { label: "سجل الافتقاد", desc: "متابعة الزيارات، الحالات العاجلة ومواعيد الافتقاد", svg: ICONS.visitations, colorClass: "card-visitations", roles: ["Admin"] },
-    "Meetings_Attendance": { label: "حضور الاجتماعات", desc: "رصد حضور اجتماع الخدام الأسبوعي والاجتماعات", svg: ICONS.meetings, colorClass: "card-meetings", roles: ["Admin", "SundaySchool_Admin"] },
-    "Servants": { label: "إدارة الخدام", desc: "توزيع الصلاحيات وربط الخدام بالأعضاء", svg: ICONS.servants, colorClass: "card-servants", roles: ["Admin"] },
-    "Audit_Log": { label: "سجل المراقبة", desc: "متابعة دخول الخدام وكل عمليات الإضافة والتعديل والحذف", svg: ICONS.audit, colorClass: "card-servants", roles: ["Admin"] }
+    "Names": { label: "أعضاء الكنيسة", desc: "دليل أرباب الأسر والفرز المتقدم", svg: ICONS.users, accent: "from-emerald-500 to-teal-600", iconBg: "bg-emerald-50 ring-emerald-100", hoverText: "group-hover:text-emerald-700", roles: ["Admin", "SundaySchool_Admin"] },
+    "Sunday_School": { label: "مدارس الأحد", desc: "كشوف الفصول والحضور والإحصائيات", svg: ICONS.children, accent: "from-blue-500 to-indigo-600", iconBg: "bg-blue-50 ring-blue-100", hoverText: "group-hover:text-blue-700", roles: ["Admin", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
+    "Visitations": { label: "سجل الافتقاد", desc: "متابعة الزيارات والحالات العاجلة", svg: ICONS.visitations, accent: "from-rose-500 to-pink-600", iconBg: "bg-rose-50 ring-rose-100", hoverText: "group-hover:text-rose-700", roles: ["Admin"] },
+    "Meetings_Attendance": { label: "حضور الاجتماعات", desc: "رصد حضور اجتماع الخدام الأسبوعي", svg: ICONS.meetings, accent: "from-amber-500 to-orange-600", iconBg: "bg-amber-50 ring-amber-100", hoverText: "group-hover:text-amber-700", roles: ["Admin", "SundaySchool_Admin"] },
+    "Servants": { label: "إدارة الخدام", desc: "توزيع الصلاحيات وربط الخدام", svg: ICONS.servants, accent: "from-purple-500 to-violet-600", iconBg: "bg-purple-50 ring-purple-100", hoverText: "group-hover:text-purple-700", roles: ["Admin"] },
+    "Audit_Log": { label: "سجل المراقبة", desc: "متابعة دخول الخدام والتعديلات", svg: ICONS.audit, accent: "from-slate-600 to-slate-800", iconBg: "bg-slate-100 ring-slate-200", hoverText: "group-hover:text-slate-900", roles: ["Admin"] }
 };
 
 // 4. هياكل البيانات ونماذج الإضافة والتعديل
@@ -76,6 +65,8 @@ const SCHEMAS = {
         { id: "الحالة الاجتماعية", label: "الحالة الاجتماعية", type: "select", options: ["", "متزوج", "متزوجة", "اعزب", "انسة", "ارمل", "ارملة"] }, { id: "المرحلة", label: "المرحلة الدراسية", type: "stage_select", options: Object.keys(STAGE_GRADES) },
         { id: "الصف", label: "الصف الدراسي", type: "grade_select" }, { id: "فصل مدارس الاحد", label: "فصل مدارس الأحد", type: "text" },
         { id: "مدارس الأحد", label: "مدارس الأحد", type: "select", options: ["", "مشترك", "غير مشترك"] }, { id: "أنهي مدارس الأحد", label: "أنهي مدارس الأحد", type: "text" },
+        { id: "المنطقة", label: "المنطقة السكنية", type: "area_autocomplete" }, { id: "اسم الشارع", label: "اسم الشارع", type: "text" },
+        { id: "رقم المنزل", label: "رقم المنزل", type: "text" }, { id: "هاتف الاسرة", label: "هاتف الأسرة الأرضي / البديل", type: "text" },
         { id: "تليفون العمل/المحمول", label: "المحمول / الهاتف", type: "text" }, { id: "تاريخ الميلاد", label: "تاريخ الميلاد (DD/MM/YYYY)", type: "text" },
         { id: "الرقم القومي", label: "الرقم القومي", type: "text" }, { id: "تاريخ اخر اعتراف", label: "تاريخ آخر اعتراف", type: "text" },
         { id: "اب الاعتراف", label: "أب الاعتراف", type: "text" }, { id: "البطاقة الانتخابية", label: "البطاقة الانتخابية", type: "select", options: ["", "يوجد", "لا يوجد"] },
@@ -252,24 +243,20 @@ function buildDashboard() {
     const grid = document.getElementById('dashboardGrid');
     if (!grid || !currentUser) return;
     grid.innerHTML = "";
-    Object.keys(TABS_INFO).forEach(key => {
+    const visibleKeys = Object.keys(TABS_INFO).filter(k => TABS_INFO[k].roles.includes(currentUser.Role));
+    grid.className = `grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-${Math.min(visibleKeys.length, 6)} gap-4 w-full`;
+    visibleKeys.forEach(key => {
         const info = TABS_INFO[key];
-        if (info.roles.includes(currentUser.Role)) {
-            const card = document.createElement('div');
-            // تصميم مودرن وعصري للكروت مع تأثيرات بصرية جذابة
-            card.className = `group relative overflow-hidden bg-white rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] border border-slate-100 min-h-[220px]`;
-            card.onclick = () => loadSection(key);
-            card.innerHTML = `
-                <div class="absolute inset-0 bg-gradient-to-br from-slate-50 to-slate-100/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div class="relative z-10 flex flex-col items-center">
-                    <div class="mb-5 p-4 rounded-2xl bg-slate-50 group-hover:scale-110 group-hover:bg-white shadow-sm transition-transform duration-300 ring-1 ring-slate-100">${info.svg}</div>
-                    <h3 class="text-xl font-black text-slate-800 mb-2.5 group-hover:text-indigo-600 transition-colors">${info.label}</h3>
-                    <p class="text-xs text-slate-500 font-bold leading-relaxed px-2">${info.desc}</p>
-                </div>
-                <div class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-right"></div>
-            `;
-            grid.appendChild(card);
-        }
+        const card = document.createElement('div');
+        card.className = `group relative overflow-hidden bg-white/90 backdrop-blur-md rounded-3xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(15,23,42,0.14)] border border-slate-200/80 hover:border-indigo-300 min-h-[210px]`;
+        card.onclick = () => loadSection(key);
+        card.innerHTML = `
+            <div class="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r ${info.accent} opacity-80 group-hover:opacity-100 transition-opacity"></div>
+            <div class="mb-4 p-3.5 rounded-2xl ${info.iconBg} ring-1 group-hover:scale-110 transition-transform duration-300 shadow-xs">${info.svg}</div>
+            <h3 class="text-base font-black text-slate-800 mb-1.5 ${info.hoverText} transition-colors leading-snug">${info.label}</h3>
+            <p class="text-[11px] text-slate-500 font-bold leading-relaxed">${info.desc}</p>
+        `;
+        grid.appendChild(card);
     });
 }
 
@@ -351,7 +338,10 @@ function populateAreasDropdown() {
     if (!areaSelect) return;
     let areas = new Set(backendAreas);
     if (areas.size === 0) rawData.forEach(item => { const a = (item["المنطقة"] || "").trim(); if (a) areas.add(a); });
-    areaSelect.innerHTML = `<option value="">كل المناطق السكنية (${areas.size})</option>` + Array.from(areas).sort().map(a => `<option value="${a}">${a}</option>`).join('');
+    const sortedAreas = Array.from(areas).sort();
+    areaSelect.innerHTML = `<option value="">كل المناطق السكنية (${sortedAreas.length})</option>` + sortedAreas.map(a => `<option value="${a}">${a}</option>`).join('');
+    const areasDl = document.getElementById('areasDatalist');
+    if (areasDl) areasDl.innerHTML = sortedAreas.map(a => `<option value="${a}">`).join('');
 }
 
 function isMemberDeceased(member) {
@@ -1212,6 +1202,7 @@ function openModal(action, data={}) {
         w.id = `wrapper_${f.id.replace(/\s+/g, '_')}`; if (f.full) w.className = "md:col-span-2 lg:col-span-3";
         let inpH = ""; const cls = "w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs transition";
         if (f.type === "servant_name_autocomplete") inpH = `<input type="text" name="${f.id}" list="servantsNamesList" value="${val}" ${f.required?'required':''} onchange="onServantNameSelected(this.value)" class="${cls}">`;
+        else if (f.type === "area_autocomplete") inpH = `<input type="text" name="${f.id}" list="areasDatalist" value="${val}" placeholder="اختر أو اكتب المنطقة..." class="${cls}">`;
         else if (f.type === "stage_select") inpH = `<select name="${f.id}" onchange="updateGradeDropdown(this.value)" class="${cls}" ${f.required?'required':''}><option value="">اختر المرحلة...</option><option value="الكل">الكل</option>${f.options.map(o => `<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('')}</select>`;
         else if (f.type === "grade_select") inpH = `<select name="${f.id}" class="${cls}" ${f.required?'required':''}><option value="">اختر الصف...</option></select>`;
         else if (f.type === "select") inpH = `<select name="${f.id}" class="${cls}" ${f.required?'required':''} ${f.id === "ذكر/انثي" ? 'onchange="handleGenderChange(this.value)"' : ''}>${f.options.map(o => `<option value="${o}" ${val===o?'selected':''}>${o || "---"}</option>`).join('')}</select>`;
@@ -1234,7 +1225,7 @@ function closeModal() { document.getElementById('dataModal')?.classList.add('hid
 async function handleFormSubmit(e) {
     if (e) { try { e.preventDefault(); e.stopPropagation(); } catch(err) {} }
     const action = document.getElementById('formAction')?.value, form = document.getElementById('recordForm'); if (!form) return;
-    const fd = new FormData(form), payload = {}; fd.forEach((v, k) => { if (v.trim()) payload[k] = v; });
+    const fd = new FormData(form), payload = {}; fd.forEach((v, k) => { if (action === "update" || v.trim()) payload[k] = v.trim(); });
     if (currentTab === 'Names' && !payload["اسم رب الاسرة"]) { alert("خطأ: لا يمكن حفظ العضو بدون تحديد اسم رب الأسرة!"); return; }
     const recIdVal = document.getElementById('recordId')?.value;
     if (action === "update") payload[Object.keys(rawData[0])[0]] = Number(recIdVal);
@@ -1491,6 +1482,7 @@ function toggleAddMode(mode) {
         const heads = new Set(rawData.map(r => r["اسم رب الاسرة"]).filter(Boolean));
         headFieldWrapper.innerHTML = `<label class="block font-bold mb-1 text-slate-700 text-xs">اسم رب الأسرة *</label><input type="text" name="اسم رب الاسرة" list="familyHeadsList" required class="w-full p-2.5 bg-slate-50 border border-indigo-300 rounded-xl font-bold text-xs"><datalist id="familyHeadsList">${Array.from(heads).sort().map(h => `<option value="${h}">`).join('')}</datalist>`;
         if (nameInput) nameInput.oninput = null;
+        if (relationSelect) relationSelect.value = "";
     }
 }
 
