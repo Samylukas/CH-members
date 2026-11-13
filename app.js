@@ -352,11 +352,12 @@ function getMemberArea(item) {
     if (!item) return "";
     const direct = getFieldValNormalized(item, "المنطقة");
     if (direct) return direct;
+    const areaKeywords = ["منطق", "حي", "عنوان", "سكن", "تقسيم", "شارع", "مربع", "قطاع", "بلد", "اقام"];
     for (const k of Object.keys(item)) {
         const nk = normalizeArabic(k);
-        if ((nk.includes("منطق") || nk === "الحي") && item[k] !== undefined && item[k] !== null) {
+        if (areaKeywords.some(kw => nk.includes(kw)) && item[k] !== undefined && item[k] !== null) {
             const v = String(item[k]).trim();
-            if (v && v !== "-") return v;
+            if (v && v !== "-" && v.length > 1) return v;
         }
     }
     return "";
@@ -380,15 +381,20 @@ function populateAreasDropdown() {
     const prevVal = areaSelect.value;
     let areas = new Set();
     if (Array.isArray(backendAreas)) {
-        backendAreas.forEach(a => { const clean = String(a || "").trim(); if (clean && clean !== "-") areas.add(clean); });
+        backendAreas.forEach(a => { const clean = String(a || "").trim(); if (clean && clean !== "-" && clean.length > 1) areas.add(clean); });
     }
     rawData.forEach(item => {
         const a = getMemberArea(item);
         if (a) areas.add(a);
     });
-    const sortedAreas = Array.from(areas).sort((a, b) => a.localeCompare(b, 'ar'));
+    // Remove empty strings or just dashes
+    const sortedAreas = Array.from(areas).filter(a => a && a !== "-" && a.length > 1).sort((a, b) => a.localeCompare(b, 'ar'));
     areaSelect.innerHTML = `<option value="">كل المناطق السكنية (${sortedAreas.length})</option>` + sortedAreas.map(a => `<option value="${a}">${a}</option>`).join('');
+    
+    // Ensure previous selection is kept if valid, otherwise reset
     if (prevVal && sortedAreas.includes(prevVal)) areaSelect.value = prevVal;
+    else areaSelect.value = "";
+    
     const areasDl = document.getElementById('areasDatalist');
     if (areasDl) areasDl.innerHTML = sortedAreas.map(a => `<option value="${a}">`).join('');
 }
@@ -1609,6 +1615,19 @@ async function loadData(force = false) {
                 if (currentTab === 'Names') {
                     namesCacheData = rawData; populateAreasDropdown();
                     if (currentNamesView === 'roster') { buildAlphabetBar(); renderFamilyHeadsRoster(); } else applyNamesFilter();
+                    if (document.getElementById('filterArea')?.options.length <= 1) {
+                        ["Areas", "المناطق"].forEach(sheetCand => {
+                            apiFetch(`${API_URL}?sheet=${encodeURIComponent(sheetCand)}`).then(aRes => {
+                                if (aRes.status === "success" && Array.isArray(aRes.data) && aRes.data.length > 0) {
+                                    aRes.data.forEach(row => {
+                                        const val = Object.values(row).map(v => String(v || "").trim()).find(v => v && v !== "-" && !/^\d+$/.test(v));
+                                        if (val && !backendAreas.includes(val)) backendAreas.push(val);
+                                    });
+                                    populateAreasDropdown();
+                                }
+                            }).catch(() => {});
+                        });
+                    }
                     if (visitationsData.length === 0) {
                         apiFetch(`${API_URL}?sheet=Visitations`).then(d => {
                             if (d.status === "success") { visitationsData = d.data; if (currentNamesView === 'roster') renderFamilyHeadsRoster(); }
