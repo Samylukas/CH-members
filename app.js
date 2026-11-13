@@ -308,7 +308,8 @@ function switchNamesView(viewName) {
         if (btnFilters) btnFilters.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-indigo-700 shadow-sm";
         if (btnRoster) btnRoster.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
         rosterSec?.classList.add('hidden'); filterSec?.classList.remove('hidden'); resultsSec?.classList.remove('hidden');
-        btnFiltered?.classList.remove('hidden'); btnRosterPrint?.classList.add('hidden'); resetNamesFilters();
+        btnFiltered?.classList.remove('hidden'); btnRosterPrint?.classList.add('hidden');
+        populateAreasDropdown(); resetNamesFilters();
     }
 }
 
@@ -330,16 +331,64 @@ function buildAlphabetBar() {
     });
 }
 
-function normalizeArabic(text) { return String(text || "").trim().replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي"); }
+function normalizeArabic(text) { return String(text || "").trim().replace(/ـ/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/\s+/g, " "); }
 function filterRoster() { renderFamilyHeadsRoster(); }
+
+function getFieldValNormalized(obj, targetKey) {
+    if (!obj) return "";
+    if (obj[targetKey] !== undefined && obj[targetKey] !== null && String(obj[targetKey]).trim() !== "") {
+        return String(obj[targetKey]).trim();
+    }
+    const normTarget = normalizeArabic(targetKey);
+    for (const k of Object.keys(obj)) {
+        if (normalizeArabic(k) === normTarget && obj[k] !== undefined && obj[k] !== null && String(obj[k]).trim() !== "") {
+            return String(obj[k]).trim();
+        }
+    }
+    return "";
+}
+
+function getMemberArea(item) {
+    if (!item) return "";
+    const direct = getFieldValNormalized(item, "المنطقة");
+    if (direct) return direct;
+    for (const k of Object.keys(item)) {
+        const nk = normalizeArabic(k);
+        if ((nk.includes("منطق") || nk === "الحي") && item[k] !== undefined && item[k] !== null) {
+            const v = String(item[k]).trim();
+            if (v && v !== "-") return v;
+        }
+    }
+    return "";
+}
+
+function buildFamilyAreaMap() {
+    const map = {};
+    rawData.forEach(r => {
+        const head = normalizeArabic(getFieldValNormalized(r, "اسم رب الاسرة"));
+        const area = getMemberArea(r);
+        if (head && area && !map[head]) {
+            map[head] = area;
+        }
+    });
+    return map;
+}
 
 function populateAreasDropdown() {
     const areaSelect = document.getElementById('filterArea');
     if (!areaSelect) return;
-    let areas = new Set(backendAreas);
-    if (areas.size === 0) rawData.forEach(item => { const a = (item["المنطقة"] || "").trim(); if (a) areas.add(a); });
-    const sortedAreas = Array.from(areas).sort();
+    const prevVal = areaSelect.value;
+    let areas = new Set();
+    if (Array.isArray(backendAreas)) {
+        backendAreas.forEach(a => { const clean = String(a || "").trim(); if (clean && clean !== "-") areas.add(clean); });
+    }
+    rawData.forEach(item => {
+        const a = getMemberArea(item);
+        if (a) areas.add(a);
+    });
+    const sortedAreas = Array.from(areas).sort((a, b) => a.localeCompare(b, 'ar'));
     areaSelect.innerHTML = `<option value="">كل المناطق السكنية (${sortedAreas.length})</option>` + sortedAreas.map(a => `<option value="${a}">${a}</option>`).join('');
+    if (prevVal && sortedAreas.includes(prevVal)) areaSelect.value = prevVal;
     const areasDl = document.getElementById('areasDatalist');
     if (areasDl) areasDl.innerHTML = sortedAreas.map(a => `<option value="${a}">`).join('');
 }
@@ -408,7 +457,7 @@ function renderFamilyHeadsRoster() {
         const familyMembers = familiesMap[headName];
         const headMemberRecord = familyMembers.find(m => m["الاسم ثلاثي"] === headName || m["صلة القرابة"] === "زوج" || m["صلة القرابة"] === "رب أسرة") || familyMembers[0];
         const headId = headMemberRecord ? (headMemberRecord["ID"] || headMemberRecord[Object.keys(headMemberRecord)[0]]) : null;
-        const area = headMemberRecord ? (headMemberRecord["المنطقة"] || "غير محددة") : "غير محددة";
+        const area = (headMemberRecord ? getMemberArea(headMemberRecord) : "") || (familyMembers.map(m => getMemberArea(m)).find(Boolean)) || "غير محددة";
         const phone = headMemberRecord ? (headMemberRecord["هاتف الاسرة"] || headMemberRecord["تليفون العمل/المحمول"] || "-") : "-";
         const lastVisit = getLastFamilyVisitDate(familyMembers);
 
@@ -519,11 +568,13 @@ function applyNamesFilter() {
     if (!container) return;
     container.innerHTML = "";
 
+    const familyAreaMap = buildFamilyAreaMap();
     const matchedMembers = rawData.filter(item => {
         const deceased = isMemberDeceased(item);
         if (deceasedQ === "alive" && deceased) return false;
         if (deceasedQ === "deceased" && !deceased) return false;
-        if (areaQ && (item["المنطقة"] || "").trim() !== areaQ) return false;
+        const memberArea = getMemberArea(item) || familyAreaMap[normalizeArabic(getFieldValNormalized(item, "اسم رب الاسرة"))] || "";
+        if (areaQ && normalizeArabic(memberArea) !== normalizeArabic(areaQ)) return false;
         if (genderQ && item["ذكر/انثي"] !== genderQ) return false;
         if (maritalQ && (item["الحالة الاجتماعية"] || "").trim() !== maritalQ) return false;
         if (electionQ && (item["البطاقة الانتخابية"] || "").trim() !== electionQ) return false;
@@ -557,7 +608,7 @@ function applyNamesFilter() {
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-3 pb-2 border-b border-slate-100">
                 <div>
                     <div class="flex items-center gap-2 mb-0.5 flex-wrap"><span class="text-xs font-mono font-bold text-slate-400">#${idVal}</span><h3 class="text-sm font-black text-slate-800">${member["الاسم ثلاثي"]}</h3><span class="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-bold border">${member["صلة القرابة"] || "عضو"}</span>${genderBadge}<span class="text-[11px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-bold">${member["الحالة الاجتماعية"] || "-"}</span>${deceasedBadge}</div>
-                    <p class="text-xs text-indigo-700 font-bold">🏠 الأسرة: <strong>${member["اسم رب الاسرة"] || "غير محدد"}</strong> | 📍 المنطقة: <strong class="text-slate-800">${member["المنطقة"] || "غير محددة"}</strong></p>
+                    <p class="text-xs text-indigo-700 font-bold">🏠 الأسرة: <strong>${member["اسم رب الاسرة"] || "غير محدد"}</strong> | 📍 المنطقة: <strong class="text-slate-800">${getMemberArea(member) || familyAreaMap[normalizeArabic(getFieldValNormalized(member, "اسم رب الاسرة"))] || "غير محددة"}</strong></p>
                 </div>
                 <div class="flex items-center gap-2 no-print flex-wrap w-full md:w-auto justify-end">${renderContactButtons(member["تليفون العمل/المحمول"])}<button onclick="editRecord(${idVal})" class="text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-xl transition">تعديل</button>${currentUser.Role === "Admin" ? `<button onclick="deleteRecord(${idVal})" class="text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1.5 rounded-xl transition">حذف</button>` : ''}</div>
             </div>
@@ -579,10 +630,12 @@ function printFilteredResults() {
     const genderQ = document.getElementById('filterGender')?.value || "", electionQ = document.getElementById('filterElection')?.value || "";
     const maritalQ = document.getElementById('filterMarital')?.value || "", deceasedQ = document.getElementById('filterDeceased')?.value || "alive";
 
+    const familyAreaMap = buildFamilyAreaMap();
     const matchedMembers = rawData.filter(item => {
         const deceased = isMemberDeceased(item);
         if (deceasedQ === "alive" && deceased) return false; if (deceasedQ === "deceased" && !deceased) return false;
-        if (areaQ && (item["المنطقة"] || "").trim() !== areaQ) return false; if (genderQ && item["ذكر/انثي"] !== genderQ) return false;
+        const memberArea = getMemberArea(item) || familyAreaMap[normalizeArabic(getFieldValNormalized(item, "اسم رب الاسرة"))] || "";
+        if (areaQ && normalizeArabic(memberArea) !== normalizeArabic(areaQ)) return false; if (genderQ && item["ذكر/انثي"] !== genderQ) return false;
         if (maritalQ && (item["الحالة الاجتماعية"] || "").trim() !== maritalQ) return false; if (electionQ && (item["البطاقة الانتخابية"] || "").trim() !== electionQ) return false;
         if (ageGroupQ) {
             const age = calculateAge(item["تاريخ الميلاد"], item["الرقم القومي"]);
@@ -1198,10 +1251,14 @@ function openModal(action, data={}) {
 
     const fCont = document.getElementById('formFields'); if (!fCont) return; fCont.innerHTML = "";
     (SCHEMAS[currentTab] || []).forEach(f => {
-        const val = data[f.id] || "", w = document.createElement('div');
+        const val = (f.id === "المنطقة") ? getMemberArea(data) : getFieldValNormalized(data, f.id), w = document.createElement('div');
         w.id = `wrapper_${f.id.replace(/\s+/g, '_')}`; if (f.full) w.className = "md:col-span-2 lg:col-span-3";
         let inpH = ""; const cls = "w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs transition";
-        if (f.type === "servant_name_autocomplete") inpH = `<input type="text" name="${f.id}" list="servantsNamesList" value="${val}" ${f.required?'required':''} onchange="onServantNameSelected(this.value)" class="${cls}">`;
+        if (f.type === "family_head_select") {
+            const heads = new Set(rawData.map(r => getFieldValNormalized(r, "اسم رب الاسرة")).filter(Boolean));
+            inpH = `<input type="text" name="${f.id}" list="familyHeadsList" value="${val}" oninput="checkLiveNameDuplicates()" ${f.required?'required':''} class="${cls}"><datalist id="familyHeadsList">${Array.from(heads).sort((a,b)=>a.localeCompare(b,'ar')).map(h => `<option value="${h}">`).join('')}</datalist>`;
+        }
+        else if (f.type === "servant_name_autocomplete") inpH = `<input type="text" name="${f.id}" list="servantsNamesList" value="${val}" ${f.required?'required':''} onchange="onServantNameSelected(this.value)" class="${cls}">`;
         else if (f.type === "area_autocomplete") inpH = `<input type="text" name="${f.id}" list="areasDatalist" value="${val}" placeholder="اختر أو اكتب المنطقة..." class="${cls}">`;
         else if (f.type === "stage_select") inpH = `<select name="${f.id}" onchange="updateGradeDropdown(this.value)" class="${cls}" ${f.required?'required':''}><option value="">اختر المرحلة...</option><option value="الكل">الكل</option>${f.options.map(o => `<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('')}</select>`;
         else if (f.type === "grade_select") inpH = `<select name="${f.id}" class="${cls}" ${f.required?'required':''}><option value="">اختر الصف...</option></select>`;
@@ -1212,12 +1269,95 @@ function openModal(action, data={}) {
         fCont.appendChild(w);
     });
 
-    if (currentTab === 'Names' && action === 'add') toggleAddMode('new_head');
+    if (currentTab === 'Names') {
+        const alertBox = document.createElement('div');
+        alertBox.id = 'duplicateLiveAlert';
+        alertBox.className = 'md:col-span-2 lg:col-span-3 hidden';
+        fCont.prepend(alertBox);
+
+        const nameInp = fCont.querySelector('input[name="الاسم ثلاثي"]');
+        const nidInp = fCont.querySelector('input[name="الرقم القومي"]');
+        if (nameInp) nameInp.addEventListener('input', checkLiveNameDuplicates);
+        if (nidInp) nidInp.addEventListener('input', checkLiveNameDuplicates);
+        if (action === 'add') toggleAddMode('new_head');
+        else setTimeout(checkLiveNameDuplicates, 50);
+    }
     if (currentTab === 'Servants') populateServantsDatalist();
     const stg = data["المرحلة"] || data["Stage"] || data["AssignedStage"] || "", grd = data["الصف"] || data["Grade"] || data["AssignedGrade"] || "";
     if (stg) updateGradeDropdown(stg, grd);
     if (data["ذكر/انثي"]) handleGenderChange(data["ذكر/انثي"]);
     document.getElementById('dataModal')?.classList.remove('hidden');
+}
+
+function checkLiveNameDuplicates() {
+    if (currentTab !== 'Names') return;
+    const alertBox = document.getElementById('duplicateLiveAlert');
+    if (!alertBox) return;
+
+    const action = document.getElementById('formAction')?.value || 'add';
+    const recIdVal = String(document.getElementById('recordId')?.value || '');
+    const addMode = document.querySelector('input[name="addMode"]:checked')?.value || 'new_head';
+
+    const fullName = (document.querySelector('#formFields input[name="الاسم ثلاثي"]')?.value || '').trim();
+    const headName = (document.querySelector('#formFields input[name="اسم رب الاسرة"]')?.value || '').trim();
+    const nid = (document.querySelector('#formFields input[name="الرقم القومي"]')?.value || '').trim();
+
+    const normFull = normalizeArabic(fullName);
+    const normHead = normalizeArabic(headName);
+    const idKey = rawData.length > 0 ? Object.keys(rawData[0])[0] : 'ID';
+
+    const others = rawData.filter(r => action !== 'update' || String(r[idKey]) !== recIdVal);
+    let warnings = [];
+
+    if (nid && nid.length >= 6) {
+        const dupNid = others.find(r => String(r["الرقم القومي"] || '').trim() === nid);
+        if (dupNid) {
+            warnings.push({ type: 'error', text: `⛔ الرقم القومي مسجل مسبقاً باسم: "${dupNid["الاسم ثلاثي"]}" في أسرة: "${dupNid["اسم رب الاسرة"] || '-'}"` });
+        }
+    }
+
+    if (action === 'add' && addMode === 'new_head' && normFull) {
+        const dupHeadMembers = others.filter(r => normalizeArabic(r["اسم رب الاسرة"]) === normFull);
+        if (dupHeadMembers.length > 0) {
+            const area = dupHeadMembers[0]["المنطقة"] || "غير محددة";
+            warnings.push({ type: 'error', text: `⛔ رب الأسرة "${fullName}" مسجل بالفعل (${dupHeadMembers.length} أفراد - منطقة: ${area}). لإضافة فرد تابع له، اختر "إضافة فرد لأسرة قائمة" بالأعلى.` });
+        }
+    }
+
+    if (normFull && normHead && !(action === 'add' && addMode === 'new_head')) {
+        const sameFamMember = others.find(r => normalizeArabic(r["اسم رب الاسرة"]) === normHead && normalizeArabic(r["الاسم ثلاثي"]) === normFull);
+        if (sameFamMember) {
+            warnings.push({ type: 'error', text: `⛔ العضو "${fullName}" مسجل بالفعل داخل نفس هذه الأسرة (#${sameFamMember[idKey]})!` });
+        }
+    }
+
+    if (normFull) {
+        const otherFamMatch = others.find(r => normalizeArabic(r["الاسم ثلاثي"]) === normFull && normalizeArabic(r["اسم رب الاسرة"]) !== normHead);
+        if (otherFamMatch) {
+            warnings.push({ type: 'warn', text: `⚠️ تنبيه تشابه أسماء: يوجد عضو بنفس الاسم مسجل في أسرة "${otherFamMatch["اسم رب الاسرة"] || '-'}" (منطقة: ${otherFamMatch["المنطقة"] || 'غير محددة'} | هاتف: ${otherFamMatch["تليفون العمل/المحمول"] || '-'}).` });
+        }
+    }
+
+    if (action === 'add' && addMode === 'add_member' && normHead) {
+        const headExists = others.some(r => normalizeArabic(r["اسم رب الاسرة"]) === normHead);
+        if (!headExists) {
+            warnings.push({ type: 'warn', text: `⚠️ اسم رب الأسرة "${headName}" غير موجود حالياً في قائمة الأسر، سيتم إنشاء أسرة جديدة بهذا الاسم.` });
+        }
+    }
+
+    if (warnings.length === 0) {
+        alertBox.classList.add('hidden');
+        alertBox.innerHTML = '';
+        return;
+    }
+
+    alertBox.classList.remove('hidden');
+    alertBox.innerHTML = warnings.map(w => {
+        const cls = w.type === 'error'
+            ? 'bg-rose-50 border-rose-300 text-rose-800'
+            : 'bg-amber-50 border-amber-300 text-amber-900';
+        return `<div class="p-3 mb-2 rounded-xl border text-xs font-black leading-relaxed ${cls}">${w.text}</div>`;
+    }).join('');
 }
 
 function closeModal() { document.getElementById('dataModal')?.classList.add('hidden'); }
@@ -1226,9 +1366,82 @@ async function handleFormSubmit(e) {
     if (e) { try { e.preventDefault(); e.stopPropagation(); } catch(err) {} }
     const action = document.getElementById('formAction')?.value, form = document.getElementById('recordForm'); if (!form) return;
     const fd = new FormData(form), payload = {}; fd.forEach((v, k) => { if (action === "update" || v.trim()) payload[k] = v.trim(); });
-    if (currentTab === 'Names' && !payload["اسم رب الاسرة"]) { alert("خطأ: لا يمكن حفظ العضو بدون تحديد اسم رب الأسرة!"); return; }
     const recIdVal = document.getElementById('recordId')?.value;
-    if (action === "update") payload[Object.keys(rawData[0])[0]] = Number(recIdVal);
+    const idKey = (rawData.length > 0) ? Object.keys(rawData[0])[0] : "ID";
+    const otherRecords = rawData.filter(r => action !== "update" || String(r[idKey]) !== String(recIdVal));
+
+    if (currentTab === 'Names') {
+        if (!payload["اسم رب الاسرة"]) { alert("خطأ: لا يمكن حفظ العضو بدون تحديد اسم رب الأسرة!"); return; }
+        const normFull = normalizeArabic(payload["الاسم ثلاثي"]);
+        const normHead = normalizeArabic(payload["اسم رب الاسرة"]);
+        const addMode = document.querySelector('input[name="addMode"]:checked')?.value || 'new_head';
+
+        // 1. منع تكرار الرقم القومي نهائياً
+        if (payload["الرقم القومي"]) {
+            const dupNid = otherRecords.find(r => String(r["الرقم القومي"] || "").trim() === payload["الرقم القومي"]);
+            if (dupNid) {
+                alert(`⛔ لا يمكن الحفظ!\nالرقم القومي (${payload["الرقم القومي"]}) مسجل بالفعل باسم:\n"${dupNid["الاسم ثلاثي"]}" في أسرة "${dupNid["اسم رب الاسرة"] || '-'}"`);
+                return;
+            }
+        }
+
+        // 2. منع تكرار إنشاء رب أسرة موجود بالفعل
+        if (action === "add" && addMode === "new_head") {
+            const existingFamily = otherRecords.filter(r => normalizeArabic(r["اسم رب الاسرة"]) === normHead);
+            if (existingFamily.length > 0) {
+                const area = existingFamily[0]["المنطقة"] || "غير محددة";
+                alert(`⛔ لا يمكن تكرار الأسرة!\nرب الأسرة "${payload["اسم رب الاسرة"]}" مسجل بالفعل في النظام (${existingFamily.length} أفراد - منطقة: ${area}).\n\nلإضافة فرد جديد لهذه الأسرة، اختر "إضافة فرد لأسرة قائمة" من أعلى النافذة.`);
+                return;
+            }
+        }
+
+        // 3. منع تكرار نفس الفرد داخل نفس الأسرة
+        const dupInSameFamily = otherRecords.find(r =>
+            normalizeArabic(r["اسم رب الاسرة"]) === normHead &&
+            normalizeArabic(r["الاسم ثلاثي"]) === normFull
+        );
+        if (dupInSameFamily) {
+            alert(`⛔ لا يمكن تكرار الفرد!\nالعضو "${payload["الاسم ثلاثي"]}" مسجل بالفعل داخل نفس هذه الأسرة (#${dupInSameFamily[idKey]}).`);
+            return;
+        }
+
+        // 4. تنبيه وتأكيد في حالة تشابه الاسم الثلاثي مع عضو في أسرة أخرى
+        const dupInOtherFamily = otherRecords.find(r =>
+            normalizeArabic(r["الاسم ثلاثي"]) === normFull &&
+            normalizeArabic(r["اسم رب الاسرة"]) !== normHead
+        );
+        if (dupInOtherFamily) {
+            const confirmMsg = `⚠️ تنبيه تشابه أسماء:\nيوجد عضو مسجل بنفس الاسم "${payload["الاسم ثلاثي"]}" في أسرة أخرى:\n• رب الأسرة: ${dupInOtherFamily["اسم رب الاسرة"] || "-"}\n• المنطقة: ${dupInOtherFamily["المنطقة"] || "غير محددة"}\n• المحمول: ${dupInOtherFamily["تليفون العمل/المحمول"] || "-"}\n\nهل أنت متأكد أنه شخص مختلف (تشابه أسماء) وتريد إتمام الحفظ؟`;
+            if (!confirm(confirmMsg)) return;
+        }
+    }
+
+    if (currentTab === 'Servants') {
+        const normServant = normalizeArabic(payload["ServantName"]);
+        const cleanUser = String(payload["Username"] || "").trim().toLowerCase();
+        const dupServant = otherRecords.find(r =>
+            (normServant && normalizeArabic(r["ServantName"]) === normServant) ||
+            (cleanUser && String(r["Username"] || "").trim().toLowerCase() === cleanUser)
+        );
+        if (dupServant) {
+            alert(`⛔ لا يمكن تكرار الخادم!\nالخادم "${dupServant["ServantName"]}" أو اسم المستخدم "${dupServant["Username"]}" مسجل بالفعل في قائمة الخدام.`);
+            return;
+        }
+    }
+
+    if (action === "update") payload[idKey] = Number(recIdVal);
+    if (rawData.length > 0) {
+        const sheetHeaders = Object.keys(rawData[0]);
+        Object.keys(payload).forEach(k => {
+            if (!sheetHeaders.includes(k)) {
+                const matchedHeader = sheetHeaders.find(sh => normalizeArabic(sh) === normalizeArabic(k) || (k === "المنطقة" && normalizeArabic(sh).includes("منطق")));
+                if (matchedHeader) {
+                    payload[matchedHeader] = payload[k];
+                    delete payload[k];
+                }
+            }
+        });
+    }
     const btn = document.getElementById('saveBtn'); if (btn) { btn.disabled = true; btn.innerHTML = `جاري الحفظ...`; }
     try {
         const data = await apiPost({ sheet: currentTab, action: action, data: payload });
@@ -1461,7 +1674,7 @@ function buildAndPrintFamilies(familiesMap, reportTitle) {
     if (sortedHeads.length === 0) { alert("لا توجد أسر مطابقة للطباعة!"); return; }
     printContainer.innerHTML = sortedHeads.map((headName, idx) => {
         const members = familiesMap[headName], headRec = members.find(m => m["الاسم ثلاثي"] === headName) || members[0];
-        const addressStr = [headRec?.["المنطقة"], headRec?.["اسم الشارع"], headRec?.["رقم المنزل"]].filter(Boolean).join(' - ') || "غير محدد";
+        const addressStr = [getMemberArea(headRec), getFieldValNormalized(headRec, "اسم الشارع"), getFieldValNormalized(headRec, "رقم المنزل")].filter(Boolean).join(' - ') || "غير محدد";
         const phoneStr = headRec?.["هاتف الاسرة"] || headRec?.["تليفون العمل/المحمول"] || "-";
         const membersStr = members.map((m, mIdx) => `${mIdx + 1}. ${m["الاسم ثلاثي"] || "-"} (${m["تليفون العمل/المحمول"] || "-"})`).join(' • ');
         return `<div class="print-family-row"><div><strong>${idx + 1}. رب الأسرة: ${headName}</strong> | العنوان: ${addressStr} | الهاتف: ${phoneStr}</div><div><strong>أفراد الأسرة:</strong> ${membersStr}</div></div>`;
@@ -1476,14 +1689,19 @@ function toggleAddMode(mode) {
     if (!headFieldWrapper) return;
     if (mode === "new_head") {
         headFieldWrapper.innerHTML = `<label class="block font-bold mb-1 text-slate-700 text-xs">اسم رب الأسرة (تلقائي)</label><input type="text" name="اسم رب الاسرة" id="input_head_name" readonly class="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl font-bold text-xs text-slate-500">`;
-        if (nameInput) nameInput.oninput = (e) => { const h = document.getElementById('input_head_name'); if (h) h.value = e.target.value; };
+        if (nameInput) {
+            const h = document.getElementById('input_head_name');
+            if (h) h.value = nameInput.value;
+            nameInput.oninput = (e) => { const hEl = document.getElementById('input_head_name'); if (hEl) hEl.value = e.target.value; };
+        }
         if (relationSelect) relationSelect.value = "زوج";
     } else {
         const heads = new Set(rawData.map(r => r["اسم رب الاسرة"]).filter(Boolean));
-        headFieldWrapper.innerHTML = `<label class="block font-bold mb-1 text-slate-700 text-xs">اسم رب الأسرة *</label><input type="text" name="اسم رب الاسرة" list="familyHeadsList" required class="w-full p-2.5 bg-slate-50 border border-indigo-300 rounded-xl font-bold text-xs"><datalist id="familyHeadsList">${Array.from(heads).sort().map(h => `<option value="${h}">`).join('')}</datalist>`;
+        headFieldWrapper.innerHTML = `<label class="block font-bold mb-1 text-slate-700 text-xs">اسم رب الأسرة *</label><input type="text" name="اسم رب الاسرة" list="familyHeadsList" oninput="checkLiveNameDuplicates()" required class="w-full p-2.5 bg-slate-50 border border-indigo-300 rounded-xl font-bold text-xs"><datalist id="familyHeadsList">${Array.from(heads).sort().map(h => `<option value="${h}">`).join('')}</datalist>`;
         if (nameInput) nameInput.oninput = null;
         if (relationSelect) relationSelect.value = "";
     }
+    checkLiveNameDuplicates();
 }
 
 function updateGradeDropdown(stg, grd="") {
