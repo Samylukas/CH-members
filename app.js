@@ -1065,11 +1065,17 @@ async function generateAndPrintClassRoster() {
     const classKids = membersList.filter(item => !isMemberDeceased(item) && item["مدارس الأحد"] !== "غير مشترك" && normalizeArabic(item["المرحلة"]) === normalizeArabic(stage) && (!grade || normalizeArabic(item["الصف"]) === normalizeArabic(grade)) && (!className || normalizeArabic(item["فصل مدارس الاحد"] || item["أنهي مدارس الأحد"]).includes(normalizeArabic(className)))).sort((a, b) => String(a["الاسم ثلاثي"]).localeCompare(String(b["الاسم ثلاثي"]), 'ar'));
     if (classKids.length === 0) { alert("لم يتم العثور على مخدومين مسجلين بهذه المواصفات!"); return; }
     closeSundaySchoolPrintModal();
-    setupPrintHeader(`كشف حضور وغياب مدارس الأحد - مرحلة: ${stage} ${grade ? '| ' + grade : ''} ${className ? '| فصل: ' + className : ''}`);
-    const printArea = document.getElementById('printContainer');
-    if (!printArea) return;
-    printArea.innerHTML = `<table class="print-table"><thead><tr><th style="width:25px;">م</th><th style="width:170px;">اسم المخدوم ثلاثي</th><th style="width:85px;">المحمول</th><th style="width:50px;">السن</th><th style="width:70px;">الجمعة 1</th><th style="width:70px;">الجمعة 2</th><th style="width:70px;">الجمعة 3</th><th style="width:70px;">الجمعة 4</th><th>ملاحظات الافتقاد</th></tr></thead><tbody>${classKids.map((kid, idx) => `<tr><td style="text-align:center;font-weight:bold;">${idx + 1}</td><td style="font-weight:bold;">${kid["الاسم ثلاثي"]}</td><td style="font-family:monospace;">${kid["تليفون العمل/المحمول"] || "-"}</td><td style="text-align:center;">${calculateAge(kid["تاريخ الميلاد"], kid["الرقم القومي"]) || '-'}</td><td></td><td></td><td></td><td></td><td></td></tr>`).join('')}</tbody></table>`;
-    setTimeout(() => { window.print(); printArea.innerHTML = ""; }, 250);
+    let text = `*كشف حضور مدارس الأحد*
+مرحلة: ${stage} ${grade ? '| '+grade : ''} ${className ? '| فصل: '+className : ''}
+
+`;
+    classKids.forEach((kid, idx) => {
+        text += `${idx + 1}. *${kid["الاسم ثلاثي"]}*
+📞 ${kid["تليفون العمل/المحمول"] || "-"}
+──────────
+`;
+    });
+    shareToWhatsApp(text);
 }
 
 // 9. قسم رصد اجتماع الخدام
@@ -1150,11 +1156,19 @@ async function saveServantsMeetingBatchAttendance() {
 
 function printServantsMeetingRoster() {
     const meetingName = document.getElementById('servantsMeetingName')?.value || "اجتماع الخدام الأسبوعي", meetingDate = document.getElementById('servantsMeetingDate')?.value || "";
-    if (currentServantsMeetingList.length === 0) { alert("لا يوجد خدام في الكشف للطباعة!"); return; }
-    setupPrintHeader(`كشف حضور ${meetingName} - تاريخ: ${meetingDate}`);
-    const printArea = document.getElementById('printContainer'); if (!printArea) return;
-    printArea.innerHTML = `<table class="print-table"><thead><tr><th>م</th><th>اسم الخادم</th><th>الخدمة المسندة</th><th>المحمول</th><th>الحالة</th><th>ملاحظات</th></tr></thead><tbody>${currentServantsMeetingList.map((s, idx) => `<tr><td>${idx + 1}</td><td>${s.name}</td><td>${s.scope}</td><td>${s.phone}</td><td>${s.status}</td><td>${s.notes || "-"}</td></tr>`).join('')}</tbody></table>`;
-    setTimeout(() => { window.print(); printArea.innerHTML = ""; }, 150);
+    if (currentServantsMeetingList.length === 0) { alert("لا يوجد خدام في الكشف للمشاركة!"); return; }
+    let text = `*كشف حضور: ${meetingName}*
+التاريخ: ${meetingDate}
+
+`;
+    currentServantsMeetingList.forEach((s, idx) => {
+        let statusIcon = s.status === 'حاضر' ? '✅' : s.status === 'معتذر' ? '⚠️' : '❌';
+        text += `${idx + 1}. *${s.name}* ${statusIcon}
+`;
+        if (s.notes) text += `📌 ملاحظة: ${s.notes}
+`;
+    });
+    shareToWhatsApp(text);
 }
 
 function openAddServantQuickModal() { currentTab = 'Servants'; openModal('add'); }
@@ -1239,35 +1253,50 @@ function quickAddVisitation(memberId, memberName) {
 }
 
 function printVisitReport() {
-    setupPrintHeader("تقرير الافتقاد: الحالات المتأخرة والمتابعات المجدولة");
-    const printArea = document.getElementById('printContainer');
-    if (!printArea) return;
     const urgentItems = Array.from(document.getElementById('visitUrgentList')?.children || []);
     const followupItems = Array.from(document.getElementById('visitFollowupList')?.children || []);
-    let html = `<h3 style="font-size:11pt;font-weight:bold;margin-bottom:5px;border-bottom:1px solid #000;">الأسر المتأخرة عن الافتقاد العاجل (+90 يوماً)</h3><table class="print-table" style="margin-bottom:15px;"><thead><tr><th style="width:30px;">م</th><th>اسم رب الأسرة</th><th>المنطقة</th><th>المحمول</th><th>مدة التأخير</th></tr></thead><tbody>`;
+    
+    let text = `*تقرير الافتقاد الرعوي*
+التاريخ: ${new Date().toLocaleDateString('ar-EG')}
+
+`;
+    text += `🚨 *الأسر المتأخرة عن الافتقاد العاجل (+90 يوماً):*
+`;
     let count = 1;
     urgentItems.forEach(node => {
         if (node.tagName === "DIV" && node.querySelector('h4')) {
             const name = node.querySelector('h4').innerText, meta = node.querySelector('p').innerText.split('|');
             const area = (meta[0] || "").replace('📍', '').trim(), phone = (meta[1] || "").replace('📞', '').trim();
             const delay = node.querySelectorAll('p')[1]?.innerText.replace('⏳ التأخير:', '').trim() || "";
-            html += `<tr><td style="text-align:center;font-weight:bold;">${count++}</td><td style="font-weight:bold;">${name}</td><td>${area}</td><td style="font-family:monospace;">${phone}</td><td style="color:red;font-weight:bold;">${delay}</td></tr>`;
+            text += `${count++}. *${name}*
+📍 ${area} | 📞 ${phone}
+❗ ${delay}
+──────────
+`;
         }
     });
-    if (count === 1) html += `<tr><td colspan="5" style="text-align:center;">لا توجد حالات متأخرة.</td></tr>`;
-    html += `</tbody></table><h3 style="font-size:11pt;font-weight:bold;margin-bottom:5px;border-bottom:1px solid #000;">المتابعات المجدولة للأسبوع القادم</h3><table class="print-table"><thead><tr><th style="width:30px;">م</th><th>اسم المخدوم</th><th>الخادم المتابع</th><th>موعد المتابعة</th></tr></thead><tbody>`;
+    if (count === 1) text += `لا توجد حالات متأخرة.
+──────────
+`;
+    
+    text += `
+🗓️ *المتابعات المجدولة للأسبوع القادم:*
+`;
     count = 1;
     followupItems.forEach(node => {
         if (node.tagName === "DIV" && node.querySelector('h4')) {
             const name = node.querySelector('h4').innerText, visitor = node.querySelector('p')?.innerText.replace('👤 الخادم المتابع:', '').trim() || "";
             const date = node.querySelectorAll('p')[1]?.innerText.replace('🗓️ موعد المتابعة:', '').trim() || "";
-            html += `<tr><td style="text-align:center;font-weight:bold;">${count++}</td><td style="font-weight:bold;">${name}</td><td>${visitor}</td><td style="font-weight:bold;">${date}</td></tr>`;
+            text += `${count++}. *${name}*
+👤 المتابع: ${visitor}
+🗓️ ${date}
+──────────
+`;
         }
     });
-    if (count === 1) html += `<tr><td colspan="4" style="text-align:center;">لا توجد متابعات مجدولة.</td></tr>`;
-    html += `</tbody></table>`;
-    printArea.innerHTML = html;
-    setTimeout(() => { window.print(); printArea.innerHTML = ""; }, 200);
+    if (count === 1) text += `لا توجد متابعات مجدولة.
+`;
+    shareToWhatsApp(text);
 }
 
 // 11. النوافذ المنبثقة والعمليات الأساسية وعرض الجداول والكروت وسجل المراقبة
@@ -1700,26 +1729,40 @@ function showLoader(s) {
 }
 
 // 13. دوال الطباعة واستخراج التقارير
-function setupPrintHeader(reportTitle) {
-    const titleEl = document.getElementById('printReportTitle'), servEl = document.getElementById('printServantName'), dateEl = document.getElementById('printCurrentDate');
-    if (titleEl) titleEl.innerText = reportTitle;
-    if (servEl) servEl.innerText = currentUser ? `${currentUser.ServantName} (${currentUser.Role})` : "الأدمن";
-    const now = new Date(); if (dateEl) dateEl.innerText = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
+function shareToWhatsApp(text) {
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
 }
 
 function buildAndPrintFamilies(familiesMap, reportTitle) {
-    const printContainer = document.getElementById('printContainer'); if (!printContainer) return;
+    let text = `*${reportTitle}*
+التاريخ: ${new Date().toLocaleDateString('ar-EG')}
+
+`;
     const sortedHeads = Object.keys(familiesMap).sort((a, b) => a.localeCompare(b, 'ar'));
-    if (sortedHeads.length === 0) { alert("لا توجد أسر مطابقة للطباعة!"); return; }
-    printContainer.innerHTML = sortedHeads.map((headName, idx) => {
+    if (sortedHeads.length === 0) { alert("لا توجد أسر مطابقة للمشاركة!"); return; }
+    
+    sortedHeads.forEach((headName, idx) => {
         const members = familiesMap[headName], headRec = members.find(m => m["الاسم ثلاثي"] === headName) || members[0];
         const addressStr = [getMemberArea(headRec), getFieldValNormalized(headRec, "اسم الشارع"), getFieldValNormalized(headRec, "رقم المنزل")].filter(Boolean).join(' - ') || "غير محدد";
         const phoneStr = headRec?.["هاتف الاسرة"] || headRec?.["تليفون العمل/المحمول"] || "-";
-        const membersStr = members.map((m, mIdx) => `${mIdx + 1}. ${m["الاسم ثلاثي"] || "-"} (${m["تليفون العمل/المحمول"] || "-"})`).join(' • ');
-        return `<div class="print-family-row"><div><strong>${idx + 1}. رب الأسرة: ${headName}</strong> | العنوان: ${addressStr} | الهاتف: ${phoneStr}</div><div><strong>أفراد الأسرة:</strong> ${membersStr}</div></div>`;
-    }).join('');
-    setupPrintHeader(reportTitle);
-    setTimeout(() => { window.print(); printContainer.innerHTML = ""; }, 200);
+        
+        text += `*${idx + 1}. أسرة: ${headName}*
+`;
+        text += `📍 العنوان: ${addressStr}
+`;
+        text += `📞 الهاتف: ${phoneStr}
+`;
+        text += `👥 الأفراد:
+`;
+        members.forEach((m, mIdx) => {
+            text += `  ${mIdx + 1}- ${m["الاسم ثلاثي"] || "-"} (${m["تليفون العمل/المحمول"] || "-"})
+`;
+        });
+        text += `──────────
+`;
+    });
+    shareToWhatsApp(text);
 }
 
 // 14. أحداث مساعدة والتمرير
