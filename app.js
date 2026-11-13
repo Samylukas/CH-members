@@ -200,7 +200,8 @@ function buildAlphabetBar() {
     const arabicAlphabet = ["الكل", "ا", "ب", "ت", "ث", "ج", "ح", "خ", "د", "ذ", "ر", "ز", "س", "ش", "ص", "ض", "ط", "ظ", "ع", "غ", "ف", "ق", "ك", "ل", "م", "ن", "هـ", "و", "ي"];
     bar.innerHTML = "";
     arabicAlphabet.forEach(letter => {
-        const hasFamilies = letter === "الكل" || firstLetters.has(letter);
+        const normChar = normalizeArabic(letter)[0];
+        const hasFamilies = letter === "الكل" || firstLetters.has(normChar);
         const btn = document.createElement('button');
         btn.className = `alpha-pill ${selectedLetter === letter ? 'active' : ''} ${!hasFamilies ? 'opacity-30 cursor-not-allowed' : ''}`;
         btn.innerText = letter;
@@ -306,7 +307,7 @@ function renderFamilyHeadsRoster() {
                     <button onclick="quickAddMemberToFamily('${headName.replace(/'/g, "\\'")}')" class="text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1.5 rounded-xl transition">+ فرد</button>
                 </div>
             </div>
-            <div id="accordion_${index}" class="members-accordion hidden bg-white">
+            <div id="accordion_${index}" class="members-accordion bg-white" style="display: none; max-height: 0px; overflow: hidden;">
                 <div class="p-3 sm:p-4 space-y-2 divide-y divide-slate-100">
                     ${familyMembers.map(member => {
                         const mId = member["ID"] || member[Object.keys(member)[0]], age = calculateAge(member["تاريخ الميلاد"], member["الرقم القومي"]), deceased = isMemberDeceased(member);
@@ -337,16 +338,34 @@ function renderFamilyHeadsRoster() {
 function toggleFamilyAccordion(index) {
     const acc = document.getElementById(`accordion_${index}`), icon = document.getElementById(`icon_toggle_${index}`);
     if (!acc) return;
-    const isOpen = !acc.classList.contains('hidden');
-    if (isOpen) { acc.classList.add('hidden'); if (icon) icon.style.transform = "rotate(0deg)"; }
-    else { acc.classList.remove('hidden'); if (icon) icon.style.transform = "rotate(180deg)"; }
+    const isOpen = acc.classList.contains('open') || acc.style.display === 'block';
+    if (isOpen) {
+        acc.classList.remove('open');
+        acc.style.maxHeight = '0px';
+        acc.style.display = 'none';
+        if (icon) icon.style.transform = "rotate(0deg)";
+    } else {
+        acc.classList.add('open');
+        acc.style.display = 'block';
+        acc.style.maxHeight = '5000px';
+        if (icon) icon.style.transform = "rotate(180deg)";
+    }
 }
 
 function expandAllFamilies(expand = true) {
     document.querySelectorAll('.members-accordion').forEach((acc, idx) => {
         const icon = document.getElementById(`icon_toggle_${idx}`);
-        if (expand) { acc.classList.remove('hidden'); if (icon) icon.style.transform = "rotate(180deg)"; }
-        else { acc.classList.add('hidden'); if (icon) icon.style.transform = "rotate(0deg)"; }
+        if (expand) {
+            acc.classList.add('open');
+            acc.style.display = 'block';
+            acc.style.maxHeight = '5000px';
+            if (icon) icon.style.transform = "rotate(180deg)";
+        } else {
+            acc.classList.remove('open');
+            acc.style.maxHeight = '0px';
+            acc.style.display = 'none';
+            if (icon) icon.style.transform = "rotate(0deg)";
+        }
     });
 }
 
@@ -564,7 +583,7 @@ function onSSFilterGradeChange() {
     const stage = document.getElementById('ssFilterStage')?.value || "", grade = document.getElementById('ssFilterGrade')?.value || "", classSel = document.getElementById('ssFilterClass');
     if (!classSel) return;
     const classes = new Set();
-    namesCacheData.forEach(kid => { if (kid["المرحلة"] === stage && (!grade || kid["الصف"] === grade)) { const cName = (kid["فصل مدارس الاحد"] || kid["أنهي مدارس الأحد"] || "").trim(); if (cName) classes.add(cName); } });
+    namesCacheData.forEach(kid => { if (normalizeArabic(kid["المرحلة"]) === normalizeArabic(stage) && (!grade || normalizeArabic(kid["الصف"]) === normalizeArabic(grade))) { const cName = (kid["فصل مدارس الاحد"] || kid["أنهي مدارس الأحد"] || "").trim(); if (cName) classes.add(cName); } });
     classSel.innerHTML = `<option value="">كل الفصول (${classes.size})</option>` + Array.from(classes).sort().map(c => `<option value="${c}">${c}</option>`).join('');
     if (currentUser.Role === "Class_Servant" && currentUser.AssignedClass && currentUser.AssignedClass !== "الكل") { classSel.value = currentUser.AssignedClass; classSel.disabled = true; }
     else classSel.disabled = false;
@@ -595,9 +614,9 @@ async function loadSSLiveClassKids() {
 
     const matched = namesCacheData.filter(kid => {
         if (isMemberDeceased(kid) || kid["مدارس الأحد"] === "غير مشترك") return false;
-        if (kid["المرحلة"] !== stage) return false;
-        if (grade && kid["الصف"] !== grade) return false;
-        if (className && (kid["فصل مدارس الاحد"] || kid["أنهي مدارس الأحد"] || "").trim() !== className) return false;
+        if (normalizeArabic(kid["المرحلة"]) !== normalizeArabic(stage)) return false;
+        if (grade && normalizeArabic(kid["الصف"]) !== normalizeArabic(grade)) return false;
+        if (className && normalizeArabic(kid["فصل مدارس الاحد"] || kid["أنهي مدارس الأحد"]) !== normalizeArabic(className)) return false;
         return true;
     }).sort((a, b) => String(a["الاسم ثلاثي"]).localeCompare(String(b["الاسم ثلاثي"]), 'ar'));
 
@@ -990,7 +1009,37 @@ function quickAddVisitation(memberId, memberName) {
     }, 100);
 }
 
-function printVisitReport() { setupPrintHeader("تقرير الافتقاد: الحالات المتأخرة والمتابعات المجدولة"); window.print(); }
+function printVisitReport() {
+    setupPrintHeader("تقرير الافتقاد: الحالات المتأخرة والمتابعات المجدولة");
+    const printArea = document.getElementById('printContainer');
+    if (!printArea) return;
+    const urgentItems = Array.from(document.getElementById('visitUrgentList')?.children || []);
+    const followupItems = Array.from(document.getElementById('visitFollowupList')?.children || []);
+    let html = `<h3 style="font-size:11pt;font-weight:bold;margin-bottom:5px;border-bottom:1px solid #000;">الأسر المتأخرة عن الافتقاد العاجل (+90 يوماً)</h3><table class="print-table" style="margin-bottom:15px;"><thead><tr><th style="width:30px;">م</th><th>اسم رب الأسرة</th><th>المنطقة</th><th>المحمول</th><th>مدة التأخير</th></tr></thead><tbody>`;
+    let count = 1;
+    urgentItems.forEach(node => {
+        if (node.tagName === "DIV" && node.querySelector('h4')) {
+            const name = node.querySelector('h4').innerText, meta = node.querySelector('p').innerText.split('|');
+            const area = (meta[0] || "").replace('📍', '').trim(), phone = (meta[1] || "").replace('📞', '').trim();
+            const delay = node.querySelectorAll('p')[1]?.innerText.replace('⏳ التأخير:', '').trim() || "";
+            html += `<tr><td style="text-align:center;font-weight:bold;">${count++}</td><td style="font-weight:bold;">${name}</td><td>${area}</td><td style="font-family:monospace;">${phone}</td><td style="color:red;font-weight:bold;">${delay}</td></tr>`;
+        }
+    });
+    if (count === 1) html += `<tr><td colspan="5" style="text-align:center;">لا توجد حالات متأخرة.</td></tr>`;
+    html += `</tbody></table><h3 style="font-size:11pt;font-weight:bold;margin-bottom:5px;border-bottom:1px solid #000;">المتابعات المجدولة للأسبوع القادم</h3><table class="print-table"><thead><tr><th style="width:30px;">م</th><th>اسم المخدوم</th><th>الخادم المتابع</th><th>موعد المتابعة</th></tr></thead><tbody>`;
+    count = 1;
+    followupItems.forEach(node => {
+        if (node.tagName === "DIV" && node.querySelector('h4')) {
+            const name = node.querySelector('h4').innerText, visitor = node.querySelector('p')?.innerText.replace('👤 الخادم المتابع:', '').trim() || "";
+            const date = node.querySelectorAll('p')[1]?.innerText.replace('🗓️ موعد المتابعة:', '').trim() || "";
+            html += `<tr><td style="text-align:center;font-weight:bold;">${count++}</td><td style="font-weight:bold;">${name}</td><td>${visitor}</td><td style="font-weight:bold;">${date}</td></tr>`;
+        }
+    });
+    if (count === 1) html += `<tr><td colspan="4" style="text-align:center;">لا توجد متابعات مجدولة.</td></tr>`;
+    html += `</tbody></table>`;
+    printArea.innerHTML = html;
+    setTimeout(() => { window.print(); printArea.innerHTML = ""; }, 200);
+}
 
 // 11. النوافذ المنبثقة والعمليات الأساسية وعرض الجداول والكروت
 function openModal(action, data={}) {
@@ -1104,6 +1153,11 @@ async function loadData(force = false) {
                 if (currentTab === 'Names') {
                     namesCacheData = rawData; populateAreasDropdown();
                     if (currentNamesView === 'roster') { buildAlphabetBar(); renderFamilyHeadsRoster(); } else applyNamesFilter();
+                    if (visitationsData.length === 0) {
+                        fetch(`${API_URL}?sheet=Visitations`).then(r => r.json()).then(d => {
+                            if (d.status === "success") { visitationsData = d.data; if (currentNamesView === 'roster') renderFamilyHeadsRoster(); }
+                        }).catch(() => {});
+                    }
                 } else if (currentTab === 'Sunday_School') {
                     if (currentSSView === 'live') initSundaySchoolLiveView();
                     else if (currentSSView === 'charts') initSSChartsView();
