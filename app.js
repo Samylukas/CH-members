@@ -256,9 +256,18 @@ function buildDashboard() {
         const info = TABS_INFO[key];
         if (info.roles.includes(currentUser.Role)) {
             const card = document.createElement('div');
-            card.className = `dashboard-card ${info.colorClass} p-8 flex flex-col items-center justify-center text-center cursor-pointer min-h-[200px]`;
+            // تصميم مودرن وعصري للكروت مع تأثيرات بصرية جذابة
+            card.className = `group relative overflow-hidden bg-white rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] border border-slate-100 min-h-[220px]`;
             card.onclick = () => loadSection(key);
-            card.innerHTML = `<div class="mb-4">${info.svg}</div><h3 class="text-xl font-black text-slate-800 mb-2">${info.label}</h3><p class="text-xs text-slate-500 font-bold">${info.desc}</p>`;
+            card.innerHTML = `
+                <div class="absolute inset-0 bg-gradient-to-br from-slate-50 to-slate-100/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div class="relative z-10 flex flex-col items-center">
+                    <div class="mb-5 p-4 rounded-2xl bg-slate-50 group-hover:scale-110 group-hover:bg-white shadow-sm transition-transform duration-300 ring-1 ring-slate-100">${info.svg}</div>
+                    <h3 class="text-xl font-black text-slate-800 mb-2.5 group-hover:text-indigo-600 transition-colors">${info.label}</h3>
+                    <p class="text-xs text-slate-500 font-bold leading-relaxed px-2">${info.desc}</p>
+                </div>
+                <div class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-right"></div>
+            `;
             grid.appendChild(card);
         }
     });
