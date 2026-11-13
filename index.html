@@ -191,11 +191,11 @@ function togglePasswordVisibilityInline() {
             </div>
 
             <div class="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
-                <button id="btnPrintSundaySchool" onclick="openSundaySchoolPrintModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">🖨️ طباعة كشف الفصل</button>
-                <button id="btnPrintMeetings" onclick="printServantsMeetingRoster()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">🖨️ طباعة كشف اجتماع الخدام</button>
-                <button id="btnPrintVisitReport" onclick="printVisitReport()" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">🖨️ طباعة تقرير الافتقاد</button>
-                <button id="btnPrintFiltered" onclick="printFilteredResults()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">🖨️ طباعة النتائج</button>
-                <button id="btnPrintRoster" onclick="printRosterDirectory()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">🖨️ طباعة الدليل الأبجدي</button>
+                <button id="btnPrintSundaySchool" onclick="openSundaySchoolPrintModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">💬 إرسال الكشف واتساب</button>
+                <button id="btnPrintMeetings" onclick="printServantsMeetingRoster()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">💬 إرسال الاجتماع واتساب</button>
+                <button id="btnPrintVisitReport" onclick="printVisitReport()" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">💬 إرسال التقرير واتساب</button>
+                <button id="btnPrintFiltered" onclick="printFilteredResults()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">💬 إرسال النتائج واتساب</button>
+                <button id="btnPrintRoster" onclick="printRosterDirectory()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">💬 إرسال الدليل واتساب</button>
                 <button id="btnExportExcel" onclick="exportCurrentViewToExcel()" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5">📥 تصدير Excel</button>
                 <button id="btnAddNewRecord" onclick="openModal('add')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5"><span>+</span> إضافة سجل جديد</button>
                 <button onclick="loadData(true)" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2.5 rounded-xl font-bold text-xs transition">تحديث</button>
@@ -448,7 +448,7 @@ function togglePasswordVisibilityInline() {
         </div>
         <div class="pt-5 mt-4 border-t flex justify-end gap-2">
             <button onclick="closeSundaySchoolPrintModal()" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">إلغاء</button>
-            <button onclick="generateAndPrintClassRoster()" class="px-6 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition">🖨️ استخراج الكشف والطباعة</button>
+            <button onclick="generateAndPrintClassRoster()" class="px-6 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition">💬 استخراج وإرسال واتساب</button>
         </div>
     </div>
 </div>
@@ -488,6 +488,6 @@ function togglePasswordVisibilityInline() {
     </button>
 </div>
 
-<script src="app.js?v=12"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>
