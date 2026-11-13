@@ -39,12 +39,8 @@
 </style>
 <script>
 (function() {
-    // إذا كانت الجلسة محفوظة بالفعل، تخطَّ شاشة البداية فوراً
-    if (sessionStorage.getItem('church_current_user') && sessionStorage.getItem('church_session_token')) {
-        const splash = document.getElementById('splashScreen');
-        if (splash) splash.remove();
-        return;
-    }
+    const isLogged = sessionStorage.getItem('church_current_user') && sessionStorage.getItem('church_session_token');
+    const delay = isLogged ? 1500 : 5000; // لو مسجل دخول يعرضها ثانية ونص فقط كترحيب
     setTimeout(() => {
         const splash = document.getElementById('splashScreen');
         const login = document.getElementById('loginScreen');
@@ -52,14 +48,14 @@
             splash.style.opacity = '0';
             setTimeout(() => {
                 splash.remove();
-                if (login && !sessionStorage.getItem('church_current_user')) {
+                if (login && !isLogged) {
                     login.classList.remove('hidden');
                     login.style.display = 'flex';
                     document.getElementById('loginPass')?.focus();
                 }
             }, 450);
         }
-    }, 5000);
+    }, delay);
 })();
 </script>
 
@@ -138,9 +134,9 @@ function togglePasswordVisibilityInline() {
 <!-- 4. المحتوى الرئيسي ولوحة التحكم -->
 <main class="flex-grow w-full max-w-7xl mx-auto px-4 py-8">
     <div id="dashboardView" class="hidden">
-        <div class="text-center mb-10">
-            <h2 class="text-3xl font-black text-slate-800 mb-2">لوحة التحكم المركزية</h2>
-            <p class="text-slate-500 font-bold text-sm">حدد القسم للمتابعة والتسجيل</p>
+        <div class="text-center mb-12">
+            <h2 class="text-4xl font-black text-slate-800 mb-3 tracking-tight">بوابة الرعاية الكنسية</h2>
+            <p class="text-slate-500 font-bold text-sm bg-slate-200/50 inline-block px-4 py-1.5 rounded-full">اختر القسم للمتابعة وإدارة السجلات</p>
         </div>
         <div id="dashboardGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-5xl mx-auto"></div>
     </div>
