@@ -1,15 +1,42 @@
 /* ==================== منظومة الخدمة والرعاية الكنسية - app.js ==================== */
 
-// 1. الإعدادات الأساسية والمتغيرات العامة
+// 1. الإعدادات الأساسية والمتغيرات العامة والجلسة
 const API_URL = "https://script.google.com/macros/s/AKfycbxUSj07z5nkCv88hrgob88-bB21SLs2OmK9-BbSSUu_4m2eirI8cBHCl-5xUv0cyTSZ6Q/exec";
-const MASTER_OVERRIDE_KEY = "Abouna@2026";
-let currentUser = null, currentTab = "", rawData = [], backendAreas = [], namesCacheData = [], servantsCacheData = [], visitationsData = [];
+let currentUser = null, sessionToken = "", currentTab = "", rawData = [], backendAreas = [], namesCacheData = [], servantsCacheData = [], visitationsData = [];
 let currentNamesView = "roster", currentSSView = "live", currentMeetingsView = "live", currentVisitView = "dashboard";
 let selectedLetter = "الكل", currentSSLiveKids = [], currentServantsMeetingList = [], ssChartInstances = {}, selectedChartStage = "الكل";
+let loginUsersList = [{ username: "admin", label: "الأدمن" }];
 
-window.addEventListener('load', () => { loadServantsListForLogin(); });
+// استرجاع الجلسة المحفوظة عند تحديث الصفحة وتحميل قائمة الخدام
+window.addEventListener('load', () => {
+    const savedUser = sessionStorage.getItem('church_current_user');
+    const savedToken = sessionStorage.getItem('church_session_token');
+    if (savedUser && savedToken) {
+        try {
+            currentUser = JSON.parse(savedUser);
+            sessionToken = savedToken;
+            const splash = document.getElementById('splashScreen');
+            if (splash) splash.remove();
+            initApp(true);
+        } catch (e) {
+            sessionStorage.clear();
+        }
+    }
+    loadServantsListForLogin();
+});
 
-// 2. دوال الاتصال والواتساب المساعدة
+// إغلاق قائمة أسماء المستخدمين عند النقر خارجها
+document.addEventListener('click', (e) => {
+    const wrapper = document.getElementById('loginUserDropdownWrapper');
+    const menu = document.getElementById('loginUserDropdownMenu');
+    const arrow = document.getElementById('loginUserArrow');
+    if (wrapper && menu && !wrapper.contains(e.target)) {
+        menu.classList.add('hidden');
+        if (arrow) arrow.style.transform = 'rotate(0deg)';
+    }
+});
+
+// 2. دوال الاتصال والواتساب والمساعدة
 function formatWhatsAppNumber(phone) {
     if (!phone) return '';
     let cleaned = phone.toString().replace(/\D/g, '');
@@ -27,7 +54,8 @@ const ICONS = {
     children: `<svg class="w-12 h-12 inline-block text-blue-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`,
     visitations: `<svg class="w-12 h-12 inline-block text-rose-600" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>`,
     meetings: `<svg class="w-12 h-12 inline-block text-amber-500" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>`,
-    servants: `<svg class="w-12 h-12 inline-block text-purple-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>`
+    servants: `<svg class="w-12 h-12 inline-block text-purple-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>`,
+    audit: `<svg class="w-12 h-12 inline-block text-slate-700" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`
 };
 const STAGE_GRADES = { "حضانة": ["بيبي كلاس", "أولى حضانة", "ثانية حضانة"], "ابتدائي": ["الصف الأول", "الصف الثاني", "الصف الثالث", "الصف الرابع", "الصف الخامس", "الصف السادس"], "إعدادي": ["الصف الأول الإعدادي", "الصف الثاني الإعدادي", "الصف الثالث الإعدادي"], "ثانوي": ["الصف الأول الثانوي", "الصف الثاني الثانوي", "الصف الثالث الثانوي"], "جامعي": ["الفرقة الأولى", "الفرقة الثانية", "الفرقة الثالثة", "الفرقة الرابعة", "بكالوريوس / تخرج"], "خريجين": ["خريج"] };
 const TABS_INFO = {
@@ -35,7 +63,8 @@ const TABS_INFO = {
     "Sunday_School": { label: "مدارس الأحد", desc: "كشوف الفصول، الحضور، الإحصائيات والرسوم البيانية", svg: ICONS.children, colorClass: "card-sunday", roles: ["Admin", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
     "Visitations": { label: "سجل الافتقاد", desc: "متابعة الزيارات، الحالات العاجلة ومواعيد الافتقاد", svg: ICONS.visitations, colorClass: "card-visitations", roles: ["Admin"] },
     "Meetings_Attendance": { label: "حضور الاجتماعات", desc: "رصد حضور اجتماع الخدام الأسبوعي والاجتماعات", svg: ICONS.meetings, colorClass: "card-meetings", roles: ["Admin", "SundaySchool_Admin"] },
-    "Servants": { label: "إدارة الخدام", desc: "توزيع الصلاحيات وربط الخدام بالأعضاء", svg: ICONS.servants, colorClass: "card-servants", roles: ["Admin"] }
+    "Servants": { label: "إدارة الخدام", desc: "توزيع الصلاحيات وربط الخدام بالأعضاء", svg: ICONS.servants, colorClass: "card-servants", roles: ["Admin"] },
+    "Audit_Log": { label: "سجل المراقبة", desc: "متابعة دخول الخدام وكل عمليات الإضافة والتعديل والحذف", svg: ICONS.audit, colorClass: "card-servants", roles: ["Admin"] }
 };
 
 // 4. هياكل البيانات ونماذج الإضافة والتعديل
@@ -83,17 +112,89 @@ const SCHEMAS = {
     ]
 };
 
-// 5. نظام تسجيل الدخول وصلاحيات المستخدم
+// 5. نظام تسجيل الدخول والقائمة المنسدلة الثابتة للأندرويد
+function toggleLoginUserDropdown(e) {
+    if (e) e.stopPropagation();
+    const menu = document.getElementById('loginUserDropdownMenu');
+    const arrow = document.getElementById('loginUserArrow');
+    const searchInp = document.getElementById('loginUserSearchInput');
+    if (!menu) return;
+    const isHidden = menu.classList.contains('hidden');
+    if (isHidden) {
+        menu.classList.remove('hidden');
+        if (arrow) arrow.style.transform = 'rotate(180deg)';
+        renderLoginUserOptions('');
+        if (searchInp) { searchInp.value = ''; setTimeout(() => searchInp.focus(), 50); }
+    } else {
+        menu.classList.add('hidden');
+        if (arrow) arrow.style.transform = 'rotate(0deg)';
+    }
+}
+
+function renderLoginUserOptions(filterText = '') {
+    const listEl = document.getElementById('loginUserOptionsList');
+    const currentVal = document.getElementById('loginUser')?.value || 'admin';
+    if (!listEl) return;
+    const q = normalizeArabic(filterText).toLowerCase();
+    const filtered = loginUsersList.filter(u => !q || normalizeArabic(u.label).toLowerCase().includes(q));
+    if (filtered.length === 0) {
+        listEl.innerHTML = `<li class="px-4 py-3 text-xs text-slate-400 text-center">لا يوجد اسم مطابق</li>`;
+        return;
+    }
+    listEl.innerHTML = filtered.map(u => {
+        const isSelected = u.username === currentVal;
+        const safeUser = u.username.replace(/'/g, "\\'");
+        const safeLabel = u.label.replace(/'/g, "\\'");
+        return `<li onclick="selectLoginUser('${safeUser}', '${safeLabel}')" class="px-4 py-2.5 cursor-pointer transition flex items-center justify-between ${isSelected ? 'bg-indigo-600 text-white' : 'hover:bg-indigo-50 hover:text-indigo-700'}"><span>${u.label}</span>${isSelected ? '<span class="text-xs">✓</span>' : ''}</li>`;
+    }).join('');
+}
+
+function filterLoginUserOptions(val) { renderLoginUserOptions(val); }
+
+function selectLoginUser(username, label) {
+    const hiddenInp = document.getElementById('loginUser');
+    const labelSpan = document.getElementById('loginUserSelectedLabel');
+    const menu = document.getElementById('loginUserDropdownMenu');
+    const arrow = document.getElementById('loginUserArrow');
+    if (hiddenInp) hiddenInp.value = username;
+    if (labelSpan) labelSpan.innerText = label;
+    if (menu) menu.classList.add('hidden');
+    if (arrow) arrow.style.transform = 'rotate(0deg)';
+    document.getElementById('loginPass')?.focus();
+}
+
 async function loadServantsListForLogin() {
+    try {
+        const res = await fetch(`${API_URL}?sheet=Servants_List`);
+        const data = await res.json();
+        const listData = (data.status === "success" && Array.isArray(data.data)) ? data.data : [];
+        if (listData.length > 0) {
+            loginUsersList = [{ username: "admin", label: "الأدمن" }];
+            listData.forEach(s => {
+                if (s.Username && s.Username !== "admin" && s.Status !== "موقوف") {
+                    const cleanName = String(s.ServantName || s.Username).replace(/\s*\([^)]*\)/g, '').trim();
+                    loginUsersList.push({ username: String(s.Username).trim(), label: cleanName });
+                }
+            });
+            renderLoginUserOptions('');
+            return;
+        }
+    } catch(e) {}
+
+    // احتياطي في حال كان السكربت يستخدم ?sheet=Servants
     try {
         const res = await fetch(`${API_URL}?sheet=Servants`);
         const data = await res.json();
-        if (data.status === "success" && data.data.length > 0) {
+        if (data.status === "success" && Array.isArray(data.data) && data.data.length > 0) {
             servantsCacheData = data.data;
-            const select = document.getElementById('loginUser');
-            if (!select) return;
-            select.innerHTML = `<option value="admin">الأدمن</option>`;
-            data.data.forEach(s => { if (s.Username && s.Username !== "admin") select.innerHTML += `<option value="${s.Username}">${s.ServantName}</option>`; });
+            loginUsersList = [{ username: "admin", label: "الأدمن" }];
+            data.data.forEach(s => {
+                if (s.Username && s.Username !== "admin" && s.Status !== "موقوف") {
+                    const cleanName = String(s.ServantName || s.Username).replace(/\s*\([^)]*\)/g, '').trim();
+                    loginUsersList.push({ username: String(s.Username).trim(), label: cleanName });
+                }
+            });
+            renderLoginUserOptions('');
         }
     } catch(e) {}
 }
@@ -102,31 +203,49 @@ async function handleLogin(e) {
     if (e) { try { e.preventDefault(); e.stopPropagation(); } catch(err) {} }
     const btn = document.getElementById('loginBtn'), err = document.getElementById('loginError');
     const userVal = (document.getElementById('loginUser')?.value || "").trim(), passVal = (document.getElementById('loginPass')?.value || "").trim();
-    if (btn) btn.innerHTML = `جاري التحقق...`;
+    if (!passVal) return false;
+    if (btn) { btn.disabled = true; btn.innerHTML = `جاري التحقق من السيرفر...`; }
     if (err) err.classList.add('hidden');
-    if (passVal === MASTER_OVERRIDE_KEY || (userVal === "admin" && (passVal === "123456" || passVal === "123"))) {
-        currentUser = { ServantName: "الأدمن (صلاحية كاملة)", Role: "Admin", AssignedStage: "الكل", AssignedGrade: "الكل", AssignedClass: "الكل", Username: "superadmin" };
-        initApp(); return false;
-    }
+
     try {
         const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'login', data: { username: userVal, password: passVal } }) });
         const data = await res.json();
-        if (data.status === "success") { currentUser = data.user; initApp(); return false; }
-        else if (err) { err.innerText = data.message; err.classList.remove('hidden'); }
+        if (data.status === "success" && data.user) {
+            currentUser = data.user;
+            sessionToken = data.token || `local_${Date.now()}`;
+            sessionStorage.setItem('church_current_user', JSON.stringify(currentUser));
+            sessionStorage.setItem('church_session_token', sessionToken);
+            initApp(false);
+            return false;
+        } else if (err) {
+            err.innerText = data.message || "اسم المستخدم أو كلمة المرور غير صحيحة";
+            err.classList.remove('hidden');
+        }
     } catch (error) {
-        if (err) { err.innerText = "تعذر الاتصال بالخادم، يرجى المحاولة ثانية."; err.classList.remove('hidden'); }
-    } finally { if (btn) btn.innerText = "تسجيل الدخول"; }
+        if (err) { err.innerText = "تعذر الاتصال بالسيرفر، تأكد من الإنترنت وحاول مرة أخرى."; err.classList.remove('hidden'); }
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerText = "تسجيل الدخول"; }
+    }
     return false;
 }
 
-function logout() { location.reload(); }
+function logout() {
+    sendAuditLog("تسجيل خروج", "النظام", "قام الخادم بتسجيل الخروج");
+    sessionStorage.removeItem('church_current_user');
+    sessionStorage.removeItem('church_session_token');
+    setTimeout(() => location.reload(), 200);
+}
 
-// 6. تهيئة التطبيق وتوجيه لوحة التحكم (بنفس التنسيق الأصلي للكروت)
-function initApp() {
+// 6. تهيئة التطبيق وتوجيه لوحة التحكم
+function initApp(isRestoredSession = false) {
     const login = document.getElementById('loginScreen'), badge = document.getElementById('userBadge');
     if (login) { login.style.display = 'none'; login.classList.add('hidden'); }
     if (badge && currentUser) badge.innerHTML = `<span>الخادم: <span class="font-black text-indigo-700">${currentUser.ServantName}</span></span> <span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded ml-2 font-mono text-[11px] font-bold border border-indigo-200">${currentUser.Role}</span>`;
-    buildDashboard(); showDashboard();
+    buildDashboard();
+    showDashboard();
+    if (!isRestoredSession) {
+        sendAuditLog("تسجيل دخول", "النظام", "تم تسجيل الدخول بنجاح");
+    }
 }
 
 function buildDashboard() {
@@ -160,7 +279,12 @@ function loadSection(sectionKey) {
         if (el) { el.classList.add('hidden'); if (id === 'sundaySchoolChartsSection') el.style.display = 'none'; }
     });
     ['btnPrintSundaySchool', 'btnPrintMeetings', 'btnPrintFiltered', 'btnPrintRoster', 'btnPrintVisitReport'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
-    document.getElementById('btnAddNewRecord')?.classList.remove('hidden');
+    
+    const btnAdd = document.getElementById('btnAddNewRecord');
+    if (btnAdd) {
+        if (sectionKey === 'Audit_Log') btnAdd.classList.add('hidden');
+        else btnAdd.classList.remove('hidden');
+    }
 
     if (sectionKey === 'Names') { const sw = document.getElementById('namesViewSwitcher'); sw?.classList.remove('hidden'); sw?.classList.add('flex'); switchNamesView('roster'); }
     else if (sectionKey === 'Sunday_School') { const sw = document.getElementById('ssViewSwitcher'); sw?.classList.remove('hidden'); sw?.classList.add('flex'); document.getElementById('btnPrintSundaySchool')?.classList.remove('hidden'); switchSSView('live'); }
@@ -515,7 +639,7 @@ function ensureChartsSectionExists() {
                 </div>
                 <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"><h3 id="stageChartTitle" class="text-sm font-black text-slate-800 mb-3">تحليل الحضور والغياب حسب الصفوف والمراحل</h3><div class="relative w-full h-[360px]"><canvas id="stageBarChart"></canvas></div></div>
                 <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"><h3 id="genderGradeChartTitle" class="text-sm font-black text-slate-800 mb-3">نسب حضور الأولاد والبنات داخل كل صف دراسي</h3><div class="relative w-full h-[380px]"><canvas id="genderByGradeChart"></canvas></div></div>
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"><div class="p-4 border-b border-slate-100 bg-slate-50"><h3 class="text-sm font-black text-slate-800">جدول النسب المئوية التفصيلي</h3></div><div class="overflow-x-auto"><table class="w-full text-right text-xs"><thead class="bg-slate-100 text-slate-700 font-black border-b border-slate-200"><tr><th class="p-3">المرحلة / الصف</th><th class="p-3 text-center">إجمالي السجلات</th><th class="p-3 text-center text-emerald-700">نسبة الحضور</th><th class="p-3 text-center text-rose-700">نسبة الغياب</th><th class="p-3 text-center text-blue-700">حضور الأولاد</th><th class="p-3 text-center text-pink-700">حضور البنات</th></tr></thead><tbody id="ssChartsSummaryTableBody" class="divide-y divide-slate-100 font-bold"></tbody></table></div></div>
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"><div class="p-4 border-b border-slate-100 bg-slate-50"><h3 class="text-sm font-black text-slate-800">جدول النسب المئوية التفصيلي</h3></div><div class="overflow-x-auto nice-scrollbar"><table class="w-full text-right text-xs"><thead class="bg-slate-100 text-slate-700 font-black border-b border-slate-200"><tr><th class="p-3">المرحلة / الصف</th><th class="p-3 text-center">إجمالي السجلات</th><th class="p-3 text-center text-emerald-700">نسبة الحضور</th><th class="p-3 text-center text-rose-700">نسبة الغياب</th><th class="p-3 text-center text-blue-700">حضور الأولاد</th><th class="p-3 text-center text-pink-700">حضور البنات</th></tr></thead><tbody id="ssChartsSummaryTableBody" class="divide-y divide-slate-100 font-bold"></tbody></table></div></div>
             </div>
         `;
         if (dataView) dataView.appendChild(chartsSec);
@@ -560,7 +684,7 @@ function switchSSView(view) {
 async function initSundaySchoolLiveView() {
     const dateInput = document.getElementById('ssSessionDate'), now = new Date();
     if (dateInput) dateInput.value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-    if (namesCacheData.length === 0) { try { const res = await fetch(`${API_URL}?sheet=Names`); const data = await res.json(); if (data.status === "success") namesCacheData = data.data; } catch(e) {} }
+    if (namesCacheData.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Names`); if (res.status === "success") namesCacheData = res.data; } catch(e) {} }
 
     const stageSel = document.getElementById('ssFilterStage');
     if (!stageSel) return;
@@ -610,7 +734,7 @@ function getLastKidVisitInfo(kidName, kidId, familyHead) {
 
 async function loadSSLiveClassKids() {
     const stage = document.getElementById('ssFilterStage')?.value || "", grade = document.getElementById('ssFilterGrade')?.value || "", className = document.getElementById('ssFilterClass')?.value || "";
-    if (visitationsData.length === 0) { try { const res = await fetch(`${API_URL}?sheet=Visitations`); const data = await res.json(); if (data.status === "success") visitationsData = data.data; } catch(e) {} }
+    if (visitationsData.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Visitations`); if (res.status === "success") visitationsData = res.data; } catch(e) {} }
 
     const matched = namesCacheData.filter(kid => {
         if (isMemberDeceased(kid) || kid["مدارس الأحد"] === "غير مشترك") return false;
@@ -634,13 +758,10 @@ async function loadSSLiveClassKids() {
 function renderSSLiveKidsTable() {
     const tbody = document.getElementById('ssLiveKidsTableBody'), emptyNotice = document.getElementById('ssLiveKidsEmpty');
     if (!tbody) return;
-    
-    // ضمان تحديث ترويسة الجدول لتطابق الـ 9 أعمدة حتى مع النسخ القديمة من HTML
     const thead = tbody.closest('table')?.querySelector('thead');
     if (thead) {
         thead.innerHTML = `<tr><th class="p-3 w-10 text-center">م</th><th class="p-3">اسم المخدوم والصف</th><th class="p-3 text-center">آخر حضور</th><th class="p-3 text-center">آخر افتقاد</th><th class="p-3">التواصل والمحمول</th><th class="p-3 text-center">حضور اليوم</th><th class="p-3 text-center">التسميع</th><th class="p-3 text-center w-20">النقاط</th><th class="p-3">ملاحظات الافتقاد</th></tr>`;
     }
-
     tbody.innerHTML = "";
     const recCount = document.getElementById('recordCount');
     if (recCount) recCount.innerText = `${currentSSLiveKids.length} مخدوم بالفصل`;
@@ -674,15 +795,31 @@ async function saveSundaySchoolBatchAttendance() {
     if (currentSSLiveKids.length === 0) { alert("لا يوجد مخدومين في الكشف لحفظهم!"); return; }
     const sessionDate = (document.getElementById('ssSessionDate')?.value || "").trim();
     if (!sessionDate) { alert("يرجى كتابة تاريخ الحصة أولاً!"); return; }
-    if (!confirm(`هل أنت متأكد من حفظ سجل حضور وتسميع (${currentSSLiveKids.length}) مخدوم لتاريخ: ${sessionDate}؟`)) return;
+
+    // فحص منع تكرار رصد الحضور لنفس اليوم والفصل
+    const stageVal = document.getElementById('ssFilterStage')?.value || "";
+    const classVal = document.getElementById('ssFilterClass')?.value || "";
+    const alreadyRecorded = rawData.some(r => 
+        String(r["SessionDate"] || "").trim() === sessionDate &&
+        normalizeArabic(r["Stage"]) === normalizeArabic(stageVal) &&
+        (!classVal || normalizeArabic(r["ClassName"]) === normalizeArabic(classVal))
+    );
+    if (alreadyRecorded) {
+        if (!confirm(`⚠️ تنبيه: تم رصد حضور هذا الفصل (${classVal || stageVal}) بتاريخ ${sessionDate} مسبقاً!\nهل أنت متأكد من أنك تريد تسجيله مرة أخرى؟`)) return;
+    } else {
+        if (!confirm(`هل أنت متأكد من حفظ سجل حضور وتسميع (${currentSSLiveKids.length}) مخدوم لتاريخ: ${sessionDate}؟`)) return;
+    }
 
     const btn = document.getElementById('btnSaveSSBatch');
     if (btn) { btn.disabled = true; btn.innerHTML = `جاري الحفظ بالسجلات...`; }
     const payload = currentSSLiveKids.map(kid => ({ "Stage": kid.stage, "Grade": kid.grade, "ClassName": kid.className, "SessionDate": sessionDate, "ChildID": kid.id, "ChildName": kid.name, "ServantName": currentUser ? currentUser.ServantName : "خادم الفصل", "Attendance": kid.attendance, "Memorization": kid.memorization, "Points": kid.points, "Notes": kid.notes }));
     try {
-        const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ sheet: "Sunday_School", action: "batch_add", data: payload }) });
-        const data = await res.json();
-        if (data.status === "success") { alert("✓ " + data.message); loadData(); } else alert("خطأ أثناء الحفظ: " + data.message);
+        const data = await apiPost({ sheet: "Sunday_School", action: "batch_add", data: payload });
+        if (data.status === "success") {
+            sendAuditLog("رصد حضور مدارس الأحد", "Sunday_School", `تم حفظ كشف (${payload.length}) مخدوم - ${stageVal} ${classVal} بتاريخ ${sessionDate}`);
+            alert("✓ " + data.message);
+            loadData();
+        } else alert("خطأ أثناء الحفظ: " + data.message);
     } catch(err) { alert("تعذر الاتصال بالخادم لحفظ الحضور."); }
     finally { if (btn) { btn.disabled = false; btn.innerHTML = `💾 حفظ حضور وتقييم الفصل كاملاً`; } }
 }
@@ -711,7 +848,7 @@ async function initSSChartsView() {
     const chartsSec = ensureChartsSectionExists();
     if (chartsSec) { chartsSec.classList.remove('hidden'); chartsSec.style.display = 'block'; }
     try { await ensureChartJsLoaded(); } catch (e) { alert(e.message); return; }
-    if (namesCacheData.length === 0) { try { const res = await fetch(`${API_URL}?sheet=Names`); const data = await res.json(); if (data.status === "success") namesCacheData = data.data; } catch(e) {} }
+    if (namesCacheData.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Names`); if (res.status === "success") namesCacheData = res.data; } catch(e) {} }
     buildChartsStageTabs();
 
     let allowedRecords = rawData.filter(item => {
@@ -843,8 +980,8 @@ async function generateAndPrintClassRoster() {
     const stage = document.getElementById('ssPrintStage')?.value || "", grade = document.getElementById('ssPrintGrade')?.value || "", className = (document.getElementById('ssPrintClass')?.value || "").trim();
     if (!stage) { alert("يرجى اختيار المرحلة الدراسية أولاً!"); return; }
     let membersList = namesCacheData;
-    if (membersList.length === 0) { try { const res = await fetch(`${API_URL}?sheet=Names`); const data = await res.json(); if (data.status === "success") membersList = data.data; } catch(e) {} }
-    const classKids = membersList.filter(item => !isMemberDeceased(item) && item["مدارس الأحد"] !== "غير مشترك" && item["المرحلة"] === stage && (!grade || item["الصف"] === grade) && (!className || String(item["فصل مدارس الاحد"] || item["أنهي مدارس الأحد"] || "").includes(className))).sort((a, b) => String(a["الاسم ثلاثي"]).localeCompare(String(b["الاسم ثلاثي"]), 'ar'));
+    if (membersList.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Names`); if (res.status === "success") membersList = res.data; } catch(e) {} }
+    const classKids = membersList.filter(item => !isMemberDeceased(item) && item["مدارس الأحد"] !== "غير مشترك" && normalizeArabic(item["المرحلة"]) === normalizeArabic(stage) && (!grade || normalizeArabic(item["الصف"]) === normalizeArabic(grade)) && (!className || normalizeArabic(item["فصل مدارس الاحد"] || item["أنهي مدارس الأحد"]).includes(normalizeArabic(className)))).sort((a, b) => String(a["الاسم ثلاثي"]).localeCompare(String(b["الاسم ثلاثي"]), 'ar'));
     if (classKids.length === 0) { alert("لم يتم العثور على مخدومين مسجلين بهذه المواصفات!"); return; }
     closeSundaySchoolPrintModal();
     setupPrintHeader(`كشف حضور وغياب مدارس الأحد - مرحلة: ${stage} ${grade ? '| ' + grade : ''} ${className ? '| فصل: ' + className : ''}`);
@@ -873,8 +1010,8 @@ function switchMeetingsView(view) {
 async function initServantsMeetingLiveView() {
     const dateInput = document.getElementById('servantsMeetingDate'), now = new Date();
     if (dateInput) dateInput.value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-    if (servantsCacheData.length === 0) { try { const res = await fetch(`${API_URL}?sheet=Servants`); const data = await res.json(); if (data.status === "success") servantsCacheData = data.data; } catch(e) {} }
-    if (namesCacheData.length === 0) { try { const res = await fetch(`${API_URL}?sheet=Names`); const data = await res.json(); if (data.status === "success") namesCacheData = data.data; } catch(e) {} }
+    if (servantsCacheData.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Servants`); if (res.status === "success") servantsCacheData = res.data; } catch(e) {} }
+    if (namesCacheData.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Names`); if (res.status === "success") namesCacheData = res.data; } catch(e) {} }
     const activeServants = servantsCacheData.filter(s => s["Status"] !== "موقوف" && s["Username"] !== "admin");
     currentServantsMeetingList = activeServants.map(s => {
         const member = namesCacheData.find(m => m["الاسم ثلاثي"] === s["ServantName"]);
@@ -908,13 +1045,24 @@ async function saveServantsMeetingBatchAttendance() {
     if (currentServantsMeetingList.length === 0) { alert("لا يوجد خدام في الكشف للحفظ!"); return; }
     const meetingName = (document.getElementById('servantsMeetingName')?.value || "").trim() || "اجتماع الخدام الأسبوعي", meetingDate = (document.getElementById('servantsMeetingDate')?.value || "").trim();
     if (!meetingDate) { alert("يرجى كتابة تاريخ الاجتماع أولاً!"); return; }
-    if (!confirm(`هل أنت متأكد من حفظ حضور (${currentServantsMeetingList.length}) خادم لاجتماع: ${meetingName} بتاريخ: ${meetingDate}؟`)) return;
+
+    // فحص منع تكرار رصد حضور نفس الاجتماع في نفس التاريخ
+    const alreadyRecorded = rawData.some(r => String(r["MeetingDate"] || "").trim() === meetingDate && normalizeArabic(r["MeetingName"]) === normalizeArabic(meetingName));
+    if (alreadyRecorded) {
+        if (!confirm(`⚠️ تنبيه: تم رصد حضور "${meetingName}" بتاريخ ${meetingDate} مسبقاً!\nهل تريد الحفظ مرة أخرى؟`)) return;
+    } else {
+        if (!confirm(`هل أنت متأكد من حفظ حضور (${currentServantsMeetingList.length}) خادم لاجتماع: ${meetingName} بتاريخ: ${meetingDate}؟`)) return;
+    }
+
     const btn = document.getElementById('btnSaveServantsMeetingBatch'); if (btn) { btn.disabled = true; btn.innerHTML = `جاري الحفظ بالسجلات...`; }
     const payload = currentServantsMeetingList.map(s => ({ "MeetingName": meetingName, "MeetingDate": meetingDate, "MemberID": s.id, "MemberName": s.name, "Status": s.status, "Notes": s.notes }));
     try {
-        const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ sheet: "Meetings_Attendance", action: "batch_add", data: payload }) });
-        const data = await res.json();
-        if (data.status === "success") { alert("✓ " + data.message); loadData(); } else alert("خطأ أثناء الحفظ: " + data.message);
+        const data = await apiPost({ sheet: "Meetings_Attendance", action: "batch_add", data: payload });
+        if (data.status === "success") {
+            sendAuditLog("رصد حضور اجتماع الخدام", "Meetings_Attendance", `تم حفظ كشف (${payload.length}) خادم - ${meetingName} بتاريخ ${meetingDate}`);
+            alert("✓ " + data.message);
+            loadData();
+        } else alert("خطأ أثناء الحفظ: " + data.message);
     } catch(err) { alert("تعذر الاتصال بالخادم لحفظ حضور الاجتماع."); }
     finally { if (btn) { btn.disabled = false; btn.innerHTML = `💾 حفظ حضور الاجتماع`; } }
 }
@@ -930,7 +1078,7 @@ function printServantsMeetingRoster() {
 
 function openAddServantQuickModal() { currentTab = 'Servants'; openModal('add'); }
 async function populateServantsDatalist() {
-    if (namesCacheData.length === 0) { try { const res = await fetch(`${API_URL}?sheet=Names`); const data = await res.json(); if (data.status === "success") namesCacheData = data.data; } catch(e) {} }
+    if (namesCacheData.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Names`); if (res.status === "success") namesCacheData = res.data; } catch(e) {} }
     const dl = document.getElementById('servantsNamesList'); if (dl) dl.innerHTML = namesCacheData.filter(m => !isMemberDeceased(m)).map(m => `<option value="${m['الاسم ثلاثي']}">`).join('');
 }
 function onServantNameSelected(selectedName) {
@@ -955,8 +1103,8 @@ function switchVisitationsView(view) {
 }
 
 async function initVisitationsDashboard() {
-    if (namesCacheData.length === 0) { try { const res = await fetch(`${API_URL}?sheet=Names`); const data = await res.json(); if (data.status === "success") namesCacheData = data.data; } catch(e) {} }
-    if (visitationsData.length === 0) { try { const res = await fetch(`${API_URL}?sheet=Visitations`); const data = await res.json(); if (data.status === "success") visitationsData = data.data; } catch(e) {} }
+    if (namesCacheData.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Names`); if (res.status === "success") namesCacheData = res.data; } catch(e) {} }
+    if (visitationsData.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Visitations`); if (res.status === "success") visitationsData = res.data; } catch(e) {} }
     renderVisitationRecommendations(); renderVisitationFollowups();
 }
 
@@ -1041,7 +1189,7 @@ function printVisitReport() {
     setTimeout(() => { window.print(); printArea.innerHTML = ""; }, 200);
 }
 
-// 11. النوافذ المنبثقة والعمليات الأساسية وعرض الجداول والكروت
+// 11. النوافذ المنبثقة والعمليات الأساسية وعرض الجداول والكروت وسجل المراقبة
 function openModal(action, data={}) {
     document.getElementById('formAction').value = action;
     document.getElementById('recordId').value = action === 'update' ? data[Object.keys(data)[0]] : "";
@@ -1079,12 +1227,17 @@ async function handleFormSubmit(e) {
     const action = document.getElementById('formAction')?.value, form = document.getElementById('recordForm'); if (!form) return;
     const fd = new FormData(form), payload = {}; fd.forEach((v, k) => { if (v.trim()) payload[k] = v; });
     if (currentTab === 'Names' && !payload["اسم رب الاسرة"]) { alert("خطأ: لا يمكن حفظ العضو بدون تحديد اسم رب الأسرة!"); return; }
-    if (action === "update") payload[Object.keys(rawData[0])[0]] = Number(document.getElementById('recordId')?.value);
+    const recIdVal = document.getElementById('recordId')?.value;
+    if (action === "update") payload[Object.keys(rawData[0])[0]] = Number(recIdVal);
     const btn = document.getElementById('saveBtn'); if (btn) { btn.disabled = true; btn.innerHTML = `جاري الحفظ...`; }
     try {
-        const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ sheet: currentTab, action: action, data: payload }) });
-        const data = await res.json();
-        if (data.status === "success") { closeModal(); await loadData(); } else alert("خطأ: " + data.message);
+        const data = await apiPost({ sheet: currentTab, action: action, data: payload });
+        if (data.status === "success") {
+            const itemName = payload["الاسم ثلاثي"] || payload["ChildName"] || payload["MemberName"] || payload["ServantName"] || "سجل";
+            sendAuditLog(action === "add" ? "إضافة سجل" : "تعديل سجل", currentTab, `${itemName}${action === 'update' ? ' (#' + recIdVal + ')' : ''}`);
+            closeModal();
+            await loadData();
+        } else alert("خطأ: " + data.message);
     } catch (err) { alert("حدث خطأ أثناء الحفظ."); }
     finally { if (btn) { btn.disabled = false; btn.innerHTML = `حفظ السجل`; } }
 }
@@ -1093,10 +1246,15 @@ function editRecord(id) { const item = rawData.find(r => r[Object.keys(r)[0]] ==
 
 async function deleteRecord(id) {
     if (!confirm(`تحذير: هل أنت متأكد من حذف السجل رقم #${id} نهائياً؟`)) return;
+    const targetItem = rawData.find(r => r[Object.keys(r)[0]] == id);
+    const targetName = targetItem ? (targetItem["الاسم ثلاثي"] || targetItem["ChildName"] || targetItem["MemberName"] || targetItem["ServantName"] || "") : "";
     showLoader(true);
     try {
-        await fetch(API_URL, { method: 'POST', body: JSON.stringify({ sheet: currentTab, action: "delete", data: { [Object.keys(rawData[0])[0]]: id } }) });
-        await loadData();
+        const res = await apiPost({ sheet: currentTab, action: "delete", data: { [Object.keys(rawData[0])[0]]: id } });
+        if (res.status === "success") {
+            sendAuditLog("حذف سجل", currentTab, `تم حذف السجل رقم #${id} ${targetName ? '(' + targetName + ')' : ''}`);
+            await loadData();
+        }
     } catch (err) { alert("فشل الحذف"); } finally { showLoader(false); }
 }
 
@@ -1116,9 +1274,21 @@ function renderStandardCards() {
     const recCount = document.getElementById('recordCount'); if (recCount) recCount.innerText = `${filtered.length} سجل`;
     if (!filtered.length) { container.className = "block"; container.innerHTML = `<div class="text-center py-16 text-slate-400 font-bold bg-white rounded-2xl border border-dashed border-slate-300">لا توجد سجلات مطابقة</div>`; return; }
 
+    // جدول سجل المراقبة (Audit Log)
+    if (currentTab === "Audit_Log") {
+        container.className = "bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden";
+        const sortedLogs = [...filtered].reverse();
+        container.innerHTML = `<div class="overflow-x-auto nice-scrollbar"><table class="w-full text-right text-xs"><thead class="bg-slate-100 text-slate-700 font-black border-b border-slate-200"><tr><th class="p-3 w-12 text-center">م</th><th class="p-3">التاريخ والوقت</th><th class="p-3">الخادم</th><th class="p-3">الصلاحية</th><th class="p-3 text-center">نوع العملية</th><th class="p-3">القسم</th><th class="p-3">التفاصيل</th></tr></thead><tbody class="divide-y divide-slate-100 font-semibold">${sortedLogs.map((item, idx) => {
+            const act = String(item["ActionType"] || "-");
+            const badgeCls = act.includes("حذف") ? "bg-rose-50 text-rose-700 border-rose-200" : act.includes("تعديل") ? "bg-amber-50 text-amber-700 border-amber-200" : act.includes("إضافة") || act.includes("رصد") ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-indigo-50 text-indigo-700 border-indigo-200";
+            return `<tr class="hover:bg-slate-50"><td class="p-3 text-center text-slate-400 font-bold">${idx + 1}</td><td class="p-3 font-mono text-[11px]" dir="ltr">${item["Timestamp"] || "-"}</td><td class="p-3 font-black text-slate-800">${item["ServantName"] || "-"} <span class="text-[10px] text-slate-400 font-mono">(${item["Username"] || "-"})</span></td><td class="p-3 text-[11px]">${item["Role"] || "-"}</td><td class="p-3 text-center"><span class="px-2.5 py-1 rounded-lg font-black text-[10px] border ${badgeCls}">${act}</span></td><td class="p-3 font-bold text-slate-600">${item["TargetSheet"] || "-"}</td><td class="p-3 text-slate-700">${item["Details"] || "-"}</td></tr>`;
+        }).join('')}</tbody></table></div>`;
+        return;
+    }
+
     if (currentTab === "Sunday_School") {
         container.className = "bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden";
-        container.innerHTML = `<div class="overflow-x-auto"><table class="w-full text-right text-xs"><thead class="bg-slate-100 text-slate-700 font-black border-b border-slate-200"><tr><th class="p-3 w-12 text-center">م</th><th class="p-3">التاريخ</th><th class="p-3">المرحلة والصف</th><th class="p-3">الفصل</th><th class="p-3">اسم المخدوم</th><th class="p-3 text-center">الحضور</th><th class="p-3 text-center">التسميع</th><th class="p-3 text-center">النقاط</th><th class="p-3">ملاحظات</th><th class="p-3 text-center no-print">إجراءات</th></tr></thead><tbody class="divide-y divide-slate-100 font-semibold">${filtered.map((item, idx) => { const idVal = item[Object.keys(item)[0]]; return `<tr class="hover:bg-slate-50"><td class="p-3 text-center text-slate-400 font-bold">${idx + 1}</td><td class="p-3 font-mono">${item["SessionDate"] || "-"}</td><td class="p-3"><span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-bold">${item["Stage"] || "-"}</span> ${item["Grade"] || ""}</td><td class="p-3">${item["ClassName"] || "-"}</td><td class="p-3 font-black text-slate-800">${item["ChildName"] || "-"}</td><td class="p-3 text-center"><span class="px-2.5 py-1 rounded-lg font-black text-[11px] ${item["Attendance"]==='حاضر'?'bg-emerald-50 text-emerald-700':'bg-rose-50 text-rose-700'}">${item["Attendance"] || "-"}</span></td><td class="p-3 text-center">${item["Memorization"] || "-"}</td><td class="p-3 text-center font-black">${item["Points"] || 0}</td><td class="p-3 text-slate-500">${item["Notes"] || "-"}</td><td class="p-3 text-center no-print"><button onclick="editRecord(${idVal})" class="text-xs font-bold text-indigo-600 hover:underline ml-2">تعديل</button>${currentUser.Role === "Admin" ? `<button onclick="deleteRecord(${idVal})" class="text-xs font-bold text-rose-600 hover:underline">حذف</button>` : ''}</td></tr>`; }).join('')}</tbody></table></div>`;
+        container.innerHTML = `<div class="overflow-x-auto nice-scrollbar"><table class="w-full text-right text-xs"><thead class="bg-slate-100 text-slate-700 font-black border-b border-slate-200"><tr><th class="p-3 w-12 text-center">م</th><th class="p-3">التاريخ</th><th class="p-3">المرحلة والصف</th><th class="p-3">الفصل</th><th class="p-3">اسم المخدوم</th><th class="p-3 text-center">الحضور</th><th class="p-3 text-center">التسميع</th><th class="p-3 text-center">النقاط</th><th class="p-3">ملاحظات</th><th class="p-3 text-center no-print">إجراءات</th></tr></thead><tbody class="divide-y divide-slate-100 font-semibold">${filtered.map((item, idx) => { const idVal = item[Object.keys(item)[0]]; return `<tr class="hover:bg-slate-50"><td class="p-3 text-center text-slate-400 font-bold">${idx + 1}</td><td class="p-3 font-mono">${item["SessionDate"] || "-"}</td><td class="p-3"><span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-bold">${item["Stage"] || "-"}</span> ${item["Grade"] || ""}</td><td class="p-3">${item["ClassName"] || "-"}</td><td class="p-3 font-black text-slate-800">${item["ChildName"] || "-"}</td><td class="p-3 text-center"><span class="px-2.5 py-1 rounded-lg font-black text-[11px] ${item["Attendance"]==='حاضر'?'bg-emerald-50 text-emerald-700':'bg-rose-50 text-rose-700'}">${item["Attendance"] || "-"}</span></td><td class="p-3 text-center">${item["Memorization"] || "-"}</td><td class="p-3 text-center font-black">${item["Points"] || 0}</td><td class="p-3 text-slate-500">${item["Notes"] || "-"}</td><td class="p-3 text-center no-print"><button onclick="editRecord(${idVal})" class="text-xs font-bold text-indigo-600 hover:underline ml-2">تعديل</button>${currentUser.Role === "Admin" ? `<button onclick="deleteRecord(${idVal})" class="text-xs font-bold text-rose-600 hover:underline">حذف</button>` : ''}</td></tr>`; }).join('')}</tbody></table></div>`;
         return;
     }
 
@@ -1136,7 +1306,82 @@ function renderStandardCards() {
     });
 }
 
-// 12. دوال جلب البيانات العامة والمزامنة
+// 12. دوال الاتصال المؤمّن بالسيرفر، سجل المراقبة، وتصدير Excel
+async function apiFetch(url) {
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = `${url}${sep}token=${encodeURIComponent(sessionToken)}&t=${Date.now()}`;
+    const response = await fetch(fullUrl, { method: 'GET', redirect: 'follow' });
+    if (!response.ok) throw new Error(`خطأ استجابة السيرفر: ${response.status}`);
+    const res = await response.json();
+    if (res.status === "unauthorized") {
+        alert("انتهت صلاحية الجلسة أو غير مصرح بالوصول، يرجى تسجيل الدخول.");
+        sessionStorage.clear();
+        location.reload();
+        throw new Error("Unauthorized");
+    }
+    return res;
+}
+
+async function apiPost(bodyObj) {
+    const payloadWithToken = { ...bodyObj, token: sessionToken, user: currentUser ? currentUser.ServantName : "" };
+    const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payloadWithToken) });
+    const res = await response.json();
+    if (res.status === "unauthorized") {
+        alert("انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى.");
+        sessionStorage.clear();
+        location.reload();
+        throw new Error("Unauthorized");
+    }
+    return res;
+}
+
+function sendAuditLog(actionType, targetSheet, recordDetails) {
+    if (!currentUser) return;
+    fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+            sheet: "Audit_Log",
+            action: "add",
+            token: sessionToken,
+            data: {
+                "Timestamp": new Date().toLocaleString('ar-EG'),
+                "ServantName": currentUser.ServantName || "غير معروف",
+                "Username": currentUser.Username || "-",
+                "Role": currentUser.Role || "-",
+                "ActionType": actionType,
+                "TargetSheet": targetSheet,
+                "Details": recordDetails
+            }
+        })
+    }).catch(() => {});
+}
+
+function exportCurrentViewToExcel() {
+    if (!rawData || rawData.length === 0) {
+        alert("لا توجد بيانات متاحة للتصدير حالياً!");
+        return;
+    }
+    const headers = Object.keys(rawData[0]).filter(h => h !== "Password");
+    const csvRows = [headers.join(',')];
+    rawData.forEach(row => {
+        const vals = headers.map(h => {
+            const val = String(row[h] ?? "").replace(/"/g, '""');
+            return `"${val}"`;
+        });
+        csvRows.push(vals.join(','));
+    });
+    const csvString = "\uFEFF" + csvRows.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    const now = new Date();
+    link.download = `${currentTab || 'Church_Data'}_${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    sendAuditLog("تصدير ملف Excel", currentTab, `تم تصدير (${rawData.length}) سجل`);
+}
+
 async function loadData(force = false) {
     if (!currentTab) return;
     showLoader(true);
@@ -1144,9 +1389,7 @@ async function loadData(force = false) {
     while (attempts < 3 && !success) {
         attempts++;
         try {
-            const response = await fetch(`${API_URL}?sheet=${encodeURIComponent(currentTab)}&t=${Date.now()}`, { method: 'GET', redirect: 'follow' });
-            if (!response.ok) throw new Error(`خطأ استجابة السيرفر: ${response.status}`);
-            const res = await response.json();
+            const res = await apiFetch(`${API_URL}?sheet=${encodeURIComponent(currentTab)}`);
             if (res.status === "success") {
                 rawData = Array.isArray(res.data) ? res.data : [];
                 backendAreas = res.areas || [];
@@ -1154,7 +1397,7 @@ async function loadData(force = false) {
                     namesCacheData = rawData; populateAreasDropdown();
                     if (currentNamesView === 'roster') { buildAlphabetBar(); renderFamilyHeadsRoster(); } else applyNamesFilter();
                     if (visitationsData.length === 0) {
-                        fetch(`${API_URL}?sheet=Visitations`).then(r => r.json()).then(d => {
+                        apiFetch(`${API_URL}?sheet=Visitations`).then(d => {
                             if (d.status === "success") { visitationsData = d.data; if (currentNamesView === 'roster') renderFamilyHeadsRoster(); }
                         }).catch(() => {});
                     }
@@ -1175,6 +1418,7 @@ async function loadData(force = false) {
                 success = true;
             } else throw new Error(res.message || "فشل معالجة البيانات");
         } catch (err) {
+            if (err.message === "Unauthorized") break;
             if (attempts >= 3) alert(`تعذر جلب البيانات.\nالسبب: ${err.message}`);
             else await new Promise(r => setTimeout(r, 1000));
         } finally {
