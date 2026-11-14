@@ -938,7 +938,7 @@ function getLastKidVisitInfo(kidName, kidId, familyHead) {
 
 async function loadSSLiveClassKids() {
     const stage = document.getElementById('ssFilterStage')?.value || "", grade = document.getElementById('ssFilterGrade')?.value || "", className = document.getElementById('ssFilterClass')?.value || "";
-    if (visitationsData.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Visitations`); if (res.status === "success") visitationsData = res.data; } catch(e) {} }
+    if (visitationsData.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Visitations`); if (res.status === "success") visitationsData = res.data.map(sanitizeRecordFields); } catch(e) {} }
 
     const matched = namesCacheData.filter(kid => {
         if (isMemberDeceased(kid) || kid["مدارس الأحد"] === "غير مشترك") return false;
@@ -1184,7 +1184,7 @@ async function generateAndPrintClassRoster() {
     const stage = document.getElementById('ssPrintStage')?.value || "", grade = document.getElementById('ssPrintGrade')?.value || "", className = (document.getElementById('ssPrintClass')?.value || "").trim();
     if (!stage) { alert("يرجى اختيار المرحلة الدراسية أولاً!"); return; }
     let membersList = namesCacheData;
-    if (membersList.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Names`); if (res.status === "success") membersList = res.data; } catch(e) {} }
+    if (membersList.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Names`); if (res.status === "success") membersList = res.data.map(sanitizeRecordFields); } catch(e) {} }
     const classKids = membersList.filter(item => !isMemberDeceased(item) && item["مدارس الأحد"] !== "غير مشترك" && normalizeArabic(item["المرحلة"]) === normalizeArabic(stage) && (!grade || normalizeArabic(item["الصف"]) === normalizeArabic(grade)) && (!className || normalizeArabic(item["فصل مدارس الاحد"] || item["أنهي مدارس الأحد"]).includes(normalizeArabic(className)))).sort((a, b) => String(a["الاسم ثلاثي"]).localeCompare(String(b["الاسم ثلاثي"]), 'ar'));
     if (classKids.length === 0) { alert("لم يتم العثور على مخدومين مسجلين بهذه المواصفات!"); return; }
     closeSundaySchoolPrintModal();
@@ -1322,7 +1322,7 @@ function switchVisitationsView(view) {
 
 async function initVisitationsDashboard() {
     if (namesCacheData.length === 0) { try { const [res, famRes] = await Promise.all([apiFetch(`${API_URL}?sheet=Names`), apiFetch(`${API_URL}?sheet=${encodeURIComponent("Family name")}`).catch(() => ({ status: "err" }))]); if (res.status === "success") namesCacheData = ((famRes.status === "success") ? mergeFamilySheetIntoNames(res.data, famRes.data) : res.data).map(sanitizeRecordFields); } catch(e) {} }
-    if (visitationsData.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Visitations`); if (res.status === "success") visitationsData = res.data; } catch(e) {} }
+    if (visitationsData.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Visitations`); if (res.status === "success") visitationsData = res.data.map(sanitizeRecordFields); } catch(e) {} }
     renderVisitationRecommendations(); renderVisitationFollowups();
 }
 
@@ -1459,7 +1459,10 @@ function openModal(action, data={}) {
             inpH = `<input type="text" dir="ltr" inputmode="numeric" name="${f.id}" value="${val}" placeholder="DD/MM/YYYY" onblur="this.value = formatDisplayDate(this.value)" ${f.required?'required':''} class="${cls} text-left font-mono">`;
         }
         else if (f.id === "الرقم القومي") {
-            inpH = `<input type="text" dir="ltr" inputmode="numeric" maxlength="14" name="${f.id}" value="${val}" placeholder="14 رقم" oninput="onNationalIdInput(this.value)" class="${cls} text-left font-mono">`;
+            const isPartialNid = val && !/^([23])\d{13}$/.test(val);
+            const borderOverride = isPartialNid ? "border-amber-400 bg-amber-50/40" : "";
+            const hintHtml = isPartialNid ? `<span class="block text-[10px] text-amber-700 font-bold mt-1">⚠️ الرقم المسجل غير مكتمل (${val.length} أرقام) — أكمله إلى 14 رقماً أو امسحه.</span>` : "";
+            inpH = `<input type="text" dir="ltr" inputmode="numeric" maxlength="14" name="${f.id}" value="${val}" placeholder="14 رقم (اختياري)" oninput="onNationalIdInput(this.value)" class="${cls} ${borderOverride} text-left font-mono">${hintHtml}`;
         }
         else inpH = `<input type="${f.type}" name="${f.id}" value="${val}" ${f.required?'required':''} class="${cls}">`;
         w.innerHTML = `<label class="block font-bold mb-1 text-slate-700 text-xs">${f.label} ${f.required?'<span class="text-rose-500">*</span>':''}</label>${inpH}`;
@@ -1593,7 +1596,7 @@ async function handleFormSubmit(e) {
     if (currentTab === 'Names') {
         if (!payload["اسم رب الاسرة"]) { alert("خطأ: لا يمكن حفظ العضو بدون تحديد اسم رب الأسرة!"); return; }
         if (payload["الرقم القومي"] && !/^([23])\d{13}$/.test(payload["الرقم القومي"])) {
-            alert("⚠️ الرقم القومي غير صحيح!\nيجب أن يتكون الرقم القومي المصري من 14 رقماً بالضبط ويبدأ بـ 2 أو 3.");
+            alert("⚠️ الرقم القومي غير صحيح!\nيجب أن يتكون الرقم القومي المصري من 14 رقماً بالضبط ويبدأ بـ 2 أو 3 (أو اترك الخانة فارغة إذا لم يتوفر).");
             return;
         }
         const normFull = normalizeArabic(payload["الاسم ثلاثي"]);
@@ -1845,7 +1848,7 @@ async function loadData(force = false) {
                     if (currentNamesView === 'roster') { buildAlphabetBar(); renderFamilyHeadsRoster(); } else applyNamesFilter();
                     if (visitationsData.length === 0) {
                         apiFetch(`${API_URL}?sheet=Visitations`).then(d => {
-                            if (d.status === "success") { visitationsData = d.data; if (currentNamesView === 'roster') renderFamilyHeadsRoster(); }
+                            if (d.status === "success") { visitationsData = d.data.map(sanitizeRecordFields); if (currentNamesView === 'roster') renderFamilyHeadsRoster(); }
                         }).catch(() => {});
                     }
                 } else if (currentTab === 'Sunday_School') {
@@ -1895,8 +1898,23 @@ function showLoader(s) {
 }
 
 // 13. دوال الطباعة واستخراج التقارير
-function shareToWhatsApp(text) {
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+async function shareToWhatsApp(text) {
+    const cleanText = String(text || "").trim();
+    if (!cleanText) return;
+    // نسخ النص للحافظة تلقائياً كنسخة احتياطية دائمة
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(cleanText);
+        }
+    } catch (e) {}
+
+    // إذا كان التقرير طويلاً (أكثر من 3500 حرف)، نستخدم الحافظة لتفادي حد طول الروابط في المتصفح والأندرويد
+    if (cleanText.length > 3500) {
+        alert("📋 التقرير كبير وتم نسخه بالكامل إلى الحافظة تلقائياً!\nسيتم فتح واتساب الآن؛ اختر المحادثة واضغط (لصق / Paste).");
+        window.open("https://wa.me/", "_blank");
+        return;
+    }
+    const url = `https://wa.me/?text=${encodeURIComponent(cleanText)}`;
     window.open(url, '_blank');
 }
 
