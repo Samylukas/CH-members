@@ -25,15 +25,138 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// 2. دوال الاتصال والواتساب والمساعدة
+// 2. دوال تنسيق ومعالجة الهواتف والتواريخ والواتساب
+const PHONE_FIELD_KEYS = ["تليفون العمل/المحمول", "هاتف الاسرة", "رقم التليفون"];
+const DATE_FIELD_KEYS = ["تاريخ الميلاد", "تاريخ الزواج", "تاريخ الوفاة", "تاريخ اخر اعتراف", "SessionDate", "MeetingDate", "VisitDate", "FollowUpDate"];
+const EGYPT_GOV_CODES = ["13", "15", "40", "45", "46", "47", "48", "50", "55", "57", "62", "64", "65", "66", "68", "69", "82", "84", "86", "88", "92", "93", "95", "96", "97"];
+
+function normalizeEgyptianPhone(phone) {
+    if (phone === undefined || phone === null) return "";
+    let raw = String(phone).trim().replace(/^'+/, "");
+    if (!raw || raw === "-") return "";
+    if (raw.startsWith("+") || raw.startsWith("00")) {
+        return raw.replace(/[^+\d]/g, "");
+    }
+    let digits = raw.replace(/\D/g, "");
+    if (!digits) return "";
+    // إزالة كود الدولة 20 أو 0020 إن وجد لإعادة الصيغة المحلية القياسية
+    if (digits.startsWith("0020") && digits.length >= 13) digits = "0" + digits.slice(4);
+    else if (digits.startsWith("20") && digits.length === 12 && /^201[0125]/.test(digits)) digits = "0" + digits.slice(2);
+    // استعادة الصفر الأول الساقط من Google Sheets للموبايل (10 أرقام تبدأ بـ 10/11/12/15)
+    if (digits.length === 10 && /^1[0125]/.test(digits)) {
+        return "0" + digits;
+    }
+    // استعادة الصفر الأول الساقط للأرضي المحافظات (9 أرقام تبدأ بكود المحافظة مثل 653334840 -> 0653334840)
+    if (digits.length === 9 && EGYPT_GOV_CODES.includes(digits.slice(0, 2))) {
+        return "0" + digits;
+    }
+    // استعادة الصفر الأول الساقط لأرضي القاهرة والجيزة (8 أرقام تبدأ بـ 2 أو 3)
+    if (digits.length === 8 && /^[23]/.test(digits)) {
+        return "0" + digits;
+    }
+    return digits;
+}
+
+function isValidEgyptianPhone(phone, allowLandline = true) {
+    const norm = normalizeEgyptianPhone(phone);
+    if (!norm) return true;
+    if (norm.startsWith("+") || norm.startsWith("00")) return norm.replace(/\D/g, "").length >= 10;
+    if (/^01[0125]\d{8}$/.test(norm)) return true;
+    if (allowLandline && /^0[2-9]\d{7,8}$/.test(norm)) return true;
+    return false;
+}
+
+function formatDisplayDate(val) {
+    if (val === undefined || val === null) return "";
+    let s = String(val).trim().replace(/^'+/, "");
+    if (!s || s === "-") return "";
+
+    // 1. معالجة صيغة ISO القادمة من السيرفر مثل 1985-05-31T21:00:00.000Z بتوقيت القاهرة الصحيح
+    if (/^\+?\d{4,6}-\d{2}-\d{2}T/.test(s)) {
+        const cleanIso = s.replace(/\+$/, "");
+        const d = new Date(cleanIso);
+        if (!isNaN(d.getTime())) {
+            try {
+                const parts = new Intl.DateTimeFormat('en-GB', {
+                    timeZone: 'Africa/Cairo',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                }).formatToParts(d);
+                const day = parts.find(p => p.type === 'day')?.value;
+                const month = parts.find(p => p.type === 'month')?.value;
+                const year = parseInt(parts.find(p => p.type === 'year')?.value || "0", 10);
+                if (year >= 1900 && year <= 2100 && day && month) {
+                    return `${day}/${month}/${year}`;
+                }
+            } catch (e) {}
+        }
+        return ""; // تجاهل التواريخ التالفة ذات السنوات غير المنطقية مثل 078676
+    }
+
+    // 2. معالجة صيغة YYYY-MM-DD أو YYYY/MM/DD
+    const ymd = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+    if (ymd) {
+        const y = parseInt(ymd[1], 10);
+        if (y < 1900 || y > 2100) return "";
+        return `${ymd[3].padStart(2, '0')}/${ymd[2].padStart(2, '0')}/${ymd[1]}`;
+    }
+
+    // 3. معالجة صيغة DD/MM/YYYY أو D-M-YYYY
+    const dmy = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+    if (dmy) {
+        const y = parseInt(dmy[3], 10);
+        if (y < 1900 || y > 2100) return "";
+        return `${dmy[1].padStart(2, '0')}/${dmy[2].padStart(2, '0')}/${dmy[3]}`;
+    }
+
+    // 4. معالجة إدخال 8 أرقام متصلة مثل 01061985 -> 01/06/1985
+    const digits8 = s.match(/^(\d{2})(\d{2})(\d{4})$/);
+    if (digits8) {
+        const d = parseInt(digits8[1], 10), m = parseInt(digits8[2], 10), y = parseInt(digits8[3], 10);
+        if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900 && y <= 2100) {
+            return `${digits8[1]}/${digits8[2]}/${digits8[3]}`;
+        }
+    }
+
+    return s;
+}
+
+function isValidCalendarDate(dateStr) {
+    if (!dateStr) return true;
+    const m = String(dateStr).trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!m) return false;
+    const day = parseInt(m[1], 10), month = parseInt(m[2], 10), year = parseInt(m[3], 10);
+    if (year < 1900 || year > 2035 || month < 1 || month > 12 || day < 1) return false;
+    const daysInMonth = new Date(year, month, 0).getDate();
+    return day <= daysInMonth;
+}
+
+function sanitizeRecordFields(row) {
+    if (!row || typeof row !== "object") return row;
+    const copy = { ...row };
+    Object.keys(copy).forEach(k => {
+        const nk = normalizeArabic(k);
+        if (PHONE_FIELD_KEYS.some(pk => normalizeArabic(pk) === nk)) {
+            const normP = normalizeEgyptianPhone(copy[k]);
+            if (normP) copy[k] = normP;
+        } else if (DATE_FIELD_KEYS.some(dk => normalizeArabic(dk) === nk)) {
+            copy[k] = formatDisplayDate(copy[k]);
+        }
+    });
+    return copy;
+}
+
 function formatWhatsAppNumber(phone) {
-    if (!phone) return '';
-    let cleaned = phone.toString().replace(/\D/g, '');
+    const norm = normalizeEgyptianPhone(phone);
+    if (!norm) return '';
+    let cleaned = norm.replace(/\D/g, '');
     return (cleaned.startsWith('01') && cleaned.length === 11) ? '2' + cleaned : cleaned;
 }
 function renderContactButtons(phone) {
-    if (!phone || String(phone).trim() === "" || String(phone).trim() === "-") return '';
-    const cleanPhone = String(phone).trim(), waPhone = formatWhatsAppNumber(cleanPhone);
+    const cleanPhone = normalizeEgyptianPhone(phone);
+    if (!cleanPhone || cleanPhone === "-") return '';
+    const waPhone = formatWhatsAppNumber(cleanPhone);
     return `<a href="tel:${cleanPhone}" title="اتصال هاتفي" onclick="event.stopPropagation()" class="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold shadow-sm transition"><span>📞 اتصال</span></a><a href="https://wa.me/${waPhone}" target="_blank" title="مراسلة عبر واتساب" onclick="event.stopPropagation()" class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold shadow-sm transition"><span>💬 واتساب</span></a>`;
 }
 
@@ -367,7 +490,7 @@ function mergeFamilySheetIntoNames(namesRows, familyRows) {
             house: getFieldValNormalized(f, "العنوان رقم المنزل") || getFieldValNormalized(f, "رقم المنزل"),
             floor: getFieldValNormalized(f, "الدور"),
             apt: getFieldValNormalized(f, "شقة"),
-            phone: getFieldValNormalized(f, "رقم التليفون") || getFieldValNormalized(f, "هاتف الاسرة"),
+            phone: normalizeEgyptianPhone(getFieldValNormalized(f, "رقم التليفون") || getFieldValNormalized(f, "هاتف الاسرة")),
             district: getFieldValNormalized(f, "القسم/القرية")
         };
     });
@@ -765,7 +888,7 @@ function switchSSView(view) {
 async function initSundaySchoolLiveView() {
     const dateInput = document.getElementById('ssSessionDate'), now = new Date();
     if (dateInput) dateInput.value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-    if (namesCacheData.length === 0) { try { const [res, famRes] = await Promise.all([apiFetch(`${API_URL}?sheet=Names`), apiFetch(`${API_URL}?sheet=${encodeURIComponent("Family name")}`).catch(() => ({ status: "err" }))]); if (res.status === "success") namesCacheData = (famRes.status === "success") ? mergeFamilySheetIntoNames(res.data, famRes.data) : res.data; } catch(e) {} }
+    if (namesCacheData.length === 0) { try { const [res, famRes] = await Promise.all([apiFetch(`${API_URL}?sheet=Names`), apiFetch(`${API_URL}?sheet=${encodeURIComponent("Family name")}`).catch(() => ({ status: "err" }))]); if (res.status === "success") namesCacheData = ((famRes.status === "success") ? mergeFamilySheetIntoNames(res.data, famRes.data) : res.data).map(sanitizeRecordFields); } catch(e) {} }
 
     const stageSel = document.getElementById('ssFilterStage');
     if (!stageSel) return;
@@ -929,7 +1052,7 @@ async function initSSChartsView() {
     const chartsSec = ensureChartsSectionExists();
     if (chartsSec) { chartsSec.classList.remove('hidden'); chartsSec.style.display = 'block'; }
     try { await ensureChartJsLoaded(); } catch (e) { alert(e.message); return; }
-    if (namesCacheData.length === 0) { try { const [res, famRes] = await Promise.all([apiFetch(`${API_URL}?sheet=Names`), apiFetch(`${API_URL}?sheet=${encodeURIComponent("Family name")}`).catch(() => ({ status: "err" }))]); if (res.status === "success") namesCacheData = (famRes.status === "success") ? mergeFamilySheetIntoNames(res.data, famRes.data) : res.data; } catch(e) {} }
+    if (namesCacheData.length === 0) { try { const [res, famRes] = await Promise.all([apiFetch(`${API_URL}?sheet=Names`), apiFetch(`${API_URL}?sheet=${encodeURIComponent("Family name")}`).catch(() => ({ status: "err" }))]); if (res.status === "success") namesCacheData = ((famRes.status === "success") ? mergeFamilySheetIntoNames(res.data, famRes.data) : res.data).map(sanitizeRecordFields); } catch(e) {} }
     buildChartsStageTabs();
 
     let allowedRecords = rawData.filter(item => {
@@ -1098,7 +1221,7 @@ async function initServantsMeetingLiveView() {
     const dateInput = document.getElementById('servantsMeetingDate'), now = new Date();
     if (dateInput) dateInput.value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
     if (servantsCacheData.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Servants`); if (res.status === "success") servantsCacheData = res.data; } catch(e) {} }
-    if (namesCacheData.length === 0) { try { const [res, famRes] = await Promise.all([apiFetch(`${API_URL}?sheet=Names`), apiFetch(`${API_URL}?sheet=${encodeURIComponent("Family name")}`).catch(() => ({ status: "err" }))]); if (res.status === "success") namesCacheData = (famRes.status === "success") ? mergeFamilySheetIntoNames(res.data, famRes.data) : res.data; } catch(e) {} }
+    if (namesCacheData.length === 0) { try { const [res, famRes] = await Promise.all([apiFetch(`${API_URL}?sheet=Names`), apiFetch(`${API_URL}?sheet=${encodeURIComponent("Family name")}`).catch(() => ({ status: "err" }))]); if (res.status === "success") namesCacheData = ((famRes.status === "success") ? mergeFamilySheetIntoNames(res.data, famRes.data) : res.data).map(sanitizeRecordFields); } catch(e) {} }
     const activeServants = servantsCacheData.filter(s => s["Status"] !== "موقوف" && s["Username"] !== "admin");
     currentServantsMeetingList = activeServants.map(s => {
         const member = namesCacheData.find(m => m["الاسم ثلاثي"] === s["ServantName"]);
@@ -1173,7 +1296,7 @@ function printServantsMeetingRoster() {
 
 function openAddServantQuickModal() { currentTab = 'Servants'; openModal('add'); }
 async function populateServantsDatalist() {
-    if (namesCacheData.length === 0) { try { const [res, famRes] = await Promise.all([apiFetch(`${API_URL}?sheet=Names`), apiFetch(`${API_URL}?sheet=${encodeURIComponent("Family name")}`).catch(() => ({ status: "err" }))]); if (res.status === "success") namesCacheData = (famRes.status === "success") ? mergeFamilySheetIntoNames(res.data, famRes.data) : res.data; } catch(e) {} }
+    if (namesCacheData.length === 0) { try { const [res, famRes] = await Promise.all([apiFetch(`${API_URL}?sheet=Names`), apiFetch(`${API_URL}?sheet=${encodeURIComponent("Family name")}`).catch(() => ({ status: "err" }))]); if (res.status === "success") namesCacheData = ((famRes.status === "success") ? mergeFamilySheetIntoNames(res.data, famRes.data) : res.data).map(sanitizeRecordFields); } catch(e) {} }
     const dl = document.getElementById('servantsNamesList'); if (dl) dl.innerHTML = namesCacheData.filter(m => !isMemberDeceased(m)).map(m => `<option value="${m['الاسم ثلاثي']}">`).join('');
 }
 function onServantNameSelected(selectedName) {
@@ -1198,7 +1321,7 @@ function switchVisitationsView(view) {
 }
 
 async function initVisitationsDashboard() {
-    if (namesCacheData.length === 0) { try { const [res, famRes] = await Promise.all([apiFetch(`${API_URL}?sheet=Names`), apiFetch(`${API_URL}?sheet=${encodeURIComponent("Family name")}`).catch(() => ({ status: "err" }))]); if (res.status === "success") namesCacheData = (famRes.status === "success") ? mergeFamilySheetIntoNames(res.data, famRes.data) : res.data; } catch(e) {} }
+    if (namesCacheData.length === 0) { try { const [res, famRes] = await Promise.all([apiFetch(`${API_URL}?sheet=Names`), apiFetch(`${API_URL}?sheet=${encodeURIComponent("Family name")}`).catch(() => ({ status: "err" }))]); if (res.status === "success") namesCacheData = ((famRes.status === "success") ? mergeFamilySheetIntoNames(res.data, famRes.data) : res.data).map(sanitizeRecordFields); } catch(e) {} }
     if (visitationsData.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Visitations`); if (res.status === "success") visitationsData = res.data; } catch(e) {} }
     renderVisitationRecommendations(); renderVisitationFollowups();
 }
@@ -1309,7 +1432,13 @@ function openModal(action, data={}) {
 
     const fCont = document.getElementById('formFields'); if (!fCont) return; fCont.innerHTML = "";
     (SCHEMAS[currentTab] || []).forEach(f => {
-        const val = (f.id === "المنطقة") ? getMemberArea(data) : getFieldValNormalized(data, f.id), w = document.createElement('div');
+        let val = (f.id === "المنطقة") ? getMemberArea(data) : getFieldValNormalized(data, f.id);
+        const isPhoneField = PHONE_FIELD_KEYS.includes(f.id);
+        const isDateField = DATE_FIELD_KEYS.includes(f.id);
+        if (isPhoneField) val = normalizeEgyptianPhone(val);
+        if (isDateField) val = formatDisplayDate(val);
+
+        const w = document.createElement('div');
         w.id = `wrapper_${f.id.replace(/\s+/g, '_')}`; if (f.full) w.className = "md:col-span-2 lg:col-span-3";
         let inpH = ""; const cls = "w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs transition";
         if (f.type === "family_head_select") {
@@ -1322,6 +1451,16 @@ function openModal(action, data={}) {
         else if (f.type === "grade_select") inpH = `<select name="${f.id}" class="${cls}" ${f.required?'required':''}><option value="">اختر الصف...</option></select>`;
         else if (f.type === "select") inpH = `<select name="${f.id}" class="${cls}" ${f.required?'required':''} ${f.id === "ذكر/انثي" ? 'onchange="handleGenderChange(this.value)"' : ''}>${f.options.map(o => `<option value="${o}" ${val===o?'selected':''}>${o || "---"}</option>`).join('')}</select>`;
         else if (f.type === "textarea") inpH = `<textarea name="${f.id}" rows="2" class="${cls}">${val}</textarea>`;
+        else if (isPhoneField) {
+            const ph = f.id === "هاتف الاسرة" ? "065xxxxxxx أو 01xxxxxxxxx" : "01xxxxxxxxx";
+            inpH = `<input type="tel" dir="ltr" inputmode="tel" name="${f.id}" value="${val}" placeholder="${ph}" onblur="this.value = normalizeEgyptianPhone(this.value)" ${f.required?'required':''} class="${cls} text-left font-mono">`;
+        }
+        else if (isDateField) {
+            inpH = `<input type="text" dir="ltr" inputmode="numeric" name="${f.id}" value="${val}" placeholder="DD/MM/YYYY" onblur="this.value = formatDisplayDate(this.value)" ${f.required?'required':''} class="${cls} text-left font-mono">`;
+        }
+        else if (f.id === "الرقم القومي") {
+            inpH = `<input type="text" dir="ltr" inputmode="numeric" maxlength="14" name="${f.id}" value="${val}" placeholder="14 رقم" oninput="onNationalIdInput(this.value)" class="${cls} text-left font-mono">`;
+        }
         else inpH = `<input type="${f.type}" name="${f.id}" value="${val}" ${f.required?'required':''} class="${cls}">`;
         w.innerHTML = `<label class="block font-bold mb-1 text-slate-700 text-xs">${f.label} ${f.required?'<span class="text-rose-500">*</span>':''}</label>${inpH}`;
         fCont.appendChild(w);
@@ -1428,8 +1567,35 @@ async function handleFormSubmit(e) {
     const idKey = (rawData.length > 0) ? Object.keys(rawData[0])[0] : "ID";
     const otherRecords = rawData.filter(r => action !== "update" || String(r[idKey]) !== String(recIdVal));
 
+    // توحيد والتحقق من صحة أرقام الهواتف والتواريخ قبل الحفظ في جميع الأقسام
+    PHONE_FIELD_KEYS.forEach(pk => {
+        if (payload[pk]) payload[pk] = normalizeEgyptianPhone(payload[pk]);
+    });
+    DATE_FIELD_KEYS.forEach(dk => {
+        if (payload[dk]) payload[dk] = formatDisplayDate(payload[dk]);
+    });
+
+    if (payload["تليفون العمل/المحمول"] && !isValidEgyptianPhone(payload["تليفون العمل/المحمول"], true)) {
+        alert("⚠️ رقم المحمول / الهاتف غير صحيح!\nيجب أن يتكون رقم المحمول المصري من 11 رقماً ويبدأ بـ (010 أو 011 أو 012 أو 015)، أو رقم أرضي بكود المحافظة (مثل 065...).");
+        return;
+    }
+    if (payload["هاتف الاسرة"] && !isValidEgyptianPhone(payload["هاتف الاسرة"], true)) {
+        alert("⚠️ رقم هاتف الأسرة غير صحيح!\nيرجى إدخال 11 رقماً للمحمول (01xxxxxxxxx) أو رقم الأرضي مسبوقاً بكود المحافظة (مثل 065xxxxxxx).");
+        return;
+    }
+    for (const dk of DATE_FIELD_KEYS) {
+        if (payload[dk] && !isValidCalendarDate(payload[dk])) {
+            alert(`⚠️ صيغة التاريخ في خانة (${dk}) غير صحيحة!\nيرجى إدخال التاريخ بصيغة: يوم/شهر/سنة (مثال: 01/06/1985).`);
+            return;
+        }
+    }
+
     if (currentTab === 'Names') {
         if (!payload["اسم رب الاسرة"]) { alert("خطأ: لا يمكن حفظ العضو بدون تحديد اسم رب الأسرة!"); return; }
+        if (payload["الرقم القومي"] && !/^([23])\d{13}$/.test(payload["الرقم القومي"])) {
+            alert("⚠️ الرقم القومي غير صحيح!\nيجب أن يتكون الرقم القومي المصري من 14 رقماً بالضبط ويبدأ بـ 2 أو 3.");
+            return;
+        }
         const normFull = normalizeArabic(payload["الاسم ثلاثي"]);
         const normHead = normalizeArabic(payload["اسم رب الاسرة"]);
         const addMode = document.querySelector('input[name="addMode"]:checked')?.value || 'new_head';
@@ -1662,7 +1828,7 @@ async function loadData(force = false) {
         try {
             const res = await apiFetch(`${API_URL}?sheet=${encodeURIComponent(currentTab)}`);
             if (res.status === "success") {
-                rawData = Array.isArray(res.data) ? res.data : [];
+                rawData = Array.isArray(res.data) ? res.data.map(sanitizeRecordFields) : [];
                 backendAreas = res.areas || [];
                 if (currentTab === 'Names') {
                     try {
@@ -1796,6 +1962,26 @@ function handleGenderChange(v) {
     const rSel = document.querySelector('select[name="صلة القرابة"]'), mSel = document.querySelector('select[name="الحالة الاجتماعية"]');
     if (rSel) Array.from(rSel.options).forEach(o => o.disabled = v==="ذكر" ? ["زوجة","ابنة","والدة","أخت"].includes(o.value) : v==="انثي" ? ["زوج","ابن","والد","أخ"].includes(o.value) : false);
     if (mSel) Array.from(mSel.options).forEach(o => o.disabled = v==="ذكر" ? ["متزوجة","انسة","ارملة"].includes(o.value) : v==="انثي" ? ["متزوج","اعزب","ارمل"].includes(o.value) : false);
+}
+
+function onNationalIdInput(nidVal) {
+    const nid = String(nidVal || "").trim();
+    if (nid.length === 14 && /^([23])\d{13}$/.test(nid)) {
+        const century = nid[0] === '2' ? '19' : '20';
+        const yy = nid.substring(1, 3), mm = nid.substring(3, 5), dd = nid.substring(5, 7);
+        const derivedDob = `${dd}/${mm}/${century}${yy}`;
+        const dobInp = document.querySelector('#formFields input[name="تاريخ الميلاد"]');
+        if (dobInp && !dobInp.value && isValidCalendarDate(derivedDob)) {
+            dobInp.value = derivedDob;
+        }
+        const genderDigit = parseInt(nid[12], 10);
+        const derivedGender = (genderDigit % 2 === 1) ? "ذكر" : "انثي";
+        const gSel = document.querySelector('#formFields select[name="ذكر/انثي"]');
+        if (gSel && !gSel.value) {
+            gSel.value = derivedGender;
+            handleGenderChange(derivedGender);
+        }
+    }
 }
 
 function calculateAge(dobStr, nationalId = "") {
