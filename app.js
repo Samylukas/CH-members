@@ -11,6 +11,15 @@ let loginUsersList = [{ username: "admin", label: "الأدمن" }];
 window.addEventListener('load', () => {
     sessionStorage.removeItem('church_current_user');
     sessionStorage.removeItem('church_session_token');
+    const passInp = document.getElementById('loginPass');
+    if (passInp) {
+        passInp.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleLogin(e);
+            }
+        });
+    }
     loadServantsListForLogin();
 });
 
@@ -1837,6 +1846,17 @@ function renderStandardCards() {
 }
 
 // 12. دوال الاتصال المؤمّن بالسيرفر، سجل المراقبة، وتصدير Excel
+function handleSessionExpired() {
+    sessionStorage.clear();
+    currentUser = null;
+    sessionToken = "";
+    const login = document.getElementById('loginScreen');
+    if (login) {
+        login.classList.remove('hidden');
+        login.style.display = 'flex';
+    }
+}
+
 async function apiFetch(url) {
     const sep = url.includes('?') ? '&' : '?';
     const fullUrl = `${url}${sep}token=${encodeURIComponent(sessionToken)}&t=${Date.now()}`;
@@ -1844,9 +1864,8 @@ async function apiFetch(url) {
     if (!response.ok) throw new Error(`خطأ استجابة السيرفر: ${response.status}`);
     const res = await response.json();
     if (res.status === "unauthorized") {
-        alert("انتهت صلاحية الجلسة أو غير مصرح بالوصول، يرجى تسجيل الدخول.");
-        sessionStorage.clear();
-        location.reload();
+        alert(res.message || "انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى.");
+        handleSessionExpired();
         throw new Error("Unauthorized");
     }
     return res;
@@ -1857,9 +1876,8 @@ async function apiPost(bodyObj) {
     const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payloadWithToken) });
     const res = await response.json();
     if (res.status === "unauthorized") {
-        alert("انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى.");
-        sessionStorage.clear();
-        location.reload();
+        alert(res.message || "انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى.");
+        handleSessionExpired();
         throw new Error("Unauthorized");
     }
     return res;
@@ -2098,4 +2116,18 @@ function calculateAge(dobStr, nationalId = "") {
         const birthY = (nid[0] === '2' ? 1900 : 2000) + parseInt(nid.substring(1, 3), 10);
         if (birthY > 1900 && birthY <= currentYear) return currentYear - birthY;
     }
-    const match = String(dobStr || "").m
+    const match = String(dobStr || "").match(/\b(19\d\d|20\d\d)\b/);
+    if (match) { const birthY = parseInt(match[1], 10); if (birthY > 1900 && birthY <= currentYear) return currentYear - birthY; }
+    return null;
+}
+
+window.addEventListener('scroll', () => {
+    const topBtn = document.getElementById('scrollTopBtn'), bottomBtn = document.getElementById('scrollBottomBtn');
+    if (!topBtn || !bottomBtn) return;
+    topBtn.classList.toggle('opacity-0', window.scrollY <= 250);
+    topBtn.classList.toggle('pointer-events-none', window.scrollY <= 250);
+    const atBottom = (window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 50);
+    bottomBtn.classList.toggle('opacity-0', atBottom);
+    bottomBtn.classList.toggle('pointer-events-none', atBottom);
+});
+/* ==================== نهاية الملف ==================== */
