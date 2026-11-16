@@ -558,6 +558,66 @@ function parseDateForSort(dStr) {
     return new Date(str);
 }
 
+function getMemberBirthTimestamp(member) {
+    if (!member) return Number.MAX_SAFE_INTEGER;
+    const dobFormatted = formatDisplayDate(member["تاريخ الميلاد"]);
+    if (dobFormatted) {
+        const parts = dobFormatted.split('/');
+        if (parts.length === 3) {
+            const dt = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+            if (!isNaN(dt.getTime())) return dt.getTime();
+        }
+    }
+    const nid = String(member["الرقم القومي"] || "").trim().replace(/\D/g, '');
+    if (nid.length === 14 && (nid[0] === '2' || nid[0] === '3')) {
+        const century = nid[0] === '2' ? 1900 : 2000;
+        const yr = century + parseInt(nid.substring(1, 3), 10);
+        const mo = parseInt(nid.substring(3, 5), 10) - 1;
+        const dy = parseInt(nid.substring(5, 7), 10);
+        const dt = new Date(yr, mo, dy);
+        if (!isNaN(dt.getTime()) && yr >= 1900 && yr <= 2026) return dt.getTime();
+    }
+    return Number.MAX_SAFE_INTEGER;
+}
+
+function getFamilyMemberRolePriority(member, headName = "") {
+    const rel = normalizeArabic(member["صلة القرابة"] || "");
+    const gender = normalizeArabic(member["ذكر/انثي"] || "");
+    const fullN = normalizeArabic(member["الاسم ثلاثي"] || "");
+    const headN = normalizeArabic(headName || member["اسم رب الاسرة"] || "");
+    const isHead = headN && fullN && (fullN === headN || (fullN.split(' ').length >= 2 && headN.startsWith(fullN.split(' ').slice(0, 2).join(' '))));
+
+    // 1. الزوج (رب الأسرة)
+    if (rel === "زوج" || rel === "رب اسره" || (isHead && gender !== "انثي" && rel !== "زوجه" && rel !== "والده" && rel !== "ابنه" && rel !== "اخت")) {
+        return 1;
+    }
+    // 2. الزوجة
+    if (rel === "زوجه") {
+        return 2;
+    }
+    // 3. الأبناء والبنات حسب السن (من الأكبر للأصغر)
+    if (rel === "ابن" || rel === "ابنه" || rel === "ابن/ابنه" || rel === "") {
+        return 3;
+    }
+    // 4. باقي الأقارب (والد / والدة / أخ / أخت / أخرى)
+    return 4;
+}
+
+function sortFamilyMembers(membersList, headName = "") {
+    if (!Array.isArray(membersList)) return [];
+    return [...membersList].sort((a, b) => {
+        const pA = getFamilyMemberRolePriority(a, headName);
+        const pB = getFamilyMemberRolePriority(b, headName);
+        if (pA !== pB) return pA - pB;
+
+        const dobA = getMemberBirthTimestamp(a);
+        const dobB = getMemberBirthTimestamp(b);
+        if (dobA !== dobB) return dobA - dobB; // تاريخ الميلاد الأقدم أولاً (الأكبر سناً أولاً)
+
+        return String(a["الاسم ثلاثي"] || "").localeCompare(String(b["الاسم ثلاثي"] || ""), 'ar');
+    });
+}
+
 function getLastFamilyVisitDate(familyMembers) {
     if (!visitationsData || visitationsData.length === 0) return "لا يوجد سجل";
     const memberNames = familyMembers.map(m => m["الاسم ثلاثي"]), memberIds = familyMembers.map(m => String(m["ID"]));
@@ -606,7 +666,7 @@ function renderFamilyHeadsRoster() {
     if (filteredHeadNames.length === 0) { container.innerHTML = `<div class="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300 text-slate-400 font-bold">لم يتم العثور على أرباب أسر مطابقين</div>`; return; }
 
     filteredHeadNames.forEach((headName, index) => {
-        const familyMembers = familiesMap[headName];
+        const familyMembers = sortFamilyMembers(familiesMap[headName], headName);
         const headMemberRecord = familyMembers.find(m => m["الاسم ثلاثي"] === headName || m["صلة القرابة"] === "زوج" || m["صلة القرابة"] === "رب أسرة") || familyMembers[0];
         const headId = headMemberRecord ? (headMemberRecord["ID"] || headMemberRecord[Object.keys(headMemberRecord)[0]]) : null;
         const area = (headMemberRecord ? getMemberArea(headMemberRecord) : "") || (familyMembers.map(m => getMemberArea(m)).find(Boolean)) || "غير محددة";
@@ -743,6 +803,20 @@ function applyNamesFilter() {
         if (headQ && !String(item["اسم رب الاسرة"] || "").toLowerCase().includes(headQ)) return false;
         if (nameQ && !String(item["الاسم ثلاثي"] || "").toLowerCase().includes(nameQ)) return false;
         return true;
+    });
+
+    matchedMembers.sort((a, b) => {
+        const headA = String(a["اسم رب الاسرة"] || "").trim();
+        const headB = String(b["اسم رب الاسرة"] || "").trim();
+        const headCmp = headA.localeCompare(headB, 'ar');
+        if (headCmp !== 0) return headCmp;
+        const pA = getFamilyMemberRolePriority(a, headA);
+        const pB = getFamilyMemberRolePriority(b, headB);
+        if (pA !== pB) return pA - pB;
+        const dobA = getMemberBirthTimestamp(a);
+        const dobB = getMemberBirthTimestamp(b);
+        if (dobA !== dobB) return dobA - dobB;
+        return String(a["الاسم ثلاثي"] || "").localeCompare(String(b["الاسم ثلاثي"] || ""), 'ar');
     });
 
     const countBadge = document.getElementById('recordCount');
@@ -1927,7 +2001,7 @@ function buildAndPrintFamilies(familiesMap, reportTitle) {
     if (sortedHeads.length === 0) { alert("لا توجد أسر مطابقة للمشاركة!"); return; }
     
     sortedHeads.forEach((headName, idx) => {
-        const members = familiesMap[headName], headRec = members.find(m => m["الاسم ثلاثي"] === headName) || members[0];
+        const members = sortFamilyMembers(familiesMap[headName], headName), headRec = members.find(m => m["الاسم ثلاثي"] === headName) || members[0];
         const addressStr = [getMemberArea(headRec), getFieldValNormalized(headRec, "اسم الشارع"), getFieldValNormalized(headRec, "رقم المنزل")].filter(Boolean).join(' - ') || "غير محدد";
         const phoneStr = headRec?.["هاتف الاسرة"] || headRec?.["تليفون العمل/المحمول"] || "-";
         
