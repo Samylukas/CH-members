@@ -68,7 +68,7 @@
         <img src="logo.png" alt="Logo" class="max-w-[150px] max-h-[85px] mx-auto object-contain mb-4">
         <h2 class="text-2xl font-black text-slate-800 mb-1">بوابة الخدام</h2>
         <p class="text-xs text-slate-500 mb-6 font-bold">تسجيل الدخول لمنظومة الرعاية والخدمة</p>
-        <form id="loginForm" onsubmit="return handleLogin(event)" class="space-y-4 text-right">
+        <form id="loginForm" onsubmit="event.preventDefault(); handleLogin(event); return false;" class="space-y-4 text-right">
             <div class="relative" id="loginUserDropdownWrapper">
                 <label class="block text-xs font-bold text-slate-600 mb-1">اسم المستخدم</label>
                 <input type="hidden" id="loginUser" value="admin">
@@ -97,7 +97,7 @@
                     </button>
                 </div>
             </div>
-            <button type="submit" id="loginBtn" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-md transition duration-200 text-sm mt-2 cursor-pointer">تسجيل الدخول</button>
+            <button type="button" id="loginBtn" onclick="handleLogin(event)" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-md transition duration-200 text-sm mt-2 cursor-pointer">تسجيل الدخول</button>
             <p id="loginError" class="text-xs text-rose-600 font-bold hidden text-center"></p>
         </form>
     </div>
@@ -490,4 +490,13 @@ function togglePasswordVisibilityInline() {
 
 <div class="fixed bottom-8 left-6 flex flex-col gap-3 z-50 no-print">
     <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" id="scrollTopBtn" title="أعلى الصفحة" class="w-12 h-12 flex items-center justify-center bg-white/80 backdrop-blur-md text-indigo-600 hover:bg-indigo-600 hover:text-white border border-white/40 rounded-2xl shadow-lg transition-all duration-300 opacity-0 pointer-events-none">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><pat
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"/></svg>
+    </button>
+    <button onclick="window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})" id="scrollBottomBtn" title="أسفل الصفحة" class="w-12 h-12 flex items-center justify-center bg-white/80 backdrop-blur-md text-indigo-600 hover:bg-indigo-600 hover:text-white border border-white/40 rounded-2xl shadow-lg transition-all duration-300">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+</div>
+
+<script src="app.js?v=18"></script>
+</body>
+</html>
