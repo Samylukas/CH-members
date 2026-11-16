@@ -756,6 +756,7 @@ function expandAllFamilies(expand = true) {
 function resetNamesFilters() {
     ['filterFamilyHead', 'filterFullName', 'filterArea', 'filterAgeGroup', 'filterGender', 'filterElection', 'filterMarital'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
     const fd = document.getElementById('filterDeceased'); if (fd) fd.value = "alive";
+    const fs = document.getElementById('filterSortBy'); if (fs) fs.value = "family";
     const cont = document.getElementById('familyResultsContainer'); if (cont) cont.innerHTML = "";
     document.getElementById('namesPlaceholder')?.classList.remove('hidden');
     const countBadge = document.getElementById('recordCount'); if (countBadge) countBadge.innerText = "0 سجل";
@@ -805,18 +806,33 @@ function applyNamesFilter() {
         return true;
     });
 
+    const sortBy = document.getElementById('filterSortBy')?.value || "family";
     matchedMembers.sort((a, b) => {
-        const headA = String(a["اسم رب الاسرة"] || "").trim();
-        const headB = String(b["اسم رب الاسرة"] || "").trim();
-        const headCmp = headA.localeCompare(headB, 'ar');
-        if (headCmp !== 0) return headCmp;
-        const pA = getFamilyMemberRolePriority(a, headA);
-        const pB = getFamilyMemberRolePriority(b, headB);
-        if (pA !== pB) return pA - pB;
         const dobA = getMemberBirthTimestamp(a);
         const dobB = getMemberBirthTimestamp(b);
-        if (dobA !== dobB) return dobA - dobB;
-        return String(a["الاسم ثلاثي"] || "").localeCompare(String(b["الاسم ثلاثي"] || ""), 'ar');
+        const nameA = String(a["الاسم ثلاثي"] || "").trim();
+        const nameB = String(b["الاسم ثلاثي"] || "").trim();
+        
+        if (sortBy === "age_desc") {
+            if (dobA !== dobB) return dobA - dobB; // أصغر رقم = أقدم تاريخ = أكبر سناً
+            return nameA.localeCompare(nameB, 'ar');
+        } else if (sortBy === "age_asc") {
+            if (dobA !== dobB) return dobB - dobA; // أكبر رقم = أحدث تاريخ = أصغر سناً
+            return nameA.localeCompare(nameB, 'ar');
+        } else if (sortBy === "alpha") {
+            return nameA.localeCompare(nameB, 'ar');
+        } else {
+            // Default: "family"
+            const headA = String(a["اسم رب الاسرة"] || "").trim();
+            const headB = String(b["اسم رب الاسرة"] || "").trim();
+            const headCmp = headA.localeCompare(headB, 'ar');
+            if (headCmp !== 0) return headCmp;
+            const pA = getFamilyMemberRolePriority(a, headA);
+            const pB = getFamilyMemberRolePriority(b, headB);
+            if (pA !== pB) return pA - pB;
+            if (dobA !== dobB) return dobA - dobB;
+            return nameA.localeCompare(nameB, 'ar');
+        }
     });
 
     const countBadge = document.getElementById('recordCount');
@@ -2082,18 +2098,4 @@ function calculateAge(dobStr, nationalId = "") {
         const birthY = (nid[0] === '2' ? 1900 : 2000) + parseInt(nid.substring(1, 3), 10);
         if (birthY > 1900 && birthY <= currentYear) return currentYear - birthY;
     }
-    const match = String(dobStr || "").match(/\b(19\d\d|20\d\d)\b/);
-    if (match) { const birthY = parseInt(match[1], 10); if (birthY > 1900 && birthY <= currentYear) return currentYear - birthY; }
-    return null;
-}
-
-window.addEventListener('scroll', () => {
-    const topBtn = document.getElementById('scrollTopBtn'), bottomBtn = document.getElementById('scrollBottomBtn');
-    if (!topBtn || !bottomBtn) return;
-    topBtn.classList.toggle('opacity-0', window.scrollY <= 250);
-    topBtn.classList.toggle('pointer-events-none', window.scrollY <= 250);
-    const atBottom = (window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 50);
-    bottomBtn.classList.toggle('opacity-0', atBottom);
-    bottomBtn.classList.toggle('pointer-events-none', atBottom);
-});
-/* ==================== نهاية الملف ==================== */
+    const match = String(dobStr || "").m
