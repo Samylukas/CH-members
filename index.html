@@ -174,10 +174,11 @@ function togglePasswordVisibilityInline() {
                 <button id="btnViewFilters" onclick="switchNamesView('filters')" class="px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900">🔍 البحث والفرز المتقدم</button>
             </div>
 
-            <div id="ssViewSwitcher" class="flex items-center gap-2 bg-slate-200/80 p-1 rounded-xl hidden">
-                <button id="btnSSLiveRoster" onclick="switchSSView('live')" class="px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm">📋 كشف رصد حضور اليوم</button>
-                <button id="btnSSHistory" onclick="switchSSView('history')" class="px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900">🗃️ كشف الحصص السابقة</button>
-                <button id="btnSSCharts" onclick="switchSSView('charts')" class="px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900">📊 الإحصائيات والرسوم البيانية</button>
+            <div id="ssViewSwitcher" class="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-xl hidden flex-wrap">
+                <button id="btnSSLiveRoster" onclick="switchSSView('live')" class="px-3.5 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm">📋 كشف رصد حضور اليوم</button>
+                <button id="btnSSReport" onclick="switchSSView('report')" class="px-3.5 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900">📑 تقرير الحضور المجمع (بفترة)</button>
+                <button id="btnSSHistory" onclick="switchSSView('history')" class="px-3.5 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900">🗃️ كشف الحصص السابقة</button>
+                <button id="btnSSCharts" onclick="switchSSView('charts')" class="px-3.5 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900">📊 الإحصائيات والرسوم البيانية</button>
             </div>
 
             <div id="meetingsViewSwitcher" class="flex items-center gap-2 bg-slate-200/80 p-1 rounded-xl hidden">
@@ -246,8 +247,6 @@ function togglePasswordVisibilityInline() {
                                 <th class="p-3 text-center">آخر افتقاد</th>
                                 <th class="p-3">التواصل والمحمول</th>
                                 <th class="p-3 text-center">حضور اليوم</th>
-                                <th class="p-3 text-center">التسميع</th>
-                                <th class="p-3 text-center w-20">النقاط</th>
                                 <th class="p-3">ملاحظات الافتقاد</th>
                             </tr>
                         </thead>
@@ -303,6 +302,85 @@ function togglePasswordVisibilityInline() {
                         </table>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- 2.5 قسم مدارس الأحد: تقرير الحضور المجمع حسب الفترة الزمنية -->
+        <div id="sundaySchoolReportSection" class="hidden space-y-5 no-print">
+            <div class="bg-white/95 p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-2 border-b border-slate-100">
+                    <h3 class="text-sm font-black text-indigo-900 flex items-center gap-1.5"><span>📑</span> تقرير الحضور المجمع للمخدومين خلال فترة محددة</h3>
+                    <span id="ssReportScopeBadge" class="text-[11px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1 rounded-xl"></span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">المرحلة الدراسية</label>
+                        <select id="ssReportStage" onchange="onSSReportStageChange(this.value)" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">الصف الدراسي</label>
+                        <select id="ssReportGrade" onchange="generateSSPeriodReport()" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">تخصيص الكشف</label>
+                        <select id="ssReportGender" onchange="generateSSPeriodReport()" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">مجمّع (بنين وبنات)</option>
+                            <option value="ذكر">بنين فقط</option>
+                            <option value="انثي">بنات فقط</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">من تاريخ (DD/MM/YYYY)</label>
+                        <input type="text" id="ssReportFromDate" dir="ltr" placeholder="01/11/2026" onblur="this.value = formatDisplayDate(this.value)" class="w-full p-2.5 bg-indigo-50/40 border border-indigo-300 rounded-xl text-xs font-black text-indigo-950 outline-none text-center font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">إلى تاريخ (DD/MM/YYYY)</label>
+                        <input type="text" id="ssReportToDate" dir="ltr" placeholder="17/11/2026" onblur="this.value = formatDisplayDate(this.value)" class="w-full p-2.5 bg-indigo-50/40 border border-indigo-300 rounded-xl text-xs font-black text-indigo-950 outline-none text-center font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">ترتيب النتائج</label>
+                        <select id="ssReportSort" onchange="generateSSPeriodReport()" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="alpha">أبجدياً (الاسم ثلاثي)</option>
+                            <option value="present_desc">الأكثر حضوراً أولاً (تنازلي)</option>
+                            <option value="present_asc">الأقل حضوراً أولاً (للافتقاد)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t border-slate-100 flex flex-wrap justify-between items-center gap-3">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button type="button" onclick="generateSSPeriodReport()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl font-black text-xs shadow-md transition flex items-center gap-1.5">🔍 عرض التقرير المجمع</button>
+                        <button type="button" onclick="setSSReportQuickRange('month')" class="text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl transition">هذا الشهر</button>
+                        <button type="button" onclick="setSSReportQuickRange('3months')" class="text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl transition">آخر 3 شهور</button>
+                        <button type="button" onclick="setSSReportQuickRange('all')" class="text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl transition">كل السجلات</button>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button type="button" onclick="shareSSPeriodReportWhatsApp()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm transition flex items-center gap-1.5">💬 إرسال التقرير واتساب</button>
+                        <button type="button" onclick="exportSSPeriodReportExcel()" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm transition flex items-center gap-1.5">📥 تصدير التقرير Excel</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="ssReportKpiCards" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
+
+            <div class="bg-white/95 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto nice-scrollbar">
+                    <table class="w-full text-right text-xs">
+                        <thead class="bg-slate-100 text-slate-700 font-black border-b border-slate-200">
+                            <tr>
+                                <th class="p-3 w-10 text-center">م</th>
+                                <th class="p-3">اسم المخدوم والصف</th>
+                                <th class="p-3">المحمول والتواصل</th>
+                                <th class="p-3 text-center text-emerald-700">مرات الحضور</th>
+                                <th class="p-3 text-center text-rose-700">مرات الغياب</th>
+                                <th class="p-3 text-center">إجمالي الحصص</th>
+                                <th class="p-3 text-center">نسبة الحضور</th>
+                                <th class="p-3">تواريخ الحضور في الفترة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ssReportTableBody" class="divide-y divide-slate-100 font-semibold"></tbody>
+                    </table>
+                </div>
+                <div id="ssReportEmpty" class="hidden text-center py-16 text-slate-400 font-bold">لا توجد بيانات مطابقة للفترة والنطاق المحدد</div>
             </div>
         </div>
 
@@ -501,6 +579,6 @@ function togglePasswordVisibilityInline() {
     </button>
 </div>
 
-<script src="app.js?v=20"></script>
+<script src="app.js?v=21"></script>
 </body>
 </html>
