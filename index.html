@@ -453,6 +453,7 @@ function togglePasswordVisibilityInline() {
         <div class="space-y-4">
             <div><label class="block text-xs font-bold text-slate-600 mb-1">المرحلة الدراسية</label><select id="ssPrintStage" onchange="updatePrintGradesDropdown(this.value)" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-bold outline-none"></select></div>
             <div><label class="block text-xs font-bold text-slate-600 mb-1">الصف الدراسي</label><select id="ssPrintGrade" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-bold outline-none"></select></div>
+            <div><label class="block text-xs font-bold text-slate-600 mb-1">تخصيص الكشف (اختياري)</label><select id="ssPrintGender" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-bold outline-none"><option value="">كشف مختلط (الكل)</option><option value="ذكر">كشف بنين فقط</option><option value="انثي">كشف بنات فقط</option></select></div>
             <div><label class="block text-xs font-bold text-slate-600 mb-1">اسم الفصل (اختياري)</label><input type="text" id="ssPrintClass" placeholder="اكتب اسم الفصل أو اتركه للكل..." class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-bold outline-none"></div>
         </div>
         <div class="pt-5 mt-4 border-t flex justify-end gap-2">
@@ -497,6 +498,6 @@ function togglePasswordVisibilityInline() {
     </button>
 </div>
 
-<script src="app.js?v=18"></script>
+<script src="app.js?v=19"></script>
 </body>
 </html>
