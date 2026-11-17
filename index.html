@@ -215,8 +215,12 @@ function togglePasswordVisibilityInline() {
                         <select id="ssFilterGrade" onchange="onSSFilterGradeChange()" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"></select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-1">اسم الفصل</label>
-                        <select id="ssFilterClass" onchange="loadSSLiveClassKids()" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"></select>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">تخصيص الكشف</label>
+                        <select id="ssFilterGender" onchange="loadSSLiveClassKids()" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">مجمّع (بنين وبنات)</option>
+                            <option value="ذكر">بنين فقط</option>
+                            <option value="انثي">بنات فقط</option>
+                        </select>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-600 mb-1">تاريخ درس اليوم (DD/MM/YYYY)</label>
@@ -453,8 +457,7 @@ function togglePasswordVisibilityInline() {
         <div class="space-y-4">
             <div><label class="block text-xs font-bold text-slate-600 mb-1">المرحلة الدراسية</label><select id="ssPrintStage" onchange="updatePrintGradesDropdown(this.value)" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-bold outline-none"></select></div>
             <div><label class="block text-xs font-bold text-slate-600 mb-1">الصف الدراسي</label><select id="ssPrintGrade" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-bold outline-none"></select></div>
-            <div><label class="block text-xs font-bold text-slate-600 mb-1">تخصيص الكشف (اختياري)</label><select id="ssPrintGender" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-bold outline-none"><option value="">كشف مختلط (الكل)</option><option value="ذكر">كشف بنين فقط</option><option value="انثي">كشف بنات فقط</option></select></div>
-            <div><label class="block text-xs font-bold text-slate-600 mb-1">اسم الفصل (اختياري)</label><input type="text" id="ssPrintClass" placeholder="اكتب اسم الفصل أو اتركه للكل..." class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-bold outline-none"></div>
+            <div><label class="block text-xs font-bold text-slate-600 mb-1">تخصيص الكشف للطباعة</label><select id="ssPrintGender" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-bold outline-none"><option value="">مجمّع (بنين وبنات)</option><option value="ذكر">بنين فقط</option><option value="انثي">بنات فقط</option></select></div>
         </div>
         <div class="pt-5 mt-4 border-t flex justify-end gap-2">
             <button onclick="closeSundaySchoolPrintModal()" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">إلغاء</button>
@@ -498,6 +501,6 @@ function togglePasswordVisibilityInline() {
     </button>
 </div>
 
-<script src="app.js?v=19"></script>
+<script src="app.js?v=20"></script>
 </body>
 </html>
