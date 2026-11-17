@@ -4,7 +4,7 @@
 const API_URL = "https://script.google.com/macros/s/AKfycbxUSj07z5nkCv88hrgob88-bB21SLs2OmK9-BbSSUu_4m2eirI8cBHCl-5xUv0cyTSZ6Q/exec";
 let currentUser = null, sessionToken = "", currentTab = "", rawData = [], backendAreas = [], namesCacheData = [], servantsCacheData = [], visitationsData = [];
 let currentNamesView = "roster", currentSSView = "live", currentMeetingsView = "live", currentVisitView = "dashboard";
-let selectedLetter = "الكل", currentSSLiveKids = [], currentServantsMeetingList = [], ssChartInstances = {}, selectedChartStage = "الكل";
+let selectedLetter = "الكل", currentSSLiveKids = [], currentSSReportRows = [], currentServantsMeetingList = [], ssChartInstances = {}, selectedChartStage = "الكل";
 let loginUsersList = [{ username: "admin", label: "الأدمن" }];
 
 // استرجاع الجلسة المحفوظة عند تحديث الصفحة وتحميل قائمة الخدام
@@ -214,7 +214,6 @@ const SCHEMAS = {
         { id: "ClassName", label: "اسم الفصل", type: "text", required: true }, { id: "SessionDate", label: "تاريخ الدرس (DD/MM/YYYY)", type: "text", required: true },
         { id: "ChildID", label: "كود المخدوم (ID)", type: "number" }, { id: "ChildName", label: "اسم الطفل", type: "text", required: true },
         { id: "ServantName", label: "اسم الخادم", type: "text" }, { id: "Attendance", label: "الحضور", type: "select", options: ["حاضر", "غائب"] },
-        { id: "Memorization", label: "الحفظ", type: "select", options: ["ممتاز", "جيد", "مقبول", "لم يحفظ"] }, { id: "Points", label: "النقاط", type: "number" },
         { id: "Notes", label: "ملاحظات", type: "textarea", full: true }
     ],
     "Meetings_Attendance": [
@@ -403,7 +402,7 @@ function loadSection(sectionKey) {
     if (info) document.getElementById('currentTabTitle').innerHTML = `${info.label}`;
 
     ['namesViewSwitcher', 'ssViewSwitcher', 'meetingsViewSwitcher', 'visitationsViewSwitcher'].forEach(id => { const el = document.getElementById(id); el?.classList.add('hidden'); el?.classList.remove('flex'); });
-    ['sundaySchoolLiveSection', 'sundaySchoolChartsSection', 'servantsMeetingLiveSection', 'visitationDashboardSection', 'namesRosterSection', 'namesFilterSection', 'namesPlaceholder', 'familyResultsContainer', 'standardSearchContainer', 'standardCardsContainer'].forEach(id => {
+    ['sundaySchoolLiveSection', 'sundaySchoolReportSection', 'sundaySchoolChartsSection', 'servantsMeetingLiveSection', 'visitationDashboardSection', 'namesRosterSection', 'namesFilterSection', 'namesPlaceholder', 'familyResultsContainer', 'standardSearchContainer', 'standardCardsContainer'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.classList.add('hidden'); if (id === 'sundaySchoolChartsSection') el.style.display = 'none'; }
     });
@@ -969,19 +968,20 @@ function ensureChartJsLoaded() {
 
 function switchSSView(view) {
     currentSSView = view;
-    const btnLive = document.getElementById('btnSSLiveRoster'), btnHist = document.getElementById('btnSSHistory'), btnCharts = document.getElementById('btnSSCharts');
-    const liveSec = document.getElementById('sundaySchoolLiveSection'), cardsSec = document.getElementById('standardCardsContainer');
+    const btnLive = document.getElementById('btnSSLiveRoster'), btnRep = document.getElementById('btnSSReport'), btnHist = document.getElementById('btnSSHistory'), btnCharts = document.getElementById('btnSSCharts');
+    const liveSec = document.getElementById('sundaySchoolLiveSection'), repSec = document.getElementById('sundaySchoolReportSection'), cardsSec = document.getElementById('standardCardsContainer');
     const searchSec = document.getElementById('standardSearchContainer'), chartsSec = ensureChartsSectionExists();
     const btnAdd = document.getElementById('btnAddNewRecord');
 
-    [btnLive, btnHist, btnCharts].forEach(btn => { if (btn) btn.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900"; });
-    liveSec?.classList.add('hidden'); cardsSec?.classList.add('hidden'); searchSec?.classList.add('hidden');
+    [btnLive, btnRep, btnHist, btnCharts].forEach(btn => { if (btn) btn.className = "px-3.5 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900"; });
+    liveSec?.classList.add('hidden'); repSec?.classList.add('hidden'); cardsSec?.classList.add('hidden'); searchSec?.classList.add('hidden');
     if (chartsSec) { chartsSec.classList.add('hidden'); chartsSec.style.display = 'none'; }
     btnAdd?.classList.add('hidden');
 
-    if (view === 'live') { if (btnLive) btnLive.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm"; liveSec?.classList.remove('hidden'); initSundaySchoolLiveView(); }
-    else if (view === 'history') { if (btnHist) btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm"; cardsSec?.classList.remove('hidden'); searchSec?.classList.remove('hidden'); btnAdd?.classList.remove('hidden'); renderStandardCards(); }
-    else if (view === 'charts') { if (btnCharts) btnCharts.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm"; if (chartsSec) { chartsSec.classList.remove('hidden'); chartsSec.style.display = 'block'; } initSSChartsView(); }
+    if (view === 'live') { if (btnLive) btnLive.className = "px-3.5 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm"; liveSec?.classList.remove('hidden'); initSundaySchoolLiveView(); }
+    else if (view === 'report') { if (btnRep) btnRep.className = "px-3.5 py-2 rounded-lg text-xs font-black transition bg-white text-indigo-700 shadow-sm"; repSec?.classList.remove('hidden'); initSSReportView(); }
+    else if (view === 'history') { if (btnHist) btnHist.className = "px-3.5 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm"; cardsSec?.classList.remove('hidden'); searchSec?.classList.remove('hidden'); btnAdd?.classList.remove('hidden'); renderStandardCards(); }
+    else if (view === 'charts') { if (btnCharts) btnCharts.className = "px-3.5 py-2 rounded-lg text-xs font-black transition bg-white text-blue-700 shadow-sm"; if (chartsSec) { chartsSec.classList.remove('hidden'); chartsSec.style.display = 'block'; } initSSChartsView(); }
 }
 
 async function initSundaySchoolLiveView() {
@@ -1045,7 +1045,7 @@ async function loadSSLiveClassKids() {
         return {
             id: kId, name: kName, familyHead: fHead, phone: phone, stage: kid["المرحلة"] || stage, grade: kid["الصف"] || grade || "-", className: (genderFilter === "ذكر" ? "بنين" : (genderFilter === "انثي" ? "بنات" : "مجمّع")),
             lastAttendance: getLastKidAttendanceInfo(kName, kId), lastVisit: getLastKidVisitInfo(kName, kId, fHead),
-            attendance: "حاضر", memorization: "ممتاز", points: 10, notes: ""
+            attendance: "حاضر", notes: ""
         };
     });
     renderSSLiveKidsTable();
@@ -1056,7 +1056,7 @@ function renderSSLiveKidsTable() {
     if (!tbody) return;
     const thead = tbody.closest('table')?.querySelector('thead');
     if (thead) {
-        thead.innerHTML = `<tr><th class="p-3 w-10 text-center">م</th><th class="p-3">اسم المخدوم والصف</th><th class="p-3 text-center">آخر حضور</th><th class="p-3 text-center">آخر افتقاد</th><th class="p-3">التواصل والمحمول</th><th class="p-3 text-center">حضور اليوم</th><th class="p-3 text-center">التسميع</th><th class="p-3 text-center w-20">النقاط</th><th class="p-3">ملاحظات الافتقاد</th></tr>`;
+        thead.innerHTML = `<tr><th class="p-3 w-10 text-center">م</th><th class="p-3">اسم المخدوم والصف</th><th class="p-3 text-center">آخر حضور</th><th class="p-3 text-center">آخر افتقاد</th><th class="p-3">التواصل والمحمول</th><th class="p-3 text-center">حضور اليوم</th><th class="p-3">ملاحظات الافتقاد</th></tr>`;
     }
     tbody.innerHTML = "";
     const recCount = document.getElementById('recordCount');
@@ -1076,16 +1076,14 @@ function renderSSLiveKidsTable() {
             <td class="p-3 text-center whitespace-nowrap">${visitBadge}</td>
             <td class="p-3"><div class="flex flex-col gap-1"><span class="font-mono text-xs font-bold text-slate-700" dir="ltr">${kid.phone}</span><div class="flex items-center gap-1.5 flex-wrap">${renderContactButtons(kid.phone)}</div></div></td>
             <td class="p-3 text-center"><button type="button" onclick="toggleSSKidAttendance(${idx})" class="px-3 py-1.5 rounded-xl font-black text-xs transition shadow-sm ${kid.attendance === 'حاضر' ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'bg-rose-500 hover:bg-rose-600 text-white'}">${kid.attendance}</button></td>
-            <td class="p-3 text-center"><select onchange="currentSSLiveKids[${idx}].memorization = this.value" class="p-1.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none"><option value="ممتاز" ${kid.memorization === 'ممتاز' ? 'selected' : ''}>ممتاز</option><option value="جيد" ${kid.memorization === 'جيد' ? 'selected' : ''}>جيد</option><option value="مقبول" ${kid.memorization === 'مقبول' ? 'selected' : ''}>مقبول</option><option value="لم يحفظ" ${kid.memorization === 'لم يحفظ' ? 'selected' : ''}>لم يحفظ</option></select></td>
-            <td class="p-3 text-center"><input type="number" value="${kid.points}" onchange="currentSSLiveKids[${idx}].points = Number(this.value)" class="w-16 p-1.5 bg-slate-50 border border-slate-200 rounded-xl text-center font-black text-xs outline-none"></td>
             <td class="p-3"><input type="text" placeholder="ملاحظة..." value="${kid.notes}" oninput="currentSSLiveKids[${idx}].notes = this.value" class="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none"></td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-function toggleSSKidAttendance(index) { const kid = currentSSLiveKids[index]; if (!kid) return; kid.attendance = (kid.attendance === "حاضر") ? "غائب" : "حاضر"; kid.points = (kid.attendance === "حاضر") ? 10 : 0; renderSSLiveKidsTable(); }
-function markAllSSKids(status) { currentSSLiveKids.forEach(kid => { kid.attendance = status; kid.points = (status === "حاضر") ? 10 : 0; }); renderSSLiveKidsTable(); }
+function toggleSSKidAttendance(index) { const kid = currentSSLiveKids[index]; if (!kid) return; kid.attendance = (kid.attendance === "حاضر") ? "غائب" : "حاضر"; renderSSLiveKidsTable(); }
+function markAllSSKids(status) { currentSSLiveKids.forEach(kid => { kid.attendance = status; }); renderSSLiveKidsTable(); }
 
 async function saveSundaySchoolBatchAttendance() {
     if (currentSSLiveKids.length === 0) { alert("لا يوجد مخدومين في الكشف لحفظهم!"); return; }
@@ -1107,21 +1105,401 @@ async function saveSundaySchoolBatchAttendance() {
     if (alreadyRecorded) {
         if (!confirm(`⚠️ تنبيه: تم رصد حضور هذا الفصل (${stageVal} ${gradeVal} ${classNameVal}) بتاريخ ${sessionDate} مسبقاً!\nهل أنت متأكد من أنك تريد تسجيله مرة أخرى؟`)) return;
     } else {
-        if (!confirm(`هل أنت متأكد من حفظ سجل حضور وتسميع (${currentSSLiveKids.length}) مخدوم لتاريخ: ${sessionDate}؟`)) return;
+        if (!confirm(`هل أنت متأكد من حفظ سجل حضور (${currentSSLiveKids.length}) مخدوم لتاريخ: ${sessionDate}؟`)) return;
     }
 
     const btn = document.getElementById('btnSaveSSBatch');
     if (btn) { btn.disabled = true; btn.innerHTML = `جاري الحفظ بالسجلات...`; }
-    const payload = currentSSLiveKids.map(kid => ({ "Stage": kid.stage, "Grade": kid.grade, "ClassName": kid.className, "SessionDate": sessionDate, "ChildID": kid.id, "ChildName": kid.name, "ServantName": currentUser ? currentUser.ServantName : "خادم الفصل", "Attendance": kid.attendance, "Memorization": kid.memorization, "Points": kid.points, "Notes": kid.notes }));
+    const payload = currentSSLiveKids.map(kid => ({ "Stage": kid.stage, "Grade": kid.grade, "ClassName": kid.className, "SessionDate": sessionDate, "ChildID": kid.id, "ChildName": kid.name, "ServantName": currentUser ? currentUser.ServantName : "خادم الفصل", "Attendance": kid.attendance, "Notes": kid.notes }));
     try {
         const data = await apiPost({ sheet: "Sunday_School", action: "batch_add", data: payload });
         if (data.status === "success") {
-            sendAuditLog("رصد حضور مدارس الأحد", "Sunday_School", `تم حفظ كشف (${payload.length}) مخدوم - ${stageVal} ${classVal} بتاريخ ${sessionDate}`);
+            sendAuditLog("رصد حضور مدارس الأحد", "Sunday_School", `تم حفظ كشف (${payload.length}) مخدوم - ${stageVal} ${gradeVal} ${classNameVal} بتاريخ ${sessionDate}`);
             alert("✓ " + data.message);
             loadData();
         } else alert("خطأ أثناء الحفظ: " + data.message);
-    } catch(err) { alert("تعذر الاتصال بالخادم لحفظ الحضور."); }
-    finally { if (btn) { btn.disabled = false; btn.innerHTML = `💾 حفظ حضور وتقييم الفصل كاملاً`; } }
+    } catch(err) { alert("تعذر الاتصال بالخادم لحفظ الحضور: " + (err.message || "")); }
+    finally { if (btn) { btn.disabled = false; btn.innerHTML = `💾 حفظ حضور الفصل كاملاً`; } }
+}
+
+// ==================== تقرير الحضور المجمع خلال فترة زمنية (من - إلى) ====================
+function parseDateToTimestamp(dStr) {
+    const formatted = formatDisplayDate(dStr);
+    if (!formatted) return null;
+    const m = formatted.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!m) return null;
+    const dt = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+    return isNaN(dt.getTime()) ? null : dt.getTime();
+}
+
+function setSSReportQuickRange(preset) {
+    const fromInp = document.getElementById('ssReportFromDate');
+    const toInp = document.getElementById('ssReportToDate');
+    if (!fromInp || !toInp) return;
+    const now = new Date();
+    const todayStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+    if (preset === 'month') {
+        fromInp.value = `01/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+        toInp.value = todayStr;
+    } else if (preset === '3months') {
+        const past = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+        fromInp.value = `${String(past.getDate()).padStart(2, '0')}/${String(past.getMonth() + 1).padStart(2, '0')}/${past.getFullYear()}`;
+        toInp.value = todayStr;
+    } else if (preset === 'all') {
+        fromInp.value = "";
+        toInp.value = "";
+    }
+    generateSSPeriodReport();
+}
+
+async function initSSReportView() {
+    const fromInp = document.getElementById('ssReportFromDate');
+    const toInp = document.getElementById('ssReportToDate');
+    const now = new Date();
+    if (fromInp && !fromInp.value) {
+        fromInp.value = `01/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+    }
+    if (toInp && !toInp.value) {
+        toInp.value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+    }
+
+    if (namesCacheData.length === 0) {
+        try {
+            const [res, famRes] = await Promise.all([
+                apiFetch(`${API_URL}?sheet=Names`),
+                apiFetch(`${API_URL}?sheet=${encodeURIComponent("Family name")}`).catch(() => ({ status: "err" }))
+            ]);
+            if (res.status === "success") {
+                namesCacheData = ((famRes.status === "success") ? mergeFamilySheetIntoNames(res.data, famRes.data) : res.data).map(sanitizeRecordFields);
+            }
+        } catch (e) {}
+    }
+
+    const stageSel = document.getElementById('ssReportStage');
+    const badgeEl = document.getElementById('ssReportScopeBadge');
+    if (stageSel) {
+        const hasFullAccess = currentUser.Role === "Admin" || currentUser.Role === "SundaySchool_Admin" || !currentUser.AssignedStage || currentUser.AssignedStage === "الكل";
+        if (hasFullAccess) {
+            stageSel.innerHTML = `<option value="">كل المراحل</option>` + Object.keys(STAGE_GRADES).map(s => `<option value="${s}">${s}</option>`).join('');
+            stageSel.disabled = false;
+            if (badgeEl) badgeEl.innerText = "نطاق الصلاحية: الخدمة بالكامل";
+        } else {
+            stageSel.innerHTML = `<option value="${currentUser.AssignedStage}">${currentUser.AssignedStage}</option>`;
+            stageSel.value = currentUser.AssignedStage;
+            stageSel.disabled = true;
+            if (badgeEl) badgeEl.innerText = `نطاق الصلاحية: ${currentUser.AssignedStage}`;
+        }
+        onSSReportStageChange(stageSel.value);
+    }
+}
+
+function onSSReportStageChange(stage) {
+    const grdSel = document.getElementById('ssReportGrade');
+    if (grdSel) {
+        if (!stage) {
+            grdSel.innerHTML = `<option value="">كل الصفوف</option>`;
+            grdSel.disabled = true;
+        } else {
+            grdSel.innerHTML = `<option value="">كل الصفوف</option>` + (STAGE_GRADES[stage] || []).map(g => `<option value="${g}">${g}</option>`).join('');
+            if (currentUser.Role === "Class_Servant" && currentUser.AssignedGrade && currentUser.AssignedGrade !== "الكل") {
+                grdSel.value = currentUser.AssignedGrade;
+                grdSel.disabled = true;
+            } else {
+                grdSel.disabled = false;
+            }
+        }
+    }
+    generateSSPeriodReport();
+}
+
+function generateSSPeriodReport() {
+    const stage = document.getElementById('ssReportStage')?.value || "";
+    const grade = document.getElementById('ssReportGrade')?.value || "";
+    const genderFilter = document.getElementById('ssReportGender')?.value || "";
+    const fromRaw = (document.getElementById('ssReportFromDate')?.value || "").trim();
+    const toRaw = (document.getElementById('ssReportToDate')?.value || "").trim();
+    const sortBy = document.getElementById('ssReportSort')?.value || "alpha";
+
+    const fromFormatted = formatDisplayDate(fromRaw);
+    const toFormatted = formatDisplayDate(toRaw);
+    if (fromRaw && !isValidCalendarDate(fromFormatted)) {
+        alert("⚠️ صيغة (من تاريخ) غير صحيحة! يرجى إدخالها بصيغة DD/MM/YYYY مثل 01/11/2026.");
+        return;
+    }
+    if (toRaw && !isValidCalendarDate(toFormatted)) {
+        alert("⚠️ صيغة (إلى تاريخ) غير صحيحة! يرجى إدخالها بصيغة DD/MM/YYYY مثل 17/11/2026.");
+        return;
+    }
+
+    const fromTs = fromFormatted ? parseDateToTimestamp(fromFormatted) : null;
+    const toTs = toFormatted ? parseDateToTimestamp(toFormatted) : null;
+
+    // 1. تصفية سجلات الحضور ضمن النطاق والفترة الزمنية
+    const filteredLogs = rawData.filter(rec => {
+        const stg = normalizeArabic(rec["Stage"]);
+        const grd = normalizeArabic(rec["Grade"]);
+        if (currentUser.Role === "Stage_Leader" && currentUser.AssignedStage !== "الكل" && stg !== normalizeArabic(currentUser.AssignedStage)) return false;
+        if (currentUser.Role === "Class_Servant") {
+            if (currentUser.AssignedStage !== "الكل" && stg !== normalizeArabic(currentUser.AssignedStage)) return false;
+            if (currentUser.AssignedGrade && currentUser.AssignedGrade !== "الكل" && grd !== normalizeArabic(currentUser.AssignedGrade)) return false;
+        }
+        if (stage && stg !== normalizeArabic(stage)) return false;
+        if (grade && grd !== normalizeArabic(grade)) return false;
+
+        const recTs = parseDateToTimestamp(rec["SessionDate"]);
+        if (fromTs !== null && (recTs === null || recTs < fromTs)) return false;
+        if (toTs !== null && (recTs === null || recTs > toTs)) return false;
+        return true;
+    });
+
+    // 2. تجهيز قائمة الطلاب المسجلين في هذا النطاق من شيت الأعضاء
+    const registeredKids = namesCacheData.filter(kid => {
+        if (isMemberDeceased(kid) || kid["مدارس الأحد"] === "غير مشترك") return false;
+        const stg = normalizeArabic(kid["المرحلة"]);
+        const grd = normalizeArabic(kid["الصف"]);
+        if (currentUser.Role === "Stage_Leader" && currentUser.AssignedStage !== "الكل" && stg !== normalizeArabic(currentUser.AssignedStage)) return false;
+        if (currentUser.Role === "Class_Servant") {
+            if (currentUser.AssignedStage !== "الكل" && stg !== normalizeArabic(currentUser.AssignedStage)) return false;
+            if (currentUser.AssignedGrade && currentUser.AssignedGrade !== "الكل" && grd !== normalizeArabic(currentUser.AssignedGrade)) return false;
+        }
+        if (stage) {
+            if (stg !== normalizeArabic(stage)) return false;
+        } else {
+            // إذا اختار "كل المراحل"، نعرض المشتركين في مدارس الأحد أو من لديهم مرحلة دراسية
+            if (kid["مدارس الأحد"] !== "مشترك" && !stg) return false;
+        }
+        if (grade && grd !== normalizeArabic(grade)) return false;
+        if (genderFilter && normalizeGender(kid["ذكر/انثي"]) !== genderFilter) return false;
+        return true;
+    });
+
+    // بناء خريطة الطلاب لتجميع الحضور بدقة بدون تكرار لنفس اليوم
+    const studentMap = new Map();
+    const idToKey = new Map();
+    const nameToKey = new Map();
+
+    registeredKids.forEach(kid => {
+        const kId = String(kid["ID"] || "").trim();
+        const kName = String(kid["الاسم ثلاثي"] || "").trim();
+        const normN = normalizeArabic(kName);
+        const key = kId ? `id_${kId}` : `name_${normN}`;
+        if (!studentMap.has(key)) {
+            studentMap.set(key, {
+                id: kId,
+                name: kName,
+                stage: kid["المرحلة"] || stage || "-",
+                grade: kid["الصف"] || grade || "-",
+                gender: normalizeGender(kid["ذكر/انثي"]),
+                phone: kid["تليفون العمل/المحمول"] || kid["هاتف الاسرة"] || "-",
+                presentDates: new Set(),
+                absentDates: new Set()
+            });
+            if (kId) idToKey.set(kId, key);
+            if (normN) nameToKey.set(normN, key);
+        }
+    });
+
+    // حساب تواريخ الحصص المنعقدة في الفترة
+    const distinctSessionDates = new Set();
+
+    filteredLogs.forEach(rec => {
+        const cId = String(rec["ChildID"] || "").trim();
+        const cName = String(rec["ChildName"] || "").trim();
+        const normN = normalizeArabic(cName);
+        let key = (cId && idToKey.has(cId)) ? idToKey.get(cId) : (nameToKey.has(normN) ? nameToKey.get(normN) : null);
+
+        // إذا كان السجل لطالب غير موجود في القائمة المفلترة (مثلاً بسبب اختلاف النوع)، نتحقق من فلتر النوع أولاً
+        if (!key) {
+            const memberRec = namesCacheData.find(m => (cId && String(m["ID"]).trim() === cId) || normalizeArabic(m["الاسم ثلاثي"]) === normN);
+            const recGender = memberRec ? normalizeGender(memberRec["ذكر/انثي"]) : (normalizeArabic(rec["ClassName"]) === "بنين" ? "ذكر" : (normalizeArabic(rec["ClassName"]) === "بنات" ? "انثي" : ""));
+            if (genderFilter && recGender && recGender !== genderFilter) return;
+
+            key = cId ? `id_${cId}` : `name_${normN}`;
+            if (!studentMap.has(key)) {
+                studentMap.set(key, {
+                    id: cId,
+                    name: cName || "غير مسمى",
+                    stage: rec["Stage"] || stage || "-",
+                    grade: rec["Grade"] || grade || "-",
+                    gender: recGender,
+                    phone: memberRec ? (memberRec["تليفون العمل/المحمول"] || memberRec["هاتف الاسرة"] || "-") : "-",
+                    presentDates: new Set(),
+                    absentDates: new Set()
+                });
+                if (cId) idToKey.set(cId, key);
+                if (normN) nameToKey.set(normN, key);
+            }
+        }
+
+        const sDate = formatDisplayDate(rec["SessionDate"]) || String(rec["SessionDate"] || "").trim();
+        if (!sDate) return;
+        distinctSessionDates.add(sDate);
+
+        const stObj = studentMap.get(key);
+        const isPresent = String(rec["Attendance"] || "").trim() === "حاضر";
+        if (isPresent) {
+            stObj.presentDates.add(sDate);
+            stObj.absentDates.delete(sDate);
+        } else if (!stObj.presentDates.has(sDate)) {
+            stObj.absentDates.add(sDate);
+        }
+    });
+
+    const totalPeriodSessions = distinctSessionDates.size;
+
+    currentSSReportRows = Array.from(studentMap.values()).map(st => {
+        const presentCount = st.presentDates.size;
+        const absentCount = st.absentDates.size;
+        const denom = Math.max(totalPeriodSessions, presentCount + absentCount);
+        const pct = denom > 0 ? Math.round((presentCount / denom) * 100) : 0;
+        const sortedPresentDates = Array.from(st.presentDates).sort((a, b) => parseDateForSort(a) - parseDateForSort(b));
+        return {
+            ...st,
+            presentCount,
+            absentCount,
+            totalSessions: denom,
+            pct,
+            presentDatesList: sortedPresentDates
+        };
+    });
+
+    // ترتيب النتائج حسب الاختيار
+    currentSSReportRows.sort((a, b) => {
+        if (sortBy === "present_desc") {
+            if (b.presentCount !== a.presentCount) return b.presentCount - a.presentCount;
+            return a.name.localeCompare(b.name, 'ar');
+        } else if (sortBy === "present_asc") {
+            if (a.presentCount !== b.presentCount) return a.presentCount - b.presentCount;
+            return a.name.localeCompare(b.name, 'ar');
+        }
+        return a.name.localeCompare(b.name, 'ar');
+    });
+
+    renderSSPeriodReportTable(totalPeriodSessions);
+}
+
+function renderSSPeriodReportTable(totalPeriodSessions) {
+    const tbody = document.getElementById('ssReportTableBody');
+    const emptyEl = document.getElementById('ssReportEmpty');
+    const kpiEl = document.getElementById('ssReportKpiCards');
+    const recCount = document.getElementById('recordCount');
+
+    if (recCount) recCount.innerText = `${currentSSReportRows.length} مخدوم بالتقرير`;
+
+    const totalKids = currentSSReportRows.length;
+    const totalPresentSum = currentSSReportRows.reduce((acc, r) => acc + r.presentCount, 0);
+    const totalPossibleSum = currentSSReportRows.reduce((acc, r) => acc + r.totalSessions, 0);
+    const avgPct = totalPossibleSum > 0 ? Math.round((totalPresentSum / totalPossibleSum) * 100) : 0;
+    const zeroAttendanceCount = currentSSReportRows.filter(r => r.presentCount === 0).length;
+
+    if (kpiEl) {
+        kpiEl.innerHTML = `
+            <div class="bg-white/95 p-4 rounded-2xl border border-indigo-200 shadow-sm text-center"><span class="block text-xs font-bold text-slate-500 mb-1">إجمالي المخدومين</span><span class="text-2xl font-black text-indigo-700">${totalKids}</span><span class="block text-[11px] font-bold text-slate-400 mt-0.5">مخدوم في النطاق</span></div>
+            <div class="bg-white/95 p-4 rounded-2xl border border-blue-200 shadow-sm text-center"><span class="block text-xs font-bold text-slate-500 mb-1">عدد الحصص في الفترة</span><span class="text-2xl font-black text-blue-600">${totalPeriodSessions}</span><span class="block text-[11px] font-bold text-slate-400 mt-0.5">حصة مسجلة</span></div>
+            <div class="bg-white/95 p-4 rounded-2xl border border-emerald-200 shadow-sm text-center"><span class="block text-xs font-bold text-slate-500 mb-1">متوسط نسبة الحضور</span><span class="text-2xl font-black text-emerald-600">${avgPct}%</span><span class="block text-[11px] font-bold text-slate-400 mt-0.5">إجمالي الحضور: ${totalPresentSum}</span></div>
+            <div class="bg-white/95 p-4 rounded-2xl border border-rose-200 shadow-sm text-center"><span class="block text-xs font-bold text-slate-500 mb-1">لم يحضروا في الفترة (0)</span><span class="text-2xl font-black text-rose-600">${zeroAttendanceCount}</span><span class="block text-[11px] font-bold text-slate-400 mt-0.5">يحتاجون افتقاد</span></div>
+        `;
+    }
+
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    if (currentSSReportRows.length === 0) {
+        emptyEl?.classList.remove('hidden');
+        return;
+    }
+    emptyEl?.classList.add('hidden');
+
+    currentSSReportRows.forEach((row, idx) => {
+        const pctBadge = row.pct >= 75
+            ? `bg-emerald-50 text-emerald-700 border-emerald-200`
+            : row.pct >= 40
+                ? `bg-amber-50 text-amber-800 border-amber-200`
+                : `bg-rose-50 text-rose-700 border-rose-200`;
+        const datesHtml = row.presentDatesList.length > 0
+            ? row.presentDatesList.map(d => `<span class="inline-block bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded text-[10px] font-mono ml-1 mb-0.5">${d}</span>`).join('')
+            : `<span class="text-[11px] text-slate-400">لم يحضر في هذه الفترة</span>`;
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+        tr.innerHTML = `
+            <td class="p-3 text-center font-bold text-slate-400">${idx + 1}</td>
+            <td class="p-3"><p class="font-black text-slate-800 text-xs sm:text-sm">${row.name}</p><p class="text-[10px] text-slate-500 font-bold mt-0.5">${row.stage} - <span class="text-indigo-600">${row.grade}</span></p></td>
+            <td class="p-3"><div class="flex flex-col gap-1"><span class="font-mono text-xs font-bold text-slate-700" dir="ltr">${row.phone}</span><div class="flex items-center gap-1 flex-wrap">${renderContactButtons(row.phone)}</div></div></td>
+            <td class="p-3 text-center"><span class="inline-block px-3 py-1 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs">${row.presentCount}</span></td>
+            <td class="p-3 text-center"><span class="inline-block px-3 py-1 rounded-xl bg-rose-50 text-rose-700 font-bold text-xs">${row.absentCount}</span></td>
+            <td class="p-3 text-center font-black text-slate-600">${row.totalSessions}</td>
+            <td class="p-3 text-center"><span class="px-2.5 py-1 rounded-lg font-black text-xs border ${pctBadge}">${row.pct}%</span></td>
+            <td class="p-3">${datesHtml}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function shareSSPeriodReportWhatsApp() {
+    if (!currentSSReportRows || currentSSReportRows.length === 0) {
+        alert("لا توجد بيانات في التقرير للمشاركة!");
+        return;
+    }
+    const stage = document.getElementById('ssReportStage')?.value || "الكل";
+    const grade = document.getElementById('ssReportGrade')?.value || "كل الصفوف";
+    const gender = document.getElementById('ssReportGender')?.value || "";
+    const fromD = (document.getElementById('ssReportFromDate')?.value || "").trim() || "البداية";
+    const toD = (document.getElementById('ssReportToDate')?.value || "").trim() || "اليوم";
+    const genderLabel = gender === 'ذكر' ? ' (بنين)' : gender === 'انثي' ? ' (بنات)' : '';
+
+    let text = `*تقرير الحضور المجمع - مدارس الأحد${genderLabel}*
+`;
+    text += `المرحلة: ${stage} | الصف: ${grade}
+`;
+    text += `الفترة: من ${fromD} إلى ${toD}
+
+`;
+
+    currentSSReportRows.forEach((r, idx) => {
+        text += `${idx + 1}. *${r.name}*
+`;
+        text += `✅ حضر: *${r.presentCount}* من ${r.totalSessions} (${r.pct}%)
+`;
+        if (r.phone && r.phone !== "-") text += `📞 ${r.phone}
+`;
+        text += `──────────
+`;
+    });
+    shareToWhatsApp(text);
+}
+
+function exportSSPeriodReportExcel() {
+    if (!currentSSReportRows || currentSSReportRows.length === 0) {
+        alert("لا توجد بيانات في التقرير للتصدير!");
+        return;
+    }
+    const headers = ["م", "اسم المخدوم", "المرحلة", "الصف", "المحمول", "مرات الحضور", "مرات الغياب", "إجمالي الحصص", "نسبة الحضور %", "تواريخ الحضور"];
+    const csvRows = [headers.join(',')];
+    currentSSReportRows.forEach((r, idx) => {
+        const vals = [
+            idx + 1,
+            r.name,
+            r.stage,
+            r.grade,
+            r.phone,
+            r.presentCount,
+            r.absentCount,
+            r.totalSessions,
+            `${r.pct}%`,
+            r.presentDatesList.join(' - ')
+        ].map(v => `"${String(v ?? "").replace(/"/g, '""')}"`);
+        csvRows.push(vals.join(','));
+    });
+    const csvString = "﻿" + csvRows.join('
+');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    const now = new Date();
+    link.download = `تقرير_الحضور_المجمع_${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 function normalizeGender(g) {
@@ -1832,7 +2210,7 @@ function renderStandardCards() {
 
     if (currentTab === "Sunday_School") {
         container.className = "bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden";
-        container.innerHTML = `<div class="overflow-x-auto nice-scrollbar"><table class="w-full text-right text-xs"><thead class="bg-slate-100 text-slate-700 font-black border-b border-slate-200"><tr><th class="p-3 w-12 text-center">م</th><th class="p-3">التاريخ</th><th class="p-3">المرحلة والصف</th><th class="p-3">الفصل</th><th class="p-3">اسم المخدوم</th><th class="p-3 text-center">الحضور</th><th class="p-3 text-center">التسميع</th><th class="p-3 text-center">النقاط</th><th class="p-3">ملاحظات</th><th class="p-3 text-center no-print">إجراءات</th></tr></thead><tbody class="divide-y divide-slate-100 font-semibold">${filtered.map((item, idx) => { const idVal = item[Object.keys(item)[0]]; return `<tr class="hover:bg-slate-50"><td class="p-3 text-center text-slate-400 font-bold">${idx + 1}</td><td class="p-3 font-mono">${item["SessionDate"] || "-"}</td><td class="p-3"><span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-bold">${item["Stage"] || "-"}</span> ${item["Grade"] || ""}</td><td class="p-3">${item["ClassName"] || "-"}</td><td class="p-3 font-black text-slate-800">${item["ChildName"] || "-"}</td><td class="p-3 text-center"><span class="px-2.5 py-1 rounded-lg font-black text-[11px] ${item["Attendance"]==='حاضر'?'bg-emerald-50 text-emerald-700':'bg-rose-50 text-rose-700'}">${item["Attendance"] || "-"}</span></td><td class="p-3 text-center">${item["Memorization"] || "-"}</td><td class="p-3 text-center font-black">${item["Points"] || 0}</td><td class="p-3 text-slate-500">${item["Notes"] || "-"}</td><td class="p-3 text-center no-print"><button onclick="editRecord(${idVal})" class="text-xs font-bold text-indigo-600 hover:underline ml-2">تعديل</button>${currentUser.Role === "Admin" ? `<button onclick="deleteRecord(${idVal})" class="text-xs font-bold text-rose-600 hover:underline">حذف</button>` : ''}</td></tr>`; }).join('')}</tbody></table></div>`;
+        container.innerHTML = `<div class="overflow-x-auto nice-scrollbar"><table class="w-full text-right text-xs"><thead class="bg-slate-100 text-slate-700 font-black border-b border-slate-200"><tr><th class="p-3 w-12 text-center">م</th><th class="p-3">التاريخ</th><th class="p-3">المرحلة والصف</th><th class="p-3">الفصل</th><th class="p-3">اسم المخدوم</th><th class="p-3 text-center">الحضور</th><th class="p-3">ملاحظات</th><th class="p-3 text-center no-print">إجراءات</th></tr></thead><tbody class="divide-y divide-slate-100 font-semibold">${filtered.map((item, idx) => { const idVal = item[Object.keys(item)[0]]; return `<tr class="hover:bg-slate-50"><td class="p-3 text-center text-slate-400 font-bold">${idx + 1}</td><td class="p-3 font-mono">${item["SessionDate"] || "-"}</td><td class="p-3"><span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-bold">${item["Stage"] || "-"}</span> ${item["Grade"] || ""}</td><td class="p-3">${item["ClassName"] || "-"}</td><td class="p-3 font-black text-slate-800">${item["ChildName"] || "-"}</td><td class="p-3 text-center"><span class="px-2.5 py-1 rounded-lg font-black text-[11px] ${item["Attendance"]==='حاضر'?'bg-emerald-50 text-emerald-700':'bg-rose-50 text-rose-700'}">${item["Attendance"] || "-"}</span></td><td class="p-3 text-slate-500">${item["Notes"] || "-"}</td><td class="p-3 text-center no-print"><button onclick="editRecord(${idVal})" class="text-xs font-bold text-indigo-600 hover:underline ml-2">تعديل</button>${currentUser.Role === "Admin" ? `<button onclick="deleteRecord(${idVal})" class="text-xs font-bold text-rose-600 hover:underline">حذف</button>` : ''}</td></tr>`; }).join('')}</tbody></table></div>`;
         return;
     }
 
@@ -1966,6 +2344,7 @@ async function loadData(force = false) {
                     }
                 } else if (currentTab === 'Sunday_School') {
                     if (currentSSView === 'live') initSundaySchoolLiveView();
+                    else if (currentSSView === 'report') initSSReportView();
                     else if (currentSSView === 'charts') initSSChartsView();
                     else renderStandardCards();
                 } else if (currentTab === 'Meetings_Attendance') {
@@ -1997,6 +2376,7 @@ function showLoader(s) {
         else document.getElementById('familyResultsContainer')?.classList.toggle('hidden', s);
     } else if (currentTab === 'Sunday_School') {
         if (currentSSView === 'live') document.getElementById('sundaySchoolLiveSection')?.classList.toggle('hidden', s);
+        else if (currentSSView === 'report') document.getElementById('sundaySchoolReportSection')?.classList.toggle('hidden', s);
         else if (currentSSView === 'charts') document.getElementById('sundaySchoolChartsSection')?.classList.toggle('hidden', s);
         else document.getElementById('standardCardsContainer')?.classList.toggle('hidden', s);
     } else if (currentTab === 'Meetings_Attendance') {
