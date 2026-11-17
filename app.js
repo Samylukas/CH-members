@@ -1280,14 +1280,24 @@ function closeSundaySchoolPrintModal() { document.getElementById('ssPrintModal')
 function updatePrintGradesDropdown(stage) { const grdSel = document.getElementById('ssPrintGrade'); if (grdSel) grdSel.innerHTML = `<option value="">كل الصفوف</option>` + (STAGE_GRADES[stage] || []).map(g => `<option value="${g}">${g}</option>`).join(''); }
 
 async function generateAndPrintClassRoster() {
-    const stage = document.getElementById('ssPrintStage')?.value || "", grade = document.getElementById('ssPrintGrade')?.value || "", className = (document.getElementById('ssPrintClass')?.value || "").trim();
+    const stage = document.getElementById('ssPrintStage')?.value || "", grade = document.getElementById('ssPrintGrade')?.value || "", className = (document.getElementById('ssPrintClass')?.value || "").trim(), genderFilter = document.getElementById('ssPrintGender')?.value || "";
     if (!stage) { alert("يرجى اختيار المرحلة الدراسية أولاً!"); return; }
     let membersList = namesCacheData;
     if (membersList.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Names`); if (res.status === "success") membersList = res.data.map(sanitizeRecordFields); } catch(e) {} }
-    const classKids = membersList.filter(item => !isMemberDeceased(item) && item["مدارس الأحد"] !== "غير مشترك" && normalizeArabic(item["المرحلة"]) === normalizeArabic(stage) && (!grade || normalizeArabic(item["الصف"]) === normalizeArabic(grade)) && (!className || normalizeArabic(item["فصل مدارس الاحد"] || item["أنهي مدارس الأحد"]).includes(normalizeArabic(className)))).sort((a, b) => String(a["الاسم ثلاثي"]).localeCompare(String(b["الاسم ثلاثي"]), 'ar'));
+    const classKids = membersList.filter(item => {
+        if (isMemberDeceased(item) || item["مدارس الأحد"] === "غير مشترك") return false;
+        if (normalizeArabic(item["المرحلة"]) !== normalizeArabic(stage)) return false;
+        if (grade && normalizeArabic(item["الصف"]) !== normalizeArabic(grade)) return false;
+        if (className && !normalizeArabic(item["فصل مدارس الاحد"] || item["أنهي مدارس الأحد"]).includes(normalizeArabic(className))) return false;
+        if (genderFilter && normalizeGender(item["ذكر/انثي"]) !== genderFilter) return false;
+        return true;
+    }).sort((a, b) => String(a["الاسم ثلاثي"]).localeCompare(String(b["الاسم ثلاثي"]), 'ar'));
+    
     if (classKids.length === 0) { alert("لم يتم العثور على مخدومين مسجلين بهذه المواصفات!"); return; }
     closeSundaySchoolPrintModal();
-    let text = `*كشف حضور مدارس الأحد*
+    
+    const genderLabel = genderFilter === 'ذكر' ? ' (بنين)' : genderFilter === 'انثي' ? ' (بنات)' : ' (مختلط)';
+    let text = `*كشف حضور مدارس الأحد${genderLabel}*
 مرحلة: ${stage} ${grade ? '| '+grade : ''} ${className ? '| فصل: '+className : ''}
 
 `;
