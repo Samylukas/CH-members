@@ -1007,13 +1007,6 @@ function onSSFilterStageChange(stage) {
 }
 
 function onSSFilterGradeChange() {
-    const stage = document.getElementById('ssFilterStage')?.value || "", grade = document.getElementById('ssFilterGrade')?.value || "", classSel = document.getElementById('ssFilterClass');
-    if (!classSel) return;
-    const classes = new Set();
-    namesCacheData.forEach(kid => { if (normalizeArabic(kid["المرحلة"]) === normalizeArabic(stage) && (!grade || normalizeArabic(kid["الصف"]) === normalizeArabic(grade))) { const cName = (kid["فصل مدارس الاحد"] || kid["أنهي مدارس الأحد"] || "").trim(); if (cName) classes.add(cName); } });
-    classSel.innerHTML = `<option value="">كل الفصول (${classes.size})</option>` + Array.from(classes).sort().map(c => `<option value="${c}">${c}</option>`).join('');
-    if (currentUser.Role === "Class_Servant" && currentUser.AssignedClass && currentUser.AssignedClass !== "الكل") { classSel.value = currentUser.AssignedClass; classSel.disabled = true; }
-    else classSel.disabled = false;
     loadSSLiveClassKids();
 }
 
@@ -1036,21 +1029,21 @@ function getLastKidVisitInfo(kidName, kidId, familyHead) {
 }
 
 async function loadSSLiveClassKids() {
-    const stage = document.getElementById('ssFilterStage')?.value || "", grade = document.getElementById('ssFilterGrade')?.value || "", className = document.getElementById('ssFilterClass')?.value || "";
+    const stage = document.getElementById('ssFilterStage')?.value || "", grade = document.getElementById('ssFilterGrade')?.value || "", genderFilter = document.getElementById('ssFilterGender')?.value || "";
     if (visitationsData.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Visitations`); if (res.status === "success") visitationsData = res.data.map(sanitizeRecordFields); } catch(e) {} }
 
     const matched = namesCacheData.filter(kid => {
         if (isMemberDeceased(kid) || kid["مدارس الأحد"] === "غير مشترك") return false;
         if (normalizeArabic(kid["المرحلة"]) !== normalizeArabic(stage)) return false;
         if (grade && normalizeArabic(kid["الصف"]) !== normalizeArabic(grade)) return false;
-        if (className && normalizeArabic(kid["فصل مدارس الاحد"] || kid["أنهي مدارس الأحد"]) !== normalizeArabic(className)) return false;
+        if (genderFilter && normalizeGender(kid["ذكر/انثي"]) !== genderFilter) return false;
         return true;
     }).sort((a, b) => String(a["الاسم ثلاثي"]).localeCompare(String(b["الاسم ثلاثي"]), 'ar'));
 
     currentSSLiveKids = matched.map(kid => {
         const kId = kid["ID"] || kid[Object.keys(kid)[0]], kName = kid["الاسم ثلاثي"], fHead = kid["اسم رب الاسرة"] || "", phone = kid["تليفون العمل/المحمول"] || kid["هاتف الاسرة"] || "-";
         return {
-            id: kId, name: kName, familyHead: fHead, phone: phone, stage: kid["المرحلة"] || stage, grade: kid["الصف"] || grade || "-", className: className || (kid["فصل مدارس الاحد"] || "عام"),
+            id: kId, name: kName, familyHead: fHead, phone: phone, stage: kid["المرحلة"] || stage, grade: kid["الصف"] || grade || "-", className: (genderFilter === "ذكر" ? "بنين" : (genderFilter === "انثي" ? "بنات" : "مجمّع")),
             lastAttendance: getLastKidAttendanceInfo(kName, kId), lastVisit: getLastKidVisitInfo(kName, kId, fHead),
             attendance: "حاضر", memorization: "ممتاز", points: 10, notes: ""
         };
@@ -1101,14 +1094,18 @@ async function saveSundaySchoolBatchAttendance() {
 
     // فحص منع تكرار رصد الحضور لنفس اليوم والفصل
     const stageVal = document.getElementById('ssFilterStage')?.value || "";
-    const classVal = document.getElementById('ssFilterClass')?.value || "";
+    const gradeVal = document.getElementById('ssFilterGrade')?.value || "";
+    const genderVal = document.getElementById('ssFilterGender')?.value || "";
+    const classNameVal = genderVal === "ذكر" ? "بنين" : (genderVal === "انثي" ? "بنات" : "مجمّع");
+    
     const alreadyRecorded = rawData.some(r => 
         String(r["SessionDate"] || "").trim() === sessionDate &&
         normalizeArabic(r["Stage"]) === normalizeArabic(stageVal) &&
-        (!classVal || normalizeArabic(r["ClassName"]) === normalizeArabic(classVal))
+        (!gradeVal || normalizeArabic(r["Grade"]) === normalizeArabic(gradeVal)) &&
+        normalizeArabic(r["ClassName"]) === normalizeArabic(classNameVal)
     );
     if (alreadyRecorded) {
-        if (!confirm(`⚠️ تنبيه: تم رصد حضور هذا الفصل (${classVal || stageVal}) بتاريخ ${sessionDate} مسبقاً!\nهل أنت متأكد من أنك تريد تسجيله مرة أخرى؟`)) return;
+        if (!confirm(`⚠️ تنبيه: تم رصد حضور هذا الفصل (${stageVal} ${gradeVal} ${classNameVal}) بتاريخ ${sessionDate} مسبقاً!\nهل أنت متأكد من أنك تريد تسجيله مرة أخرى؟`)) return;
     } else {
         if (!confirm(`هل أنت متأكد من حفظ سجل حضور وتسميع (${currentSSLiveKids.length}) مخدوم لتاريخ: ${sessionDate}؟`)) return;
     }
@@ -1272,7 +1269,6 @@ function openSundaySchoolPrintModal() {
     if ((currentUser.Role === "Stage_Leader" || currentUser.Role === "Class_Servant") && currentUser.AssignedStage && currentUser.AssignedStage !== "الكل") {
         stageSel.value = currentUser.AssignedStage; stageSel.disabled = true; updatePrintGradesDropdown(currentUser.AssignedStage);
         if (currentUser.AssignedGrade && currentUser.AssignedGrade !== "الكل") { const grd = document.getElementById('ssPrintGrade'); if (grd) grd.value = currentUser.AssignedGrade; }
-        if (currentUser.AssignedClass && currentUser.AssignedClass !== "الكل") { const cls = document.getElementById('ssPrintClass'); if (cls) cls.value = currentUser.AssignedClass; }
     } else stageSel.disabled = false;
     modal.classList.remove('hidden');
 }
@@ -1280,7 +1276,7 @@ function closeSundaySchoolPrintModal() { document.getElementById('ssPrintModal')
 function updatePrintGradesDropdown(stage) { const grdSel = document.getElementById('ssPrintGrade'); if (grdSel) grdSel.innerHTML = `<option value="">كل الصفوف</option>` + (STAGE_GRADES[stage] || []).map(g => `<option value="${g}">${g}</option>`).join(''); }
 
 async function generateAndPrintClassRoster() {
-    const stage = document.getElementById('ssPrintStage')?.value || "", grade = document.getElementById('ssPrintGrade')?.value || "", className = (document.getElementById('ssPrintClass')?.value || "").trim(), genderFilter = document.getElementById('ssPrintGender')?.value || "";
+    const stage = document.getElementById('ssPrintStage')?.value || "", grade = document.getElementById('ssPrintGrade')?.value || "", genderFilter = document.getElementById('ssPrintGender')?.value || "";
     if (!stage) { alert("يرجى اختيار المرحلة الدراسية أولاً!"); return; }
     let membersList = namesCacheData;
     if (membersList.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Names`); if (res.status === "success") membersList = res.data.map(sanitizeRecordFields); } catch(e) {} }
@@ -1288,7 +1284,6 @@ async function generateAndPrintClassRoster() {
         if (isMemberDeceased(item) || item["مدارس الأحد"] === "غير مشترك") return false;
         if (normalizeArabic(item["المرحلة"]) !== normalizeArabic(stage)) return false;
         if (grade && normalizeArabic(item["الصف"]) !== normalizeArabic(grade)) return false;
-        if (className && !normalizeArabic(item["فصل مدارس الاحد"] || item["أنهي مدارس الأحد"]).includes(normalizeArabic(className))) return false;
         if (genderFilter && normalizeGender(item["ذكر/انثي"]) !== genderFilter) return false;
         return true;
     }).sort((a, b) => String(a["الاسم ثلاثي"]).localeCompare(String(b["الاسم ثلاثي"]), 'ar'));
@@ -1296,9 +1291,9 @@ async function generateAndPrintClassRoster() {
     if (classKids.length === 0) { alert("لم يتم العثور على مخدومين مسجلين بهذه المواصفات!"); return; }
     closeSundaySchoolPrintModal();
     
-    const genderLabel = genderFilter === 'ذكر' ? ' (بنين)' : genderFilter === 'انثي' ? ' (بنات)' : ' (مختلط)';
+    const genderLabel = genderFilter === 'ذكر' ? ' (بنين)' : genderFilter === 'انثي' ? ' (بنات)' : ' (مجمّع)';
     let text = `*كشف حضور مدارس الأحد${genderLabel}*
-مرحلة: ${stage} ${grade ? '| '+grade : ''} ${className ? '| فصل: '+className : ''}
+المرحلة: ${stage} ${grade ? '| '+grade : ''}
 
 `;
     classKids.forEach((kid, idx) => {
