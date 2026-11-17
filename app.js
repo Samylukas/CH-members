@@ -1447,23 +1447,15 @@ function shareSSPeriodReportWhatsApp() {
     const toD = (document.getElementById('ssReportToDate')?.value || "").trim() || "اليوم";
     const genderLabel = gender === 'ذكر' ? ' (بنين)' : gender === 'انثي' ? ' (بنات)' : '';
 
-    let text = `*تقرير الحضور المجمع - مدارس الأحد${genderLabel}*
-`;
-    text += `المرحلة: ${stage} | الصف: ${grade}
-`;
-    text += `الفترة: من ${fromD} إلى ${toD}
-
-`;
+    let text = `*تقرير الحضور المجمع - مدارس الأحد${genderLabel}*\n`;
+    text += `المرحلة: ${stage} | الصف: ${grade}\n`;
+    text += `الفترة: من ${fromD} إلى ${toD}\n\n`;
 
     currentSSReportRows.forEach((r, idx) => {
-        text += `${idx + 1}. *${r.name}*
-`;
-        text += `✅ حضر: *${r.presentCount}* من ${r.totalSessions} (${r.pct}%)
-`;
-        if (r.phone && r.phone !== "-") text += `📞 ${r.phone}
-`;
-        text += `──────────
-`;
+        text += `${idx + 1}. *${r.name}*\n`;
+        text += `✅ حضر: *${r.presentCount}* من ${r.totalSessions} (${r.pct}%)\n`;
+        if (r.phone && r.phone !== "-") text += `📞 ${r.phone}\n`;
+        text += `──────────\n`;
     });
     shareToWhatsApp(text);
 }
@@ -1490,8 +1482,7 @@ function exportSSPeriodReportExcel() {
         ].map(v => `"${String(v ?? "").replace(/"/g, '""')}"`);
         csvRows.push(vals.join(','));
     });
-    const csvString = "﻿" + csvRows.join('
-');
+    const csvString = "\uFEFF" + csvRows.join("\n");
     const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
