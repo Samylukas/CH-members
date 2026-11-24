@@ -6,7 +6,6 @@
     <title>منظومة الخدمة والرعاية الكنسية</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/png" href="logo.png">
     <style>
@@ -23,7 +22,7 @@
     <img src="logo.png" alt="" class="w-[360px] sm:w-[480px] md:w-[560px] max-w-[85vw] object-contain opacity-[0.11] select-none">
 </div>
 
-<!-- 1. شاشة البداية (تظهر عند فتح البرنامج ثم تنتقل مباشرة لشاشة تسجيل الدخول) -->
+<!-- 1. شاشة البداية (تظهر عند فتح البرنامج ثم تنتقل إلى النافذة الافتتاحية) -->
 <div id="splashScreen" style="position: fixed; inset: 0; width: 100vw; height: 100vh; background: radial-gradient(circle at center, #ffffff 0%, #f8fafc 100%); z-index: 99999999; display: flex; align-items: center; justify-content: center; padding: 1.5rem; transition: opacity 0.45s ease, transform 0.45s ease;">
     <div style="display: flex; flex-direction: column; align-items: center; text-align: center; max-width: 380px; width: 100%;">
         <div style="width: 220px; height: 220px; border-radius: 36px; background: #ffffff; padding: 18px; box-shadow: 0 14px 30px -5px rgba(15, 23, 42, 0.1); border: 1px solid rgba(226, 232, 240, 0.8); display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; animation: splashFloat 2.4s ease-in-out infinite;">
@@ -34,7 +33,7 @@
         <div style="width: 170px; height: 5px; background: #e2e8f0; border-radius: 99px; overflow: hidden; position: relative; margin-bottom: 0.75rem;">
             <div class="splash-loader-bar"></div>
         </div>
-        <span style="font-size: 0.75rem; font-weight: 700; color: #94a3b8;">جاري تجهيز بوابة الدخول...</span>
+        <span style="font-size: 0.75rem; font-weight: 700; color: #94a3b8;">جاري التحميل...</span>
     </div>
 </div>
 <style>
@@ -46,27 +45,42 @@
 (function() {
     setTimeout(() => {
         const splash = document.getElementById('splashScreen');
-        const login = document.getElementById('loginScreen');
+        const landing = document.getElementById('landingScreen');
         if (splash) {
             splash.style.opacity = '0';
             splash.style.transform = 'scale(0.98)';
             setTimeout(() => {
                 splash.remove();
-                if (login) {
-                    login.classList.remove('hidden');
-                    login.style.display = 'flex';
-                    document.getElementById('loginPass')?.focus();
+                if (landing) {
+                    landing.classList.remove('hidden');
+                    landing.style.display = 'flex';
                 }
             }, 400);
         }
-    }, 3200);
+    }, 2200);
 })();
 </script>
 
-<!-- 2. نافذة تسجيل الدخول -->
-<div id="loginScreen" class="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4 backdrop-blur-md hidden" style="display: none;">
-    <div class="bg-white/95 rounded-3xl shadow-2xl p-8 w-full max-w-md text-center border border-white">
-        <img src="logo.png" alt="Logo" class="max-w-[150px] max-h-[85px] mx-auto object-contain mb-4">
+<!-- 1.5 النافذة الافتتاحية (لوجو الكنيسة الكبير + زر استعلام عن أسرة أزرق بكتابة ذهبية) -->
+<div id="landingScreen" class="fixed inset-0 bg-gradient-to-b from-slate-50 via-white to-blue-50/60 z-40 flex items-center justify-center p-4 hidden" style="display: none;">
+    <div class="w-full max-w-md flex flex-col items-center text-center">
+        <div id="landingChurchLogoBox" ondblclick="openServantsLoginModal()" ontouchend="handleLandingLogoTouch(event)" class="w-64 h-64 sm:w-72 sm:h-72 rounded-[2.5rem] bg-white p-6 shadow-[0_20px_50px_-12px_rgba(15,23,42,0.14)] border border-slate-100 flex items-center justify-center mb-7 select-none transition-transform duration-300 hover:scale-[1.02]">
+            <img src="logo.png" alt="شعار الكنيسة" draggable="false" class="w-full h-full object-contain select-none">
+        </div>
+        <h1 class="text-xl sm:text-2xl font-black text-slate-900 mb-1.5">كنيسة السيدة العذراء مريم والشهيدة بربارة</h1>
+        <p class="text-xs sm:text-sm font-bold text-slate-500 mb-8">منظومة الخدمة والرعاية الكنسية</p>
+        <button type="button" onclick="openFamilyPortal()" style="background: linear-gradient(135deg, #0f296b 0%, #1e3a8a 55%, #1d4ed8 100%); color: #fcd34d; border: 2px solid #f59e0b;" class="w-full max-w-xs py-4 px-8 rounded-2xl font-black text-base sm:text-lg shadow-xl hover:brightness-110 active:scale-[0.99] transition-all duration-200 cursor-pointer flex items-center justify-center gap-2.5">
+            <span>👨‍👩‍👧‍👦</span>
+            <span>استعلام عن أسرة</span>
+        </button>
+    </div>
+</div>
+
+<!-- 2. نافذة تسجيل دخول الخدام (تظهر عند الضغط دبل كليك على لوجو الكنيسة) -->
+<div id="loginScreen" class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4 backdrop-blur-md hidden" style="display: none;">
+    <div class="bg-white/95 rounded-3xl shadow-2xl p-8 w-full max-w-md text-center border border-white relative">
+        <button type="button" onclick="closeServantsLoginModal()" class="absolute top-4 left-4 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition cursor-pointer">← رجوع</button>
+        <img src="logo.png" alt="Logo" class="max-w-[140px] max-h-[80px] mx-auto object-contain mb-4 mt-2">
         <h2 class="text-2xl font-black text-slate-800 mb-1">بوابة الخدام</h2>
         <p class="text-xs text-slate-500 mb-6 font-bold">تسجيل الدخول لمنظومة الرعاية والخدمة</p>
         <form id="loginForm" onsubmit="event.preventDefault(); handleLogin(event); return false;" class="space-y-4 text-right">
@@ -101,13 +115,6 @@
             <button type="button" id="loginBtn" onclick="handleLogin(event)" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-md transition duration-200 text-sm mt-2 cursor-pointer">تسجيل الدخول</button>
             <p id="loginError" class="text-xs text-rose-600 font-bold hidden text-center"></p>
         </form>
-        <div class="mt-6 pt-5 border-t border-slate-200/80">
-            <p class="text-[11px] text-slate-400 font-bold mb-2.5">خاص بأسر وشعب الكنيسة</p>
-            <button type="button" onclick="openFamilyPortal()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-md transition duration-200 text-xs flex items-center justify-center gap-2 cursor-pointer">
-                <span>👨‍👩‍👧‍👦</span>
-                <span>استعلام رب الأسرة عن بيانات العائلة</span>
-            </button>
-        </div>
     </div>
 </div>
 
@@ -134,11 +141,11 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-slate-600 mb-1">الرقم القومي (14 رقماً) *</label>
-                        <input type="text" id="fpNationalId" dir="ltr" inputmode="numeric" maxlength="14" placeholder="29001010101234" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-mono font-bold text-left">
+                        <input type="text" id="fpNationalId" autocomplete="off" dir="ltr" inputmode="numeric" maxlength="14" placeholder="29001010101234" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-mono font-bold text-left">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-600 mb-1">رقم الموبايل المسجل (11 رقماً) *</label>
-                        <input type="tel" id="fpPhone" dir="ltr" inputmode="tel" maxlength="11" placeholder="012xxxxxxxx" onblur="this.value = normalizeEgyptianPhone(this.value)" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-mono font-bold text-left">
+                        <input type="tel" id="fpPhone" autocomplete="off" dir="ltr" inputmode="tel" maxlength="11" placeholder="012xxxxxxxx" onblur="this.value = normalizeEgyptianPhone(this.value)" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-mono font-bold text-left">
                     </div>
                 </div>
                 <button type="button" id="fpSearchBtn" onclick="handleFamilyPortalLookup()" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-md transition text-sm cursor-pointer">
@@ -628,6 +635,6 @@ function togglePasswordVisibilityInline() {
     </button>
 </div>
 
-<script src="app.js?v=23"></script>
+<script src="app.js?v=26"></script>
 </body>
 </html>
