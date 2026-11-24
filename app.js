@@ -371,8 +371,12 @@ function logout() {
 // 6. تهيئة التطبيق وتوجيه لوحة التحكم
 function initApp(isRestoredSession = false) {
     const login = document.getElementById('loginScreen'), landing = document.getElementById('landingScreen'), badge = document.getElementById('userBadge');
+    const hdr = document.getElementById('appHeader'), mn = document.getElementById('appMain'), scBtns = document.getElementById('floatingScrollBtns');
     if (login) { login.style.display = 'none'; login.classList.add('hidden'); }
     if (landing) { landing.style.display = 'none'; landing.classList.add('hidden'); }
+    if (hdr) hdr.classList.remove('hidden');
+    if (mn) { mn.classList.remove('hidden'); mn.classList.add('flex'); }
+    if (scBtns) { scBtns.classList.remove('hidden'); scBtns.classList.add('flex'); }
     if (badge && currentUser) badge.innerHTML = `<span>الخادم: <span class="font-black text-indigo-700">${currentUser.ServantName}</span></span> <span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded ml-2 font-mono text-[11px] font-bold border border-indigo-200">${currentUser.Role}</span>`;
     buildDashboard();
     showDashboard();
@@ -2647,7 +2651,7 @@ async function handleFamilyPortalLookup() {
     } catch (err) {
         alert("تعذر الاتصال بالسيرفر، يرجى التأكد من الإنترنت والمحاولة مرة أخرى.");
     } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = "🔍 عرض بيانات الأسرة"; }
+        if (btn) { btn.disabled = false; btn.innerHTML = "<span>🔍</span><span>عرض بيانات الأسرة</span>"; }
     }
 }
 
