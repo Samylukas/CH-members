@@ -6,6 +6,7 @@
     <title>منظومة الخدمة والرعاية الكنسية</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/png" href="logo.png">
     <style>
@@ -100,6 +101,54 @@
             <button type="button" id="loginBtn" onclick="handleLogin(event)" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-md transition duration-200 text-sm mt-2 cursor-pointer">تسجيل الدخول</button>
             <p id="loginError" class="text-xs text-rose-600 font-bold hidden text-center"></p>
         </form>
+        <div class="mt-6 pt-5 border-t border-slate-200/80">
+            <p class="text-[11px] text-slate-400 font-bold mb-2.5">خاص بأسر وشعب الكنيسة</p>
+            <button type="button" onclick="openFamilyPortal()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-md transition duration-200 text-xs flex items-center justify-center gap-2 cursor-pointer">
+                <span>👨‍👩‍👧‍👦</span>
+                <span>استعلام رب الأسرة عن بيانات العائلة</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 2.5 بوابة استعلام رب الأسرة (للقراءة فقط + QR والتواصل مع الإدارة) -->
+<div id="familyPortalScreen" class="fixed inset-0 bg-slate-900/50 z-50 overflow-y-auto p-4 backdrop-blur-md hidden" style="display: none;">
+    <div class="min-h-full flex items-center justify-center py-6">
+        <div class="bg-white/95 rounded-3xl shadow-2xl p-6 sm:p-8 w-full max-w-2xl border border-white text-right relative">
+            <div class="flex items-center justify-between gap-3 pb-4 mb-5 border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <img src="logo.png" alt="Logo" class="w-12 h-12 object-contain">
+                    <div>
+                        <h2 class="text-lg sm:text-xl font-black text-slate-800">بوابة استعلام رب الأسرة</h2>
+                        <p class="text-[11px] text-slate-500 font-bold">كنيسة العذراء مريم والشهيدة بربارة</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeFamilyPortal()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition">← رجوع</button>
+            </div>
+
+            <!-- نموذج التحقق المزدوج -->
+            <div class="space-y-4">
+                <div class="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-3.5 text-xs text-indigo-900 font-bold leading-relaxed">
+                    🔒 لحماية خصوصية بيانات العائلات، يرجى إدخال <strong>الرقم القومي لرب الأسرة (14 رقماً)</strong> مع <strong>رقم الموبايل المسجل بالكنيسة</strong>.
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">الرقم القومي (14 رقماً) *</label>
+                        <input type="text" id="fpNationalId" dir="ltr" inputmode="numeric" maxlength="14" placeholder="29001010101234" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-mono font-bold text-left">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">رقم الموبايل المسجل (11 رقماً) *</label>
+                        <input type="tel" id="fpPhone" dir="ltr" inputmode="tel" maxlength="11" placeholder="012xxxxxxxx" onblur="this.value = normalizeEgyptianPhone(this.value)" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-mono font-bold text-left">
+                    </div>
+                </div>
+                <button type="button" id="fpSearchBtn" onclick="handleFamilyPortalLookup()" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-md transition text-sm cursor-pointer">
+                    🔍 عرض بيانات الأسرة
+                </button>
+            </div>
+
+            <!-- منطقة عرض نتيجة الاستعلام (سواء لم تُوجد البيانات أو ظهرت بيانات الأسرة) -->
+            <div id="fpResultContainer" class="mt-6 hidden"></div>
+        </div>
     </div>
 </div>
 <script>
@@ -579,6 +628,6 @@ function togglePasswordVisibilityInline() {
     </button>
 </div>
 
-<script src="app.js?v=22"></script>
+<script src="app.js?v=23"></script>
 </body>
 </html>

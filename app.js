@@ -20,6 +20,9 @@ window.addEventListener('load', () => {
             }
         });
     }
+    if (window.location.hash === '#family') {
+        openFamilyPortal();
+    }
     loadServantsListForLogin();
 });
 
@@ -2506,4 +2509,274 @@ window.addEventListener('scroll', () => {
     bottomBtn.classList.toggle('opacity-0', atBottom);
     bottomBtn.classList.toggle('pointer-events-none', atBottom);
 });
+
+// ==================== بوابة استعلام رب الأسرة + QR والتواصل مع الإدارة ====================
+const FAMILY_PORTAL_CONFIG = {
+    adminWhatsApp: "201224861947", // رقم واتساب الأدمن لاستقبال طلبات التعديل
+    qrTargetUrl: "https://wa.me/201224861947", // الرابط الذي يفتحه الـ QR Code عند مسحه بالكاميرا
+    qrImageOverride: "", // اختياري: اكتب اسم ملف صورة مثل "qr.png" إذا أردت وضع صورة QR جاهزة
+    supportContacts: [
+        { name: "أ/ سامي أبسخرون (إدارة النظام)", phone: "01224861947" }
+        // لإضافة رقم تواصل آخر، أضف سطراً جديداً هنا مثل:
+        // { name: "اسم المسؤول", phone: "01xxxxxxxxx" }
+    ]
+};
+
+let lastFamilyPortalResult = null;
+
+function openFamilyPortal() {
+    const fp = document.getElementById('familyPortalScreen');
+    const resCont = document.getElementById('fpResultContainer');
+    if (resCont) { resCont.classList.add('hidden'); resCont.innerHTML = ""; }
+    if (fp) {
+        fp.classList.remove('hidden');
+        fp.style.display = 'block';
+        setTimeout(() => document.getElementById('fpNationalId')?.focus(), 50);
+    }
+}
+
+function closeFamilyPortal() {
+    const fp = document.getElementById('familyPortalScreen');
+    if (fp) {
+        fp.style.display = 'none';
+        fp.classList.add('hidden');
+    }
+    if (window.location.hash === '#family') {
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+}
+
+function renderSupportQrAndPhonesHtml(qrElementId, headingText, subText) {
+    const contactsHtml = FAMILY_PORTAL_CONFIG.supportContacts.map(c => {
+        const cleanP = normalizeEgyptianPhone(c.phone);
+        const waP = formatWhatsAppNumber(cleanP);
+        return `
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-2 bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
+                <div class="text-center sm:text-right">
+                    <p class="text-xs font-black text-slate-800">${c.name}</p>
+                    <p class="text-sm font-mono font-black text-indigo-700 mt-0.5" dir="ltr">${cleanP}</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a href="tel:${cleanP}" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition">📞 اتصال</a>
+                    <a href="https://wa.me/${waP}" target="_blank" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition">💬 واتساب</a>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-center space-y-4">
+            <div>
+                <h4 class="text-sm font-black text-slate-800 mb-1">${headingText}</h4>
+                <p class="text-xs text-slate-600 font-bold leading-relaxed">${subText}</p>
+            </div>
+            <div class="flex flex-col items-center justify-center">
+                <div id="${qrElementId}" class="bg-white p-3 rounded-2xl border-2 border-indigo-100 shadow-sm inline-flex items-center justify-center min-w-[168px] min-h-[168px]"></div>
+                <span class="text-[11px] font-black text-indigo-700 mt-2">📱 امسح رمز الـ QR بكاميرا الموبايل للتواصل الفوري</span>
+            </div>
+            <div class="space-y-2 text-right pt-2 border-t border-slate-200/80">
+                <p class="text-xs font-black text-slate-700 text-center mb-2">أو تواصل مباشرة عبر أرقام الموبايل التالية:</p>
+                ${contactsHtml}
+            </div>
+        </div>
+    `;
+}
+
+function mountQrCodeIntoElement(elementId, customUrl = "") {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    el.innerHTML = "";
+    if (FAMILY_PORTAL_CONFIG.qrImageOverride) {
+        el.innerHTML = `<img src="${FAMILY_PORTAL_CONFIG.qrImageOverride}" alt="QR Code" class="w-36 h-36 object-contain">`;
+        return;
+    }
+    const target = customUrl || FAMILY_PORTAL_CONFIG.qrTargetUrl;
+    if (typeof QRCode !== "undefined") {
+        try {
+            new QRCode(el, {
+                text: target,
+                width: 148,
+                height: 148,
+                colorDark: "#0f172a",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+            return;
+        } catch (e) {}
+    }
+    el.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(target)}" alt="QR Code" class="w-36 h-36 object-contain">`;
+}
+
+async function handleFamilyPortalLookup() {
+    const nidInp = document.getElementById('fpNationalId');
+    const phoneInp = document.getElementById('fpPhone');
+    const btn = document.getElementById('fpSearchBtn');
+    const resCont = document.getElementById('fpResultContainer');
+    if (!nidInp || !phoneInp || !resCont) return;
+
+    const nid = String(nidInp.value || "").trim().replace(/\D/g, '');
+    const phone = normalizeEgyptianPhone(phoneInp.value);
+    nidInp.value = nid;
+    phoneInp.value = phone;
+
+    if (!/^[23]\d{13}$/.test(nid)) {
+        alert("⚠️ يرجى إدخال الرقم القومي المكون من 14 رقماً بشكل صحيح.");
+        nidInp.focus();
+        return;
+    }
+    if (!/^01[0125]\d{8}$/.test(phone) && !/^0[2-9]\d{7,8}$/.test(phone)) {
+        alert("⚠️ يرجى إدخال رقم موبايل صحيح مكون من 11 رقماً.");
+        phoneInp.focus();
+        return;
+    }
+
+    if (btn) { btn.disabled = true; btn.innerHTML = "جاري البحث والتحقق بأمان..."; }
+    resCont.classList.add('hidden');
+    resCont.innerHTML = "";
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'family_lookup',
+                data: { nationalId: nid, phone: phone }
+            })
+        });
+        const res = await response.json();
+
+        if (res.status === "success" && res.family && Array.isArray(res.members)) {
+            lastFamilyPortalResult = { nid, phone, family: res.family, members: res.members };
+            renderFamilyPortalSuccess(res.family, res.members, nid);
+        } else {
+            const msg = res.message || "البيانات غير مسجلة أو غير مطابقة في قاعدة البيانات.";
+            const waPrefill = `سلام ونعمة، أرجو تسجيل أو مراجعة بيانات أسرتي في منظومة الكنيسة:\n• الرقم القومي: ${nid}\n• رقم الموبايل: ${phone}`;
+            const qrUrl = `https://wa.me/${FAMILY_PORTAL_CONFIG.adminWhatsApp}?text=${encodeURIComponent(waPrefill)}`;
+
+            resCont.innerHTML = `
+                <div class="space-y-4">
+                    <div class="bg-rose-50 border border-rose-200 rounded-2xl p-4 text-center">
+                        <p class="text-sm font-black text-rose-800 mb-1">⚠️ ${msg}</p>
+                        <p class="text-xs text-rose-700 font-semibold">إذا لم تكن بيانات أسرتكم مسجلة بعد أو تم تغيير رقم الموبايل، تواصلوا معنا لتحديثها فوراً.</p>
+                    </div>
+                    ${renderSupportQrAndPhonesHtml(
+                        "fpNotFoundQrBox",
+                        "تواصل مع إدارة النظام لتسجيل أو تحديث البيانات",
+                        "امسح رمز الـ QR بالكاميرا أو استخدم أرقام الموبايل بالأسفل لإرسال بيانات الأسرة."
+                    )}
+                </div>
+            `;
+            resCont.classList.remove('hidden');
+            mountQrCodeIntoElement("fpNotFoundQrBox", qrUrl);
+        }
+    } catch (err) {
+        alert("تعذر الاتصال بالسيرفر، يرجى التأكد من الإنترنت والمحاولة مرة أخرى.");
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = "🔍 عرض بيانات الأسرة"; }
+    }
+}
+
+function renderFamilyPortalSuccess(family, members, nid) {
+    const resCont = document.getElementById('fpResultContainer');
+    if (!resCont) return;
+
+    const sortedMembers = sortFamilyMembers(members.map(m => ({
+        ...m,
+        "الاسم ثلاثي": m.name,
+        "صلة القرابة": m.relation,
+        "ذكر/انثي": m.gender,
+        "تاريخ الميلاد": m.dob
+    })), family.familyHead);
+
+    const addressParts = [
+        family.area ? `منطقة: ${family.area}` : "",
+        family.street ? `شارع: ${family.street}` : "",
+        family.house ? `منزل/عمارة: ${family.house}` : "",
+        family.floor ? `الدور: ${family.floor}` : "",
+        family.apt ? `شقة: ${family.apt}` : ""
+    ].filter(Boolean).join(" — ") || "غير مسجل تفصيلياً";
+
+    const membersHtml = sortedMembers.map((m, idx) => {
+        const gBadge = m.gender === "ذكر"
+            ? `<span class="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-bold">ذكر</span>`
+            : m.gender === "انثي"
+                ? `<span class="text-[10px] bg-pink-50 text-pink-700 px-2 py-0.5 rounded-full font-bold">انثي</span>`
+                : "";
+        const eduInfo = m.stage ? `${m.stage}${m.grade ? ' (' + m.grade + ')' : ''}` : (m.qualification || "-");
+        return `
+            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div>
+                    <div class="flex items-center gap-1.5 flex-wrap mb-1">
+                        <span class="text-xs font-black text-indigo-700">${idx + 1}.</span>
+                        <span class="text-xs sm:text-sm font-black text-slate-800">${m.name || "-"}</span>
+                        <span class="text-[10px] bg-white border border-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-bold">${m.relation || "عضو"}</span>
+                        ${gBadge}
+                        ${m.maritalStatus ? `<span class="text-[10px] bg-amber-50 text-amber-800 px-2 py-0.5 rounded-full font-bold">${m.maritalStatus}</span>` : ""}
+                    </div>
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-600 font-semibold">
+                        <span>🎂 الميلاد: <strong class="font-mono text-slate-800">${m.dob || "غير مسجل"}</strong></span>
+                        <span>📱 المحمول: <strong class="font-mono text-slate-800" dir="ltr">${m.phone || "غير مسجل"}</strong></span>
+                        <span>🎓 المرحلة/المؤهل: <strong class="text-slate-800">${eduInfo}</strong></span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    const waEditPrefill = `سلام ونعمة، أنا رب الأسرة: ${family.familyHead}\nالرقم القومي: ${nid}\nأرجو تعديل البيانات التالية في منظومة الكنيسة:\n`;
+    const qrEditUrl = `https://wa.me/${FAMILY_PORTAL_CONFIG.adminWhatsApp}?text=${encodeURIComponent(waEditPrefill)}`;
+
+    resCont.innerHTML = `
+        <div class="space-y-5">
+            <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
+                <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+                    <h3 class="text-base font-black text-emerald-950">🏠 أسرة: ${family.familyHead}</h3>
+                    <span class="bg-emerald-600 text-white px-2.5 py-0.5 rounded-full text-[11px] font-black">${sortedMembers.length} أفراد</span>
+                </div>
+                <p class="text-xs text-emerald-900 font-bold">📍 العنوان: ${addressParts}</p>
+                ${family.familyPhone ? `<p class="text-xs text-emerald-900 font-bold mt-1">☎️ هاتف الأسرة: <span class="font-mono" dir="ltr">${family.familyPhone}</span></p>` : ""}
+            </div>
+
+            <div class="space-y-2.5">
+                <h4 class="text-xs font-black text-slate-700">👥 أفراد الأسرة المسجلون (الزوج ➔ الزوجة ➔ الأبناء):</h4>
+                ${membersHtml}
+            </div>
+
+            <!-- نموذج طلب تعديل البيانات -->
+            <div class="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 space-y-3">
+                <h4 class="text-xs font-black text-amber-950">✏️ هل توجد بيانات ناقصة أو تحتاج إلى تعديل؟</h4>
+                <textarea id="fpCorrectionNotes" rows="2" placeholder="اكتب التعديل المطلوب هنا (مثال: إضافة مولود جديد / تصحيح تاريخ ميلاد / تحديث رقم موبايل)..." class="w-full p-2.5 bg-white border border-amber-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500"></textarea>
+                <button type="button" onclick="sendFamilyCorrectionWhatsApp()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-xs shadow-sm transition">
+                    💬 إرسال طلب التعديل للأدمن عبر واتساب
+                </button>
+            </div>
+
+            ${renderSupportQrAndPhonesHtml(
+                "fpFoundQrBox",
+                "في حالة وجود خطأ في البيانات أو عدم القدرة على الإرسال",
+                "يمكنك مسح رمز الـ QR بكاميرا الموبايل أو الاتصال مباشرة بأرقام إدارة النظام بالأسفل:"
+            )}
+        </div>
+    `;
+    resCont.classList.remove('hidden');
+    mountQrCodeIntoElement("fpFoundQrBox", qrEditUrl);
+}
+
+function sendFamilyCorrectionWhatsApp() {
+    if (!lastFamilyPortalResult) return;
+    const notes = (document.getElementById('fpCorrectionNotes')?.value || "").trim();
+    if (!notes) {
+        alert("يرجى كتابة التعديل المطلوب في المربع أولاً.");
+        document.getElementById('fpCorrectionNotes')?.focus();
+        return;
+    }
+    const { nid, phone, family } = lastFamilyPortalResult;
+    let text = `*طلب تحديث بيانات أسرة - منظومة الكنيسة*\n`;
+    text += `• رب الأسرة: *${family.familyHead}*\n`;
+    text += `• الرقم القومي: ${nid}\n`;
+    text += `• الموبايل: ${phone}\n`;
+    text += `• التعديل المطلوب:\n${notes}`;
+    const url = `https://wa.me/${FAMILY_PORTAL_CONFIG.adminWhatsApp}?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+}
+
 /* ==================== نهاية الملف ==================== */
