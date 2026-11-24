@@ -502,6 +502,57 @@ function togglePasswordVisibilityInline() {
             </div>
         </div>
 
+                <!-- 4.5 قسم سجل الاعترافات (مخصص للآباء الكهنة فقط - لأبنائهم فقط) -->
+        <div id="priestConfessionsSection" class="hidden space-y-6 no-print">
+            <!-- شريط الترحيب والخصوصية وإحصائيات الأب الكاهن -->
+            <div class="bg-gradient-to-l from-purple-900 via-indigo-900 to-slate-900 text-white rounded-3xl p-5 sm:p-6 shadow-lg border border-purple-400/20">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-amber-300 text-[11px] font-black mb-2">
+                            <span>✝️</span>
+                            <span>سجل سري معزول — خاص بأب الاعتراف فقط</span>
+                        </div>
+                        <h3 id="priestPortalTitle" class="text-lg sm:text-xl font-black text-white">أهلاً بقدسك</h3>
+                        <p class="text-xs text-slate-300 font-semibold mt-0.5">يظهر هنا أبناء قدسك المسجلون في الاعتراف فقط، ولا يمكن لأي مستخدم آخر الاطلاع على هذه البيانات.</p>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2.5 w-full md:w-auto text-center">
+                        <div class="bg-white/10 backdrop-blur-xs rounded-2xl px-3.5 py-2.5 border border-white/10">
+                            <span class="block text-[10px] text-slate-300 font-bold">إجمالي الأبناء</span>
+                            <span id="priestTotalChildrenCount" class="text-lg sm:text-xl font-black text-white">0</span>
+                        </div>
+                        <div class="bg-emerald-500/20 backdrop-blur-xs rounded-2xl px-3.5 py-2.5 border border-emerald-400/20">
+                            <span class="block text-[10px] text-emerald-200 font-bold">خلال 12 شهر</span>
+                            <span id="priestActive12mCount" class="text-lg sm:text-xl font-black text-emerald-300">0</span>
+                        </div>
+                        <div class="bg-amber-500/20 backdrop-blur-xs rounded-2xl px-3.5 py-2.5 border border-amber-400/20">
+                            <span class="block text-[10px] text-amber-200 font-bold">متأخر (+3 شهور)</span>
+                            <span id="priestOverdueCount" class="text-lg sm:text-xl font-black text-amber-300">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- شريط البحث السريع في أبناء الاعتراف -->
+            <div class="bg-white/95 p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div class="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+                    <div class="relative flex-grow">
+                        <input type="text" id="confessionSearchInput" oninput="filterPriestChildrenList()" placeholder="🔍 ابحث بالاسم ثلاثي أو اسم الأسرة أو المحمول (من أبنائك فقط)..." class="w-full px-4 py-3 bg-slate-50 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-600 outline-none text-xs sm:text-sm font-bold">
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <button type="button" id="btnConfFilterAll" onclick="setPriestConfFilter('all')" class="px-3.5 py-2 rounded-xl text-xs font-black transition bg-purple-700 text-white shadow-xs">الكل</button>
+                        <button type="button" id="btnConfFilterOverdue" onclick="setPriestConfFilter('overdue')" class="px-3.5 py-2 rounded-xl text-xs font-black transition bg-slate-100 text-slate-700 hover:bg-slate-200">⚠️ متأخرون (+3 شهور)</button>
+                        <button type="button" id="btnConfFilterRecent" onclick="setPriestConfFilter('recent')" class="px-3.5 py-2 rounded-xl text-xs font-black transition bg-slate-100 text-slate-700 hover:bg-slate-200">✅ اعترفوا آخر 12 شهر</button>
+                    </div>
+                </div>
+
+                <!-- قائمة أبناء الاعتراف المطابقين -->
+                <div id="confessionMembersList" class="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-[340px] overflow-y-auto nice-scrollbar"></div>
+            </div>
+
+            <!-- بطاقة تفاصيل الفرد المختار + تسجيل اعتراف جديد + سجل آخر 12 شهر -->
+            <div id="confessionDetailPanel" class="hidden bg-white/95 rounded-3xl border-2 border-purple-200 shadow-md overflow-hidden"></div>
+        </div>
+
         <!-- 5. قسم كشف أرباب الأسر -->
         <div id="namesRosterSection" class="hidden space-y-4">
             <div class="bg-white/95 p-4 rounded-2xl border border-slate-200 shadow-sm no-print">
@@ -634,6 +685,6 @@ function togglePasswordVisibilityInline() {
     </button>
 </div>
 
-<script src="app.js?v=27"></script>
+<script src="app.js?v=29"></script>
 </body>
 </html>

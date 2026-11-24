@@ -185,7 +185,8 @@ const ICONS = {
     visitations: `<svg class="w-12 h-12 inline-block text-rose-600" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>`,
     meetings: `<svg class="w-12 h-12 inline-block text-amber-500" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>`,
     servants: `<svg class="w-12 h-12 inline-block text-purple-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>`,
-    audit: `<svg class="w-12 h-12 inline-block text-slate-700" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`
+    audit: `<svg class="w-12 h-12 inline-block text-slate-700" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`,
+    cross: `<svg class="w-12 h-12 inline-block text-purple-700" fill="currentColor" viewBox="0 0 24 24"><path d="M10 2h4v6h6v4h-6v10h-4V12H4V8h6V2z"/></svg>`
 };
 const STAGE_GRADES = { "حضانة": ["بيبي كلاس", "أولى حضانة", "ثانية حضانة"], "ابتدائي": ["الصف الأول", "الصف الثاني", "الصف الثالث", "الصف الرابع", "الصف الخامس", "الصف السادس"], "إعدادي": ["الصف الأول الإعدادي", "الصف الثاني الإعدادي", "الصف الثالث الإعدادي"], "ثانوي": ["الصف الأول الثانوي", "الصف الثاني الثانوي", "الصف الثالث الثانوي"], "جامعي": ["الفرقة الأولى", "الفرقة الثانية", "الفرقة الثالثة", "الفرقة الرابعة", "بكالوريوس / تخرج"], "خريجين": ["خريج"] };
 const TABS_INFO = {
@@ -194,7 +195,8 @@ const TABS_INFO = {
     "Visitations": { label: "سجل الافتقاد", desc: "متابعة الزيارات والحالات العاجلة", svg: ICONS.visitations, accent: "from-rose-500 to-pink-600", iconBg: "bg-rose-50 ring-rose-100", hoverText: "group-hover:text-rose-700", roles: ["Admin"] },
     "Meetings_Attendance": { label: "حضور الاجتماعات", desc: "رصد حضور اجتماع الخدام الأسبوعي", svg: ICONS.meetings, accent: "from-amber-500 to-orange-600", iconBg: "bg-amber-50 ring-amber-100", hoverText: "group-hover:text-amber-700", roles: ["Admin", "SundaySchool_Admin"] },
     "Servants": { label: "إدارة الخدام", desc: "توزيع الصلاحيات وربط الخدام", svg: ICONS.servants, accent: "from-purple-500 to-violet-600", iconBg: "bg-purple-50 ring-purple-100", hoverText: "group-hover:text-purple-700", roles: ["Admin"] },
-    "Audit_Log": { label: "سجل المراقبة", desc: "متابعة دخول الخدام والتعديلات", svg: ICONS.audit, accent: "from-slate-600 to-slate-800", iconBg: "bg-slate-100 ring-slate-200", hoverText: "group-hover:text-slate-900", roles: ["Admin"] }
+    "Audit_Log": { label: "سجل المراقبة", desc: "متابعة دخول الخدام والتعديلات", svg: ICONS.audit, accent: "from-slate-600 to-slate-800", iconBg: "bg-slate-100 ring-slate-200", hoverText: "group-hover:text-slate-900", roles: ["Admin"] },
+    "Confessions": { label: "سجل الاعترافات", desc: "سجل اعترافات الأبناء (للآباء الكهنة فقط)", svg: ICONS.cross, accent: "from-purple-600 to-indigo-700", iconBg: "bg-purple-50 ring-purple-200", hoverText: "group-hover:text-purple-800", roles: ["Priest", "Admin"], priestOnly: true }
 };
 
 // 4. هياكل البيانات ونماذج الإضافة والتعديل
@@ -238,7 +240,7 @@ const SCHEMAS = {
     ],
     "Servants": [
         { id: "ServantName", label: "اسم الخادم (من شيت الأعضاء)", type: "servant_name_autocomplete", required: true }, { id: "Username", label: "اسم المستخدم / رقم الموبايل", type: "text", required: true },
-        { id: "Password", label: "كلمة المرور", type: "text", required: true }, { id: "Role", label: "الصلاحية", type: "select", options: ["Admin", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
+        { id: "Password", label: "كلمة المرور", type: "text", required: true }, { id: "Role", label: "الصلاحية", type: "select", options: ["Admin", "Priest", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
         { id: "AssignedStage", label: "المرحلة المسندة", type: "select", options: ["الكل", ...Object.keys(STAGE_GRADES)] }, { id: "AssignedGrade", label: "الصف المسند", type: "text" },
         { id: "AssignedClass", label: "الفصل المسند", type: "text" }, { id: "Status", label: "الحالة", type: "select", options: ["نشط", "موقوف"] }
     ]
@@ -377,19 +379,37 @@ function initApp(isRestoredSession = false) {
     if (hdr) hdr.classList.remove('hidden');
     if (mn) { mn.classList.remove('hidden'); mn.classList.add('flex'); }
     if (scBtns) { scBtns.classList.remove('hidden'); scBtns.classList.add('flex'); }
-    if (badge && currentUser) badge.innerHTML = `<span>الخادم: <span class="font-black text-indigo-700">${currentUser.ServantName}</span></span> <span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded ml-2 font-mono text-[11px] font-bold border border-indigo-200">${currentUser.Role}</span>`;
+    if (badge && currentUser) {
+        const titleLabel = isPriestUser(currentUser) ? "أب الاعتراف:" : "الخادم:";
+        badge.innerHTML = `<span>${titleLabel} <span class="font-black text-indigo-700">${currentUser.ServantName}</span></span> <span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded ml-2 font-mono text-[11px] font-bold border border-indigo-200">${currentUser.Role}</span>`;
+    }
     buildDashboard();
-    showDashboard();
+    if (currentUser && currentUser.Role === "Priest") {
+        loadSection("Confessions");
+    } else {
+        showDashboard();
+    }
     if (!isRestoredSession) {
         sendAuditLog("تسجيل دخول", "النظام", "تم تسجيل الدخول بنجاح");
     }
+}
+
+function isPriestUser(userObj) {
+    if (!userObj) return false;
+    if (String(userObj.Role || "").trim() === "Priest") return true;
+    const nameNorm = normalizeArabic(userObj.ServantName || "");
+    return /^(?:قدس\s+)?(?:ابونا\s+)?(?:القمص|القس|ابونا)\b/.test(nameNorm);
 }
 
 function buildDashboard() {
     const grid = document.getElementById('dashboardGrid');
     if (!grid || !currentUser) return;
     grid.innerHTML = "";
-    const visibleKeys = Object.keys(TABS_INFO).filter(k => TABS_INFO[k].roles.includes(currentUser.Role));
+    const visibleKeys = Object.keys(TABS_INFO).filter(k => {
+        if (!TABS_INFO[k].roles.includes(currentUser.Role)) return false;
+        if (TABS_INFO[k].priestOnly && !isPriestUser(currentUser)) return false;
+        return true;
+    });
     grid.className = `grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-${Math.min(visibleKeys.length, 6)} gap-4 w-full`;
     visibleKeys.forEach(key => {
         const info = TABS_INFO[key];
@@ -416,22 +436,28 @@ function loadSection(sectionKey) {
     if (info) document.getElementById('currentTabTitle').innerHTML = `${info.label}`;
 
     ['namesViewSwitcher', 'ssViewSwitcher', 'meetingsViewSwitcher', 'visitationsViewSwitcher'].forEach(id => { const el = document.getElementById(id); el?.classList.add('hidden'); el?.classList.remove('flex'); });
-    ['sundaySchoolLiveSection', 'sundaySchoolReportSection', 'sundaySchoolChartsSection', 'servantsMeetingLiveSection', 'visitationDashboardSection', 'namesRosterSection', 'namesFilterSection', 'namesPlaceholder', 'familyResultsContainer', 'standardSearchContainer', 'standardCardsContainer'].forEach(id => {
+    ['sundaySchoolLiveSection', 'sundaySchoolReportSection', 'sundaySchoolChartsSection', 'servantsMeetingLiveSection', 'visitationDashboardSection', 'priestConfessionsSection', 'namesRosterSection', 'namesFilterSection', 'namesPlaceholder', 'familyResultsContainer', 'standardSearchContainer', 'standardCardsContainer'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.classList.add('hidden'); if (id === 'sundaySchoolChartsSection') el.style.display = 'none'; }
     });
     ['btnPrintSundaySchool', 'btnPrintMeetings', 'btnPrintFiltered', 'btnPrintRoster', 'btnPrintVisitReport'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
     
     const btnAdd = document.getElementById('btnAddNewRecord');
+    const btnExp = document.getElementById('btnExportExcel');
     if (btnAdd) {
-        if (sectionKey === 'Audit_Log') btnAdd.classList.add('hidden');
+        if (sectionKey === 'Audit_Log' || sectionKey === 'Confessions') btnAdd.classList.add('hidden');
         else btnAdd.classList.remove('hidden');
+    }
+    if (btnExp) {
+        if (sectionKey === 'Confessions') btnExp.classList.add('hidden');
+        else btnExp.classList.remove('hidden');
     }
 
     if (sectionKey === 'Names') { const sw = document.getElementById('namesViewSwitcher'); sw?.classList.remove('hidden'); sw?.classList.add('flex'); switchNamesView('roster'); }
     else if (sectionKey === 'Sunday_School') { const sw = document.getElementById('ssViewSwitcher'); sw?.classList.remove('hidden'); sw?.classList.add('flex'); document.getElementById('btnPrintSundaySchool')?.classList.remove('hidden'); switchSSView('live'); }
     else if (sectionKey === 'Meetings_Attendance') { const sw = document.getElementById('meetingsViewSwitcher'); sw?.classList.remove('hidden'); sw?.classList.add('flex'); document.getElementById('btnPrintMeetings')?.classList.remove('hidden'); switchMeetingsView('live'); }
     else if (sectionKey === 'Visitations') { const sw = document.getElementById('visitationsViewSwitcher'); sw?.classList.remove('hidden'); sw?.classList.add('flex'); document.getElementById('btnPrintVisitReport')?.classList.remove('hidden'); switchVisitationsView('dashboard'); }
+    else if (sectionKey === 'Confessions') { document.getElementById('priestConfessionsSection')?.classList.remove('hidden'); }
     else { document.getElementById('standardSearchContainer')?.classList.remove('hidden'); document.getElementById('standardCardsContainer')?.classList.remove('hidden'); const sInp = document.getElementById('searchInput'); if (sInp) sInp.value = ""; }
     loadData();
 }
@@ -2325,7 +2351,8 @@ async function loadData(force = false) {
     while (attempts < 3 && !success) {
         attempts++;
         try {
-            const res = await apiFetch(`${API_URL}?sheet=${encodeURIComponent(currentTab)}`);
+            const targetSheetParam = (currentTab === 'Confessions') ? 'Confessions_Log' : currentTab;
+            const res = await apiFetch(`${API_URL}?sheet=${encodeURIComponent(targetSheetParam)}`);
             if (res.status === "success") {
                 rawData = Array.isArray(res.data) ? res.data.map(sanitizeRecordFields) : [];
                 backendAreas = res.areas || [];
@@ -2357,6 +2384,8 @@ async function loadData(force = false) {
                 } else if (currentTab === 'Visitations') {
                     visitationsData = rawData;
                     if (currentVisitView === 'dashboard') initVisitationsDashboard(); else renderStandardCards();
+                } else if (currentTab === 'Confessions') {
+                    await initPriestConfessionsView();
                 } else if (currentTab === 'Servants') {
                     servantsCacheData = rawData; renderStandardCards();
                 } else {
@@ -2390,6 +2419,8 @@ function showLoader(s) {
     } else if (currentTab === 'Visitations') {
         if (currentVisitView === 'dashboard') document.getElementById('visitationDashboardSection')?.classList.toggle('hidden', s);
         else document.getElementById('standardCardsContainer')?.classList.toggle('hidden', s);
+    } else if (currentTab === 'Confessions') {
+        document.getElementById('priestConfessionsSection')?.classList.toggle('hidden', s);
     } else {
         document.getElementById('standardCardsContainer')?.classList.toggle('hidden', s);
     }
@@ -2720,6 +2751,468 @@ function renderFamilyPortalSuccess(family, members) {
         </div>
     `;
     resCont.classList.remove('hidden');
+}
+
+
+// ==================== بوابة سجل الاعترافات للآباء الكهنة فقط ====================
+let priestSpiritualChildren = [];
+let priestConfessionsLogs = [];
+let selectedConfessorMember = null;
+let priestConfFilterMode = "all";
+let showOlderConfessions = false;
+
+function extractPriestTokensClient(name) {
+    let s = normalizeArabic(name).replace(/[/\\\-]+/g, " ").replace(/\s+/g, " ").trim();
+    s = s.replace(/^(?:قدس\s+)?(?:ابونا\s+)?(?:القمص|القس|ابونا)\s*/g, "").trim();
+    return s ? s.split(" ").filter(Boolean) : [];
+}
+
+function isSameConfessionFatherClient(priestAccountName, memberFatherField) {
+    const pRaw = normalizeArabic(priestAccountName).replace(/[/\\\-]+/g, " ").replace(/\s+/g, " ").trim();
+    const mRaw = normalizeArabic(memberFatherField).replace(/[/\\\-]+/g, " ").replace(/\s+/g, " ").trim();
+    if (!pRaw || !mRaw) return false;
+    if (pRaw === mRaw) return true;
+    const pTokens = extractPriestTokensClient(pRaw);
+    const mTokens = extractPriestTokensClient(mRaw);
+    if (pTokens.length === 0 || mTokens.length === 0) return false;
+    if (pTokens[0] !== mTokens[0]) return false;
+    if (mTokens.length === 1 || pTokens.length === 1) return true;
+    return pTokens[1] === mTokens[1];
+}
+
+function getMemberConfessionHistory(member) {
+    if (!member) return [];
+    const mId = String(member["ID"] || "").trim();
+    const mNameNorm = normalizeArabic(member["الاسم ثلاثي"]);
+    const matchedLogs = priestConfessionsLogs.filter(log => {
+        const lMid = String(log["MemberID"] || "").trim();
+        const lNameNorm = normalizeArabic(log["MemberName"]);
+        return (mId && lMid && lMid === mId) || (mNameNorm && lNameNorm && lNameNorm === mNameNorm);
+    }).map(log => ({
+        id: log["ID"],
+        date: formatDisplayDate(log["ConfessionDate"]) || String(log["ConfessionDate"] || "").trim(),
+        priest: String(log["PriestName"] || "").trim(),
+        notes: String(log["Notes"] || "").trim(),
+        fromSheet: true
+    }));
+
+    // دمج تاريخ آخر اعتراف المسجل مسبقاً في ملف العضو إن لم يكن موجوداً في سجل الاعترافات التفصيلي
+    const legacyLastDate = formatDisplayDate(member["تاريخ اخر اعتراف"]);
+    if (legacyLastDate && !matchedLogs.some(l => l.date === legacyLastDate)) {
+        matchedLogs.push({
+            id: null,
+            date: legacyLastDate,
+            priest: String(member["اب الاعتراف"] || currentUser?.ServantName || "").trim(),
+            notes: "مسجل مسبقاً في ملف العضو",
+            fromSheet: false
+        });
+    }
+
+    matchedLogs.sort((a, b) => parseDateForSort(b.date) - parseDateForSort(a.date));
+    return matchedLogs;
+}
+
+function getDaysSinceDate(dateStr) {
+    const formatted = formatDisplayDate(dateStr);
+    if (!formatted) return null;
+    const dt = parseDateForSort(formatted);
+    if (isNaN(dt.getTime()) || dt.getTime() <= 0) return null;
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    dt.setHours(0, 0, 0, 0);
+    return Math.floor((now.getTime() - dt.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function formatRelativeArabicDays(days) {
+    if (days === null || days === undefined) return "";
+    if (days < 0) return `بعد ${Math.abs(days)} يوم`;
+    if (days === 0) return "اليوم";
+    if (days === 1) return "أمس";
+    if (days === 2) return "منذ يومين";
+    if (days <= 10) return `منذ ${days} أيام`;
+    if (days < 30) return `منذ ${days} يوماً`;
+    const months = Math.floor(days / 30);
+    if (months === 1) return "منذ شهر";
+    if (months === 2) return "منذ شهرين";
+    if (months <= 10) return `منذ ${months} شهور`;
+    return `منذ ${months} شهراً`;
+}
+
+async function initPriestConfessionsView() {
+    if (!isPriestUser(currentUser)) {
+        alert("عذراً، هذا القسم متاح للآباء الكهنة فقط.");
+        showDashboard();
+        return;
+    }
+
+    priestConfessionsLogs = Array.isArray(rawData) ? rawData : [];
+
+    // جلب أبناء الاعتراف التابعين لهذا الأب الكاهن فقط من السيرفر
+    try {
+        const res = await apiFetch(`${API_URL}?sheet=Priest_Members`);
+        if (res.status === "success" && Array.isArray(res.data)) {
+            priestSpiritualChildren = res.data.map(sanitizeRecordFields).filter(m =>
+                isSameConfessionFatherClient(currentUser.ServantName, m["اب الاعتراف"])
+            );
+        }
+    } catch (e) {
+        // احتياطي من الكاش المحلي مع تطبيق نفس فلتر أب الاعتراف الصارم
+        priestSpiritualChildren = namesCacheData.filter(m =>
+            !isMemberDeceased(m) && isSameConfessionFatherClient(currentUser.ServantName, m["اب الاعتراف"])
+        );
+    }
+
+    priestSpiritualChildren.sort((a, b) =>
+        String(a["الاسم ثلاثي"] || "").localeCompare(String(b["الاسم ثلاثي"] || ""), 'ar')
+    );
+
+    const titleEl = document.getElementById('priestPortalTitle');
+    if (titleEl) titleEl.innerText = `أهلاً بقدسك — ${currentUser.ServantName}`;
+
+    updatePriestConfessionsKpis();
+    filterPriestChildrenList();
+
+    // تحديث بطاقة الفرد المختار إن وجدت
+    if (selectedConfessorMember) {
+        const freshMember = priestSpiritualChildren.find(m => String(m["ID"]) === String(selectedConfessorMember["ID"])) || selectedConfessorMember;
+        selectedConfessorMember = freshMember;
+        renderSelectedConfessorPanel();
+    }
+}
+
+function updatePriestConfessionsKpis() {
+    const total = priestSpiritualChildren.length;
+    let active12m = 0;
+    let overdue = 0;
+
+    priestSpiritualChildren.forEach(m => {
+        const hist = getMemberConfessionHistory(m);
+        if (hist.length === 0) {
+            overdue++;
+            return;
+        }
+        const days = getDaysSinceDate(hist[0].date);
+        if (days !== null && days <= 365) active12m++;
+        if (days === null || days > 90) overdue++;
+    });
+
+    const elTotal = document.getElementById('priestTotalChildrenCount');
+    const el12m = document.getElementById('priestActive12mCount');
+    const elOver = document.getElementById('priestOverdueCount');
+    const recCount = document.getElementById('recordCount');
+
+    if (elTotal) elTotal.innerText = total;
+    if (el12m) el12m.innerText = active12m;
+    if (elOver) elOver.innerText = overdue;
+    if (recCount) recCount.innerText = `${total} من أبنائك`;
+}
+
+function setPriestConfFilter(mode) {
+    priestConfFilterMode = mode;
+    const btns = {
+        all: document.getElementById('btnConfFilterAll'),
+        overdue: document.getElementById('btnConfFilterOverdue'),
+        recent: document.getElementById('btnConfFilterRecent')
+    };
+    Object.keys(btns).forEach(k => {
+        if (!btns[k]) return;
+        btns[k].className = (k === mode)
+            ? "px-3.5 py-2 rounded-xl text-xs font-black transition bg-purple-700 text-white shadow-xs"
+            : "px-3.5 py-2 rounded-xl text-xs font-black transition bg-slate-100 text-slate-700 hover:bg-slate-200";
+    });
+    filterPriestChildrenList();
+}
+
+function filterPriestChildrenList() {
+    const listEl = document.getElementById('confessionMembersList');
+    if (!listEl) return;
+
+    const q = normalizeArabic(document.getElementById('confessionSearchInput')?.value || "").toLowerCase();
+
+    const filtered = priestSpiritualChildren.filter(m => {
+        const hist = getMemberConfessionHistory(m);
+        const days = hist.length > 0 ? getDaysSinceDate(hist[0].date) : null;
+
+        if (priestConfFilterMode === "overdue" && !(days === null || days > 90)) return false;
+        if (priestConfFilterMode === "recent" && !(days !== null && days <= 365)) return false;
+
+        if (q) {
+            const n = normalizeArabic(m["الاسم ثلاثي"]).toLowerCase();
+            const h = normalizeArabic(m["اسم رب الاسرة"]).toLowerCase();
+            const p = String(m["تليفون العمل/المحمول"] || "").trim();
+            if (!n.includes(q) && !h.includes(q) && !p.includes(q)) return false;
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        listEl.innerHTML = `<div class="md:col-span-2 text-center py-10 text-slate-400 font-bold text-xs">لا يوجد أبناء مطابقون لبحثك ضمن قائمة أبناء قدسك</div>`;
+        return;
+    }
+
+    const displaySlice = filtered.slice(0, 60);
+    let html = displaySlice.map(m => {
+        const mId = m["ID"];
+        const hist = getMemberConfessionHistory(m);
+        const latestDate = hist.length > 0 ? hist[0].date : "";
+        const days = latestDate ? getDaysSinceDate(latestDate) : null;
+        const isSelected = selectedConfessorMember && String(selectedConfessorMember["ID"]) === String(mId);
+
+        let badgeHtml = `<span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">لم يُسجل بعد</span>`;
+        if (latestDate) {
+            if (days !== null && days <= 90) {
+                badgeHtml = `<span class="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">✓ ${latestDate}</span>`;
+            } else {
+                badgeHtml = `<span class="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full font-bold">⚠️ ${latestDate}</span>`;
+            }
+        }
+
+        return `
+            <div onclick="selectPriestChildForConfession(${mId})" class="p-3 rounded-2xl border cursor-pointer transition flex items-center justify-between gap-2 ${isSelected ? 'bg-purple-50 border-purple-500 shadow-xs' : 'bg-slate-50/80 hover:bg-purple-50/40 border-slate-200'}">
+                <div class="min-w-0">
+                    <p class="text-xs sm:text-sm font-black text-slate-800 truncate">${m["الاسم ثلاثي"]}</p>
+                    <p class="text-[11px] text-slate-500 font-semibold truncate mt-0.5">🏠 ${m["اسم رب الاسرة"] || "-"} | 📍 ${m["المنطقة"] || "-"}</p>
+                </div>
+                <div class="flex flex-col items-end shrink-0 gap-1">
+                    ${badgeHtml}
+                    <span class="text-[10px] font-bold text-purple-700">فتح السجل ←</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    if (filtered.length > 60) {
+        html += `<div class="md:col-span-2 text-center py-2 text-[11px] text-slate-500 font-bold">يتم عرض أول 60 نتيجة من إجمالي ${filtered.length} — اكتب الاسم للوصول السريع</div>`;
+    }
+    listEl.innerHTML = html;
+}
+
+function selectPriestChildForConfession(memberId) {
+    const member = priestSpiritualChildren.find(m => String(m["ID"]) === String(memberId));
+    if (!member) return;
+    selectedConfessorMember = member;
+    showOlderConfessions = false;
+    filterPriestChildrenList();
+    renderSelectedConfessorPanel();
+    setTimeout(() => {
+        document.getElementById('confessionDetailPanel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 60);
+}
+
+function renderSelectedConfessorPanel() {
+    const panel = document.getElementById('confessionDetailPanel');
+    if (!panel || !selectedConfessorMember) return;
+
+    const m = selectedConfessorMember;
+    const allHistory = getMemberConfessionHistory(m);
+
+    // تصفية اعترافات آخر 12 شهراً (365 يوماً)
+    const last12MonthsHistory = allHistory.filter(item => {
+        const d = getDaysSinceDate(item.date);
+        return d === null || d <= 365;
+    });
+    const olderHistory = allHistory.filter(item => {
+        const d = getDaysSinceDate(item.date);
+        return d !== null && d > 365;
+    });
+
+    const displayedHistory = showOlderConfessions ? allHistory : last12MonthsHistory;
+    const latestDate = allHistory.length > 0 ? allHistory[0].date : "لم يُسجل بعد";
+    const latestDays = allHistory.length > 0 ? getDaysSinceDate(allHistory[0].date) : null;
+    const relText = latestDays !== null ? ` (${formatRelativeArabicDays(latestDays)})` : "";
+
+    const age = calculateAge(m["تاريخ الميلاد"], m["الرقم القومي"]);
+    const phone = m["تليفون العمل/المحمول"] || m["هاتف الاسرة"] || "-";
+
+    const now = new Date();
+    const todayStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+
+    const timelineHtml = displayedHistory.length === 0
+        ? `<div class="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-xs text-slate-500 font-bold">لا توجد اعترافات مسجلة خلال الـ 12 شهراً الماضية.</div>`
+        : displayedHistory.map((entry, idx) => {
+            const dSince = getDaysSinceDate(entry.date);
+            const relBadge = dSince !== null ? `<span class="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-bold">${formatRelativeArabicDays(dSince)}</span>` : "";
+            const delBtn = entry.fromSheet && entry.id
+                ? `<button type="button" onclick="deleteConfessionEntry(${entry.id})" class="text-[11px] font-bold text-rose-600 hover:bg-rose-50 px-2.5 py-1 rounded-lg transition">حذف</button>`
+                : "";
+            return `
+                <div class="flex items-center justify-between gap-3 p-3.5 rounded-2xl border ${idx === 0 ? 'bg-purple-50/60 border-purple-200' : 'bg-white border-slate-200/80'}">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-xl ${idx === 0 ? 'bg-purple-700 text-white' : 'bg-slate-100 text-slate-700'} flex items-center justify-center font-black text-xs shrink-0 mt-0.5">✝</div>
+                        <div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-sm font-black text-slate-900 font-mono" dir="ltr">${entry.date}</span>
+                                ${relBadge}
+                                ${idx === 0 ? '<span class="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-black">أحدث اعتراف</span>' : ''}
+                            </div>
+                            <p class="text-[11px] text-slate-600 font-semibold mt-0.5">أب الاعتراف: <strong>${entry.priest || currentUser.ServantName}</strong></p>
+                            ${entry.notes ? `<p class="text-xs text-purple-900 bg-purple-100/60 px-2.5 py-1 rounded-lg font-bold mt-1.5">📝 ${entry.notes}</p>` : ''}
+                        </div>
+                    </div>
+                    <div>${delBtn}</div>
+                </div>
+            `;
+        }).join('');
+
+    const olderToggleHtml = olderHistory.length > 0
+        ? `<div class="text-center pt-2">
+               <button type="button" onclick="toggleOlderConfessionsView()" class="text-xs font-black text-indigo-700 hover:underline">
+                   ${showOlderConfessions ? '▲ إخفاء السجلات الأقدم من 12 شهر' : `▼ عرض السجل الأقدم من 12 شهر (${olderHistory.length} سجل)`}
+               </button>
+           </div>`
+        : "";
+
+    panel.innerHTML = `
+        <div class="bg-purple-50/80 p-5 border-b border-purple-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+            <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <h4 class="text-base sm:text-lg font-black text-slate-900">${m["الاسم ثلاثي"]}</h4>
+                    ${age !== null ? `<span class="text-[11px] bg-white border border-slate-200 text-slate-700 px-2.5 py-0.5 rounded-full font-bold">${age} سنة</span>` : ''}
+                    ${m["المرحلة"] ? `<span class="text-[11px] bg-indigo-100 text-indigo-800 px-2.5 py-0.5 rounded-full font-bold">${m["المرحلة"]} ${m["الصف"] ? '(' + m["الصف"] + ')' : ''}</span>` : ''}
+                </div>
+                <p class="text-xs text-slate-600 font-semibold mt-1">🏠 الأسرة: <strong>${m["اسم رب الاسرة"] || "-"}</strong> | 📍 المنطقة: <strong>${m["المنطقة"] || "-"}</strong> | 📱 <span class="font-mono" dir="ltr">${phone}</span></p>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+                ${renderContactButtons(phone)}
+                <button type="button" onclick="closeSelectedConfessorPanel()" class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold text-xs">إغلاق ✕</button>
+            </div>
+        </div>
+
+        <div class="p-5 sm:p-6 space-y-6">
+            <!-- ملخص الاعتراف -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between">
+                    <span class="text-xs font-bold text-indigo-900">🗓️ آخر اعتراف مسجل:</span>
+                    <span class="text-xs sm:text-sm font-black text-indigo-950">${latestDate}${relText}</span>
+                </div>
+                <div class="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-100 flex items-center justify-between">
+                    <span class="text-xs font-bold text-emerald-900">📊 عدد مرات الاعتراف (آخر 12 شهر):</span>
+                    <span class="text-xs sm:text-sm font-black text-emerald-950">${last12MonthsHistory.length} مرة</span>
+                </div>
+            </div>
+
+            <!-- تسجيل اعتراف جديد -->
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                <h5 class="text-xs font-black text-purple-900">✝️ تسجيل اعتراف جديد</h5>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">تاريخ الاعتراف (DD/MM/YYYY)</label>
+                        <input type="text" id="newConfessionDateInput" dir="ltr" value="${todayStr}" onblur="this.value = formatDisplayDate(this.value)" class="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs font-black text-center font-mono outline-none focus:ring-2 focus:ring-purple-600">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">ملاحظة خاصة بأب الاعتراف (اختياري — سرية تماماً)</label>
+                        <input type="text" id="newConfessionNotesInput" placeholder="مثال: متابعة قانون روحي / زيارة منزلية..." class="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-purple-600">
+                    </div>
+                </div>
+                <button type="button" id="btnRecordConfessionNow" onclick="submitNewConfessionEntry()" class="w-full py-3 bg-purple-700 hover:bg-purple-800 text-white font-black rounded-xl text-xs sm:text-sm shadow-md transition cursor-pointer">
+                    ✝️ حفظ وتسجيل الاعتراف الآن
+                </button>
+            </div>
+
+            <!-- الخط الزمني لآخر 12 شهر -->
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <h5 class="text-xs sm:text-sm font-black text-slate-800">📜 سجل الاعترافات خلال آخر 12 شهراً (${last12MonthsHistory.length})</h5>
+                </div>
+                <div class="space-y-2.5">
+                    ${timelineHtml}
+                </div>
+                ${olderToggleHtml}
+            </div>
+        </div>
+    `;
+    panel.classList.remove('hidden');
+}
+
+function closeSelectedConfessorPanel() {
+    selectedConfessorMember = null;
+    const panel = document.getElementById('confessionDetailPanel');
+    if (panel) {
+        panel.classList.add('hidden');
+        panel.innerHTML = "";
+    }
+    filterPriestChildrenList();
+}
+
+function toggleOlderConfessionsView() {
+    showOlderConfessions = !showOlderConfessions;
+    renderSelectedConfessorPanel();
+}
+
+async function submitNewConfessionEntry() {
+    if (!selectedConfessorMember || !isPriestUser(currentUser)) return;
+    const dateInp = document.getElementById('newConfessionDateInput');
+    const notesInp = document.getElementById('newConfessionNotesInput');
+    const btn = document.getElementById('btnRecordConfessionNow');
+
+    const confDate = formatDisplayDate(dateInp?.value || "");
+    const notes = (notesInp?.value || "").trim();
+
+    if (!confDate || !isValidCalendarDate(confDate)) {
+        alert("⚠️ يرجى إدخال تاريخ اعتراف صحيح بصيغة DD/MM/YYYY.");
+        dateInp?.focus();
+        return;
+    }
+
+    const existingHist = getMemberConfessionHistory(selectedConfessorMember);
+    if (existingHist.some(h => h.date === confDate && h.fromSheet)) {
+        if (!confirm(`تنبيه: يوجد اعتراف مسجل بالفعل لهذا الابن بتاريخ ${confDate}.
+هل تريد تسجيل اعتراف آخر في نفس اليوم؟`)) return;
+    }
+
+    if (btn) { btn.disabled = true; btn.innerText = "جاري التسجيل..."; }
+    try {
+        const res = await apiPost({
+            action: "add_confession",
+            data: {
+                MemberID: selectedConfessorMember["ID"],
+                MemberName: selectedConfessorMember["الاسم ثلاثي"],
+                ConfessionDate: confDate,
+                Notes: notes
+            }
+        });
+        if (res.status === "success") {
+            if (res.record) {
+                priestConfessionsLogs.push(sanitizeRecordFields(res.record));
+            }
+            if (res.latestConfessionDate) {
+                selectedConfessorMember["تاريخ اخر اعتراف"] = res.latestConfessionDate;
+            }
+            updatePriestConfessionsKpis();
+            filterPriestChildrenList();
+            renderSelectedConfessorPanel();
+            alert("✓ تم تسجيل الاعتراف وتحديث تاريخ آخر اعتراف بنجاح.");
+        } else {
+            alert("خطأ: " + (res.message || "تعذر تسجيل الاعتراف"));
+        }
+    } catch (e) {
+        alert("تعذر الاتصال بالسيرفر أثناء تسجيل الاعتراف.");
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerText = "✝️ حفظ وتسجيل الاعتراف الآن"; }
+    }
+}
+
+async function deleteConfessionEntry(confessionId) {
+    if (!confirm("هل أنت متأكد من حذف سجل الاعتراف هذا؟")) return;
+    try {
+        const res = await apiPost({
+            action: "delete_confession",
+            data: { ID: confessionId }
+        });
+        if (res.status === "success") {
+            priestConfessionsLogs = priestConfessionsLogs.filter(l => Number(l["ID"]) !== Number(confessionId));
+            if (selectedConfessorMember && res.latestConfessionDate !== undefined) {
+                selectedConfessorMember["تاريخ اخر اعتراف"] = res.latestConfessionDate;
+            }
+            updatePriestConfessionsKpis();
+            filterPriestChildrenList();
+            renderSelectedConfessorPanel();
+        } else {
+            alert("خطأ: " + (res.message || "تعذر حذف السجل"));
+        }
+    } catch (e) {
+        alert("تعذر الاتصال بالسيرفر.");
+    }
 }
 
 /* ==================== نهاية الملف ==================== */
