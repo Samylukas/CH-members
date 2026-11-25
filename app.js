@@ -190,10 +190,10 @@ const ICONS = {
 };
 const STAGE_GRADES = { "حضانة": ["بيبي كلاس", "أولى حضانة", "ثانية حضانة"], "ابتدائي": ["الصف الأول", "الصف الثاني", "الصف الثالث", "الصف الرابع", "الصف الخامس", "الصف السادس"], "إعدادي": ["الصف الأول الإعدادي", "الصف الثاني الإعدادي", "الصف الثالث الإعدادي"], "ثانوي": ["الصف الأول الثانوي", "الصف الثاني الثانوي", "الصف الثالث الثانوي"], "جامعي": ["الفرقة الأولى", "الفرقة الثانية", "الفرقة الثالثة", "الفرقة الرابعة", "بكالوريوس / تخرج"], "خريجين": ["خريج"] };
 const TABS_INFO = {
-    "Names": { label: "أعضاء الكنيسة", desc: "دليل أرباب الأسر والفرز المتقدم", svg: ICONS.users, accent: "from-emerald-500 to-teal-600", iconBg: "bg-emerald-50 ring-emerald-100", hoverText: "group-hover:text-emerald-700", roles: ["Admin", "SundaySchool_Admin"] },
-    "Sunday_School": { label: "مدارس الأحد", desc: "كشوف الفصول والحضور والإحصائيات", svg: ICONS.children, accent: "from-blue-500 to-indigo-600", iconBg: "bg-blue-50 ring-blue-100", hoverText: "group-hover:text-blue-700", roles: ["Admin", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
-    "Visitations": { label: "سجل الافتقاد", desc: "متابعة الزيارات والحالات العاجلة", svg: ICONS.visitations, accent: "from-rose-500 to-pink-600", iconBg: "bg-rose-50 ring-rose-100", hoverText: "group-hover:text-rose-700", roles: ["Admin"] },
-    "Meetings_Attendance": { label: "حضور الاجتماعات", desc: "رصد حضور اجتماع الخدام الأسبوعي", svg: ICONS.meetings, accent: "from-amber-500 to-orange-600", iconBg: "bg-amber-50 ring-amber-100", hoverText: "group-hover:text-amber-700", roles: ["Admin", "SundaySchool_Admin"] },
+    "Names": { label: "أعضاء الكنيسة", desc: "دليل أرباب الأسر والفرز المتقدم", svg: ICONS.users, accent: "from-emerald-500 to-teal-600", iconBg: "bg-emerald-50 ring-emerald-100", hoverText: "group-hover:text-emerald-700", roles: ["Admin", "Priest", "SundaySchool_Admin"] },
+    "Sunday_School": { label: "مدارس الأحد", desc: "كشوف الفصول والحضور والإحصائيات", svg: ICONS.children, accent: "from-blue-500 to-indigo-600", iconBg: "bg-blue-50 ring-blue-100", hoverText: "group-hover:text-blue-700", roles: ["Admin", "Priest", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
+    "Visitations": { label: "سجل الافتقاد", desc: "متابعة الزيارات والحالات العاجلة", svg: ICONS.visitations, accent: "from-rose-500 to-pink-600", iconBg: "bg-rose-50 ring-rose-100", hoverText: "group-hover:text-rose-700", roles: ["Admin", "Priest"] },
+    "Meetings_Attendance": { label: "حضور الاجتماعات", desc: "رصد حضور اجتماع الخدام الأسبوعي", svg: ICONS.meetings, accent: "from-amber-500 to-orange-600", iconBg: "bg-amber-50 ring-amber-100", hoverText: "group-hover:text-amber-700", roles: ["Admin", "Priest", "SundaySchool_Admin"] },
     "Servants": { label: "إدارة الخدام", desc: "توزيع الصلاحيات وربط الخدام", svg: ICONS.servants, accent: "from-purple-500 to-violet-600", iconBg: "bg-purple-50 ring-purple-100", hoverText: "group-hover:text-purple-700", roles: ["Admin"] },
     "Audit_Log": { label: "سجل المراقبة", desc: "متابعة دخول الخدام والتعديلات", svg: ICONS.audit, accent: "from-slate-600 to-slate-800", iconBg: "bg-slate-100 ring-slate-200", hoverText: "group-hover:text-slate-900", roles: ["Admin"] },
     "Confessions": { label: "سجل الاعترافات", desc: "سجل اعترافات الأبناء (للآباء الكهنة فقط)", svg: ICONS.cross, accent: "from-purple-600 to-indigo-700", iconBg: "bg-purple-50 ring-purple-200", hoverText: "group-hover:text-purple-800", roles: ["Priest", "Admin"], priestOnly: true }
@@ -241,7 +241,7 @@ const SCHEMAS = {
     "Servants": [
         { id: "ServantName", label: "اسم الخادم (من شيت الأعضاء)", type: "servant_name_autocomplete", required: true }, { id: "Username", label: "اسم المستخدم / رقم الموبايل", type: "text", required: true },
         { id: "Password", label: "كلمة المرور", type: "text", required: true }, { id: "Role", label: "الصلاحية", type: "select", options: ["Admin", "Priest", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
-        { id: "AssignedStage", label: "المرحلة المسندة", type: "select", options: ["الكل", ...Object.keys(STAGE_GRADES)] }, { id: "AssignedGrade", label: "الصف المسند", type: "text" },
+        { id: "AssignedStage", label: "المرحلة / النطاق المسند", type: "select", options: ["الكل", "مدارس الأحد (حضانة - ثانوي)", "الجامعة والخريجين", ...Object.keys(STAGE_GRADES)] }, { id: "AssignedGrade", label: "الصف المسند", type: "text" },
         { id: "AssignedClass", label: "الفصل المسند", type: "text" }, { id: "Status", label: "الحالة", type: "select", options: ["نشط", "موقوف"] }
     ]
 };
@@ -384,11 +384,7 @@ function initApp(isRestoredSession = false) {
         badge.innerHTML = `<span>${titleLabel} <span class="font-black text-indigo-700">${currentUser.ServantName}</span></span> <span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded ml-2 font-mono text-[11px] font-bold border border-indigo-200">${currentUser.Role}</span>`;
     }
     buildDashboard();
-    if (currentUser && currentUser.Role === "Priest") {
-        loadSection("Confessions");
-    } else {
-        showDashboard();
-    }
+    showDashboard();
     if (!isRestoredSession) {
         sendAuditLog("تسجيل دخول", "النظام", "تم تسجيل الدخول بنجاح");
     }
@@ -399,6 +395,23 @@ function isPriestUser(userObj) {
     if (String(userObj.Role || "").trim() === "Priest") return true;
     const nameNorm = normalizeArabic(userObj.ServantName || "");
     return /^(?:قدس\s+)?(?:ابونا\s+)?(?:القمص|القس|ابونا)\b/.test(nameNorm);
+}
+
+function getUserAllowedStages(userObj) {
+    const allStages = Object.keys(STAGE_GRADES);
+    if (!userObj) return allStages;
+    const raw = String(userObj.AssignedStage || "").trim();
+    if (!raw || raw === "الكل") return allStages;
+    if (raw === "مدارس الأحد (حضانة - ثانوي)") return ["حضانة", "ابتدائي", "إعدادي", "ثانوي"];
+    if (raw === "الجامعة والخريجين") return ["جامعي", "خريجين"];
+    const parts = raw.split(/[،,]+/).map(s => s.trim()).filter(Boolean);
+    const matched = allStages.filter(st => parts.some(p => normalizeArabic(p) === normalizeArabic(st)));
+    return matched.length > 0 ? matched : allStages;
+}
+
+function isStageAllowedForUser(stageName, userObj = currentUser) {
+    const allowed = getUserAllowedStages(userObj);
+    return allowed.some(st => normalizeArabic(st) === normalizeArabic(stageName));
 }
 
 function buildDashboard() {
@@ -755,7 +768,7 @@ function renderFamilyHeadsRoster() {
                                 <div class="flex items-center gap-1.5 w-full md:w-auto justify-end no-print">
                                     ${renderContactButtons(member["تليفون العمل/المحمول"])}
                                     <button onclick="editRecord(${mId})" class="text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2 py-1 rounded-lg transition">تعديل</button>
-                                    ${currentUser.Role === "Admin" ? `<button onclick="deleteRecord(${mId})" class="text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 px-2 py-1 rounded-lg transition">حذف</button>` : ''}
+                                    ${(currentUser.Role === "Admin" || currentUser.Role === "Priest") ? `<button onclick="deleteRecord(${mId})" class="text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 px-2 py-1 rounded-lg transition">حذف</button>` : ''}
                                 </div>
                             </div>
                         `;
@@ -900,7 +913,7 @@ function applyNamesFilter() {
                     <div class="flex items-center gap-2 mb-0.5 flex-wrap"><span class="text-xs font-mono font-bold text-slate-400">#${idVal}</span><h3 class="text-sm font-black text-slate-800">${member["الاسم ثلاثي"]}</h3><span class="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-bold border">${member["صلة القرابة"] || "عضو"}</span>${genderBadge}<span class="text-[11px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-bold">${member["الحالة الاجتماعية"] || "-"}</span>${deceasedBadge}</div>
                     <p class="text-xs text-indigo-700 font-bold">🏠 الأسرة: <strong>${member["اسم رب الاسرة"] || "غير محدد"}</strong> | 📍 المنطقة: <strong class="text-slate-800">${getMemberArea(member) || familyAreaMap[normalizeArabic(getFieldValNormalized(member, "اسم رب الاسرة"))] || "غير محددة"}</strong></p>
                 </div>
-                <div class="flex items-center gap-2 no-print flex-wrap w-full md:w-auto justify-end">${renderContactButtons(member["تليفون العمل/المحمول"])}<button onclick="editRecord(${idVal})" class="text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-xl transition">تعديل</button>${currentUser.Role === "Admin" ? `<button onclick="deleteRecord(${idVal})" class="text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1.5 rounded-xl transition">حذف</button>` : ''}</div>
+                <div class="flex items-center gap-2 no-print flex-wrap w-full md:w-auto justify-end">${renderContactButtons(member["تليفون العمل/المحمول"])}<button onclick="editRecord(${idVal})" class="text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-xl transition">تعديل</button>${(currentUser.Role === "Admin" || currentUser.Role === "Priest") ? `<button onclick="deleteRecord(${idVal})" class="text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1.5 rounded-xl transition">حذف</button>` : ''}</div>
             </div>
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-xs font-semibold">
                 <div class="bg-slate-50 p-2 rounded-xl border"><span class="block text-slate-400 text-[10px] mb-0.5">العمر</span><strong class="text-slate-800">${age !== null ? age + ' سنة' : '-'}</strong></div>
@@ -1031,8 +1044,9 @@ async function initSundaySchoolLiveView() {
 
     const stageSel = document.getElementById('ssFilterStage');
     if (!stageSel) return;
-    stageSel.innerHTML = Object.keys(STAGE_GRADES).map(s => `<option value="${s}">${s}</option>`).join('');
-    if ((currentUser.Role === "Stage_Leader" || currentUser.Role === "Class_Servant") && currentUser.AssignedStage && currentUser.AssignedStage !== "الكل") { stageSel.value = currentUser.AssignedStage; stageSel.disabled = true; }
+    const allowedStages = getUserAllowedStages(currentUser);
+    stageSel.innerHTML = allowedStages.map(s => `<option value="${s}">${s}</option>`).join('');
+    if (allowedStages.length === 1) { stageSel.value = allowedStages[0]; stageSel.disabled = true; }
     else stageSel.disabled = false;
     onSSFilterStageChange(stageSel.value);
 }
@@ -1218,16 +1232,17 @@ async function initSSReportView() {
     const stageSel = document.getElementById('ssReportStage');
     const badgeEl = document.getElementById('ssReportScopeBadge');
     if (stageSel) {
-        const hasFullAccess = currentUser.Role === "Admin" || currentUser.Role === "SundaySchool_Admin" || !currentUser.AssignedStage || currentUser.AssignedStage === "الكل";
-        if (hasFullAccess) {
-            stageSel.innerHTML = `<option value="">كل المراحل</option>` + Object.keys(STAGE_GRADES).map(s => `<option value="${s}">${s}</option>`).join('');
-            stageSel.disabled = false;
-            if (badgeEl) badgeEl.innerText = "نطاق الصلاحية: الخدمة بالكامل";
-        } else {
-            stageSel.innerHTML = `<option value="${currentUser.AssignedStage}">${currentUser.AssignedStage}</option>`;
-            stageSel.value = currentUser.AssignedStage;
+        const allowedStages = getUserAllowedStages(currentUser);
+        const isAll = allowedStages.length === Object.keys(STAGE_GRADES).length;
+        if (allowedStages.length === 1) {
+            stageSel.innerHTML = `<option value="${allowedStages[0]}">${allowedStages[0]}</option>`;
+            stageSel.value = allowedStages[0];
             stageSel.disabled = true;
-            if (badgeEl) badgeEl.innerText = `نطاق الصلاحية: ${currentUser.AssignedStage}`;
+            if (badgeEl) badgeEl.innerText = `نطاق الصلاحية: ${allowedStages[0]}`;
+        } else {
+            stageSel.innerHTML = `<option value="">${isAll ? "كل المراحل" : "كل مراحل النطاق"}</option>` + allowedStages.map(s => `<option value="${s}">${s}</option>`).join('');
+            stageSel.disabled = false;
+            if (badgeEl) badgeEl.innerText = isAll ? "نطاق الصلاحية: الخدمة بالكامل" : `نطاق الصلاحية: ${currentUser.AssignedStage}`;
         }
         onSSReportStageChange(stageSel.value);
     }
@@ -1278,11 +1293,8 @@ function generateSSPeriodReport() {
     const filteredLogs = rawData.filter(rec => {
         const stg = normalizeArabic(rec["Stage"]);
         const grd = normalizeArabic(rec["Grade"]);
-        if (currentUser.Role === "Stage_Leader" && currentUser.AssignedStage !== "الكل" && stg !== normalizeArabic(currentUser.AssignedStage)) return false;
-        if (currentUser.Role === "Class_Servant") {
-            if (currentUser.AssignedStage !== "الكل" && stg !== normalizeArabic(currentUser.AssignedStage)) return false;
-            if (currentUser.AssignedGrade && currentUser.AssignedGrade !== "الكل" && grd !== normalizeArabic(currentUser.AssignedGrade)) return false;
-        }
+        if (!isStageAllowedForUser(rec["Stage"], currentUser)) return false;
+        if (currentUser.Role === "Class_Servant" && currentUser.AssignedGrade && currentUser.AssignedGrade !== "الكل" && grd !== normalizeArabic(currentUser.AssignedGrade)) return false;
         if (stage && stg !== normalizeArabic(stage)) return false;
         if (grade && grd !== normalizeArabic(grade)) return false;
 
@@ -1297,11 +1309,8 @@ function generateSSPeriodReport() {
         if (isMemberDeceased(kid) || kid["مدارس الأحد"] === "غير مشترك") return false;
         const stg = normalizeArabic(kid["المرحلة"]);
         const grd = normalizeArabic(kid["الصف"]);
-        if (currentUser.Role === "Stage_Leader" && currentUser.AssignedStage !== "الكل" && stg !== normalizeArabic(currentUser.AssignedStage)) return false;
-        if (currentUser.Role === "Class_Servant") {
-            if (currentUser.AssignedStage !== "الكل" && stg !== normalizeArabic(currentUser.AssignedStage)) return false;
-            if (currentUser.AssignedGrade && currentUser.AssignedGrade !== "الكل" && grd !== normalizeArabic(currentUser.AssignedGrade)) return false;
-        }
+        if (!isStageAllowedForUser(kid["المرحلة"], currentUser)) return false;
+        if (currentUser.Role === "Class_Servant" && currentUser.AssignedGrade && currentUser.AssignedGrade !== "الكل" && grd !== normalizeArabic(currentUser.AssignedGrade)) return false;
         if (stage) {
             if (stg !== normalizeArabic(stage)) return false;
         } else {
@@ -1544,11 +1553,19 @@ function calcChartPercent(part, total) { return total > 0 ? Math.round((part / t
 function buildChartsStageTabs() {
     const tabsEl = document.getElementById('ssChartsStageTabs'), badgeEl = document.getElementById('ssChartsScopeBadge');
     if (!tabsEl) return;
-    const hasFullAccess = currentUser.Role === "Admin" || currentUser.Role === "SundaySchool_Admin" || currentUser.AssignedStage === "الكل";
+    const allowedStages = getUserAllowedStages(currentUser);
+    const isAll = allowedStages.length === Object.keys(STAGE_GRADES).length;
     let availableStages = [];
-    if (hasFullAccess) { availableStages = ["الكل", ...Object.keys(STAGE_GRADES)]; if (badgeEl) badgeEl.innerText = "نطاق الصلاحية: الخدمة بالكامل"; }
-    else { availableStages = [currentUser.AssignedStage]; selectedChartStage = currentUser.AssignedStage; if (badgeEl) badgeEl.innerText = `نطاق الصلاحية: ${currentUser.AssignedStage}${currentUser.AssignedGrade && currentUser.AssignedGrade !== 'الكل' ? ' - ' + currentUser.AssignedGrade : ''}${currentUser.AssignedClass && currentUser.AssignedClass !== 'الكل' ? ' (' + currentUser.AssignedClass + ')' : ''}`; }
-    tabsEl.innerHTML = availableStages.map(st => `<button type="button" onclick="selectChartStage('${st}')" class="px-3.5 py-1.5 rounded-xl text-xs font-black transition ${selectedChartStage === st ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">${st === "الكل" ? "🌐 الخدمة كلها" : st}</button>`).join('');
+    if (allowedStages.length === 1) {
+        availableStages = [allowedStages[0]];
+        selectedChartStage = allowedStages[0];
+        if (badgeEl) badgeEl.innerText = `نطاق الصلاحية: ${allowedStages[0]}${currentUser.AssignedGrade && currentUser.AssignedGrade !== 'الكل' ? ' - ' + currentUser.AssignedGrade : ''}`;
+    } else {
+        availableStages = ["الكل", ...allowedStages];
+        if (selectedChartStage !== "الكل" && !allowedStages.includes(selectedChartStage)) selectedChartStage = "الكل";
+        if (badgeEl) badgeEl.innerText = isAll ? "نطاق الصلاحية: الخدمة بالكامل" : `نطاق الصلاحية: ${currentUser.AssignedStage}`;
+    }
+    tabsEl.innerHTML = availableStages.map(st => `<button type="button" onclick="selectChartStage('${st}')" class="px-3.5 py-1.5 rounded-xl text-xs font-black transition ${selectedChartStage === st ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">${st === "الكل" ? (isAll ? "🌐 الخدمة كلها" : "🌐 كامل النطاق") : st}</button>`).join('');
 }
 
 function selectChartStage(stage) { selectedChartStage = stage; initSSChartsView(); }
@@ -1561,10 +1578,9 @@ async function initSSChartsView() {
     buildChartsStageTabs();
 
     let allowedRecords = rawData.filter(item => {
-        const stg = normalizeArabic(item["Stage"]), grd = normalizeArabic(item["Grade"]), cls = normalizeArabic(item["ClassName"]);
-        if (currentUser.Role === "Stage_Leader" && currentUser.AssignedStage !== "الكل" && stg !== normalizeArabic(currentUser.AssignedStage)) return false;
+        const grd = normalizeArabic(item["Grade"]), cls = normalizeArabic(item["ClassName"]);
+        if (!isStageAllowedForUser(item["Stage"], currentUser)) return false;
         if (currentUser.Role === "Class_Servant") {
-            if (currentUser.AssignedStage !== "الكل" && stg !== normalizeArabic(currentUser.AssignedStage)) return false;
             if (currentUser.AssignedGrade && currentUser.AssignedGrade !== "الكل" && grd !== normalizeArabic(currentUser.AssignedGrade)) return false;
             if (currentUser.AssignedClass && currentUser.AssignedClass !== "الكل" && cls !== normalizeArabic(currentUser.AssignedClass)) return false;
         }
@@ -1674,9 +1690,10 @@ function renderSSCharts(stats) {
 function openSundaySchoolPrintModal() {
     const modal = document.getElementById('ssPrintModal'), stageSel = document.getElementById('ssPrintStage');
     if (!modal || !stageSel) return;
-    stageSel.innerHTML = `<option value="">اختر المرحلة...</option>` + Object.keys(STAGE_GRADES).map(s => `<option value="${s}">${s}</option>`).join('');
-    if ((currentUser.Role === "Stage_Leader" || currentUser.Role === "Class_Servant") && currentUser.AssignedStage && currentUser.AssignedStage !== "الكل") {
-        stageSel.value = currentUser.AssignedStage; stageSel.disabled = true; updatePrintGradesDropdown(currentUser.AssignedStage);
+    const allowedStages = getUserAllowedStages(currentUser);
+    stageSel.innerHTML = `<option value="">اختر المرحلة...</option>` + allowedStages.map(s => `<option value="${s}">${s}</option>`).join('');
+    if (allowedStages.length === 1) {
+        stageSel.value = allowedStages[0]; stageSel.disabled = true; updatePrintGradesDropdown(allowedStages[0]);
         if (currentUser.AssignedGrade && currentUser.AssignedGrade !== "الكل") { const grd = document.getElementById('ssPrintGrade'); if (grd) grd.value = currentUser.AssignedGrade; }
     } else stageSel.disabled = false;
     modal.classList.remove('hidden');
@@ -2218,8 +2235,8 @@ function renderStandardCards() {
 
     let filtered = rawData.filter(item => {
         if (currentTab === "Sunday_School") {
-            if (currentUser.Role === "Stage_Leader" && currentUser.AssignedStage !== "الكل" && item["Stage"] !== currentUser.AssignedStage) return false;
-            if (currentUser.Role === "Class_Servant" && ((currentUser.AssignedStage !== "الكل" && item["Stage"] !== currentUser.AssignedStage) || (currentUser.AssignedClass !== "الكل" && item["ClassName"] !== currentUser.AssignedClass))) return false;
+            if (!isStageAllowedForUser(item["Stage"], currentUser)) return false;
+            if (currentUser.Role === "Class_Servant" && currentUser.AssignedClass && currentUser.AssignedClass !== "الكل" && item["ClassName"] !== currentUser.AssignedClass) return false;
         }
         return Object.values(item).some(val => String(val).toLowerCase().includes(query));
     });
@@ -2241,7 +2258,7 @@ function renderStandardCards() {
 
     if (currentTab === "Sunday_School") {
         container.className = "bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden";
-        container.innerHTML = `<div class="overflow-x-auto nice-scrollbar"><table class="w-full text-right text-xs"><thead class="bg-slate-100 text-slate-700 font-black border-b border-slate-200"><tr><th class="p-3 w-12 text-center">م</th><th class="p-3">التاريخ</th><th class="p-3">المرحلة والصف</th><th class="p-3">الفصل</th><th class="p-3">اسم المخدوم</th><th class="p-3 text-center">الحضور</th><th class="p-3">ملاحظات</th><th class="p-3 text-center no-print">إجراءات</th></tr></thead><tbody class="divide-y divide-slate-100 font-semibold">${filtered.map((item, idx) => { const idVal = item[Object.keys(item)[0]]; return `<tr class="hover:bg-slate-50"><td class="p-3 text-center text-slate-400 font-bold">${idx + 1}</td><td class="p-3 font-mono">${item["SessionDate"] || "-"}</td><td class="p-3"><span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-bold">${item["Stage"] || "-"}</span> ${item["Grade"] || ""}</td><td class="p-3">${item["ClassName"] || "-"}</td><td class="p-3 font-black text-slate-800">${item["ChildName"] || "-"}</td><td class="p-3 text-center"><span class="px-2.5 py-1 rounded-lg font-black text-[11px] ${item["Attendance"]==='حاضر'?'bg-emerald-50 text-emerald-700':'bg-rose-50 text-rose-700'}">${item["Attendance"] || "-"}</span></td><td class="p-3 text-slate-500">${item["Notes"] || "-"}</td><td class="p-3 text-center no-print"><button onclick="editRecord(${idVal})" class="text-xs font-bold text-indigo-600 hover:underline ml-2">تعديل</button>${currentUser.Role === "Admin" ? `<button onclick="deleteRecord(${idVal})" class="text-xs font-bold text-rose-600 hover:underline">حذف</button>` : ''}</td></tr>`; }).join('')}</tbody></table></div>`;
+        container.innerHTML = `<div class="overflow-x-auto nice-scrollbar"><table class="w-full text-right text-xs"><thead class="bg-slate-100 text-slate-700 font-black border-b border-slate-200"><tr><th class="p-3 w-12 text-center">م</th><th class="p-3">التاريخ</th><th class="p-3">المرحلة والصف</th><th class="p-3">الفصل</th><th class="p-3">اسم المخدوم</th><th class="p-3 text-center">الحضور</th><th class="p-3">ملاحظات</th><th class="p-3 text-center no-print">إجراءات</th></tr></thead><tbody class="divide-y divide-slate-100 font-semibold">${filtered.map((item, idx) => { const idVal = item[Object.keys(item)[0]]; return `<tr class="hover:bg-slate-50"><td class="p-3 text-center text-slate-400 font-bold">${idx + 1}</td><td class="p-3 font-mono">${item["SessionDate"] || "-"}</td><td class="p-3"><span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-bold">${item["Stage"] || "-"}</span> ${item["Grade"] || ""}</td><td class="p-3">${item["ClassName"] || "-"}</td><td class="p-3 font-black text-slate-800">${item["ChildName"] || "-"}</td><td class="p-3 text-center"><span class="px-2.5 py-1 rounded-lg font-black text-[11px] ${item["Attendance"]==='حاضر'?'bg-emerald-50 text-emerald-700':'bg-rose-50 text-rose-700'}">${item["Attendance"] || "-"}</span></td><td class="p-3 text-slate-500">${item["Notes"] || "-"}</td><td class="p-3 text-center no-print"><button onclick="editRecord(${idVal})" class="text-xs font-bold text-indigo-600 hover:underline ml-2">تعديل</button>${(currentUser.Role === "Admin" || currentUser.Role === "Priest") ? `<button onclick="deleteRecord(${idVal})" class="text-xs font-bold text-rose-600 hover:underline">حذف</button>` : ''}</td></tr>`; }).join('')}</tbody></table></div>`;
         return;
     }
 
@@ -2254,7 +2271,7 @@ function renderStandardCards() {
         else if (currentTab === "Visitations") details = `<p class="text-xs text-slate-600 mb-1 font-semibold">الخادم: ${item["VisitorName"]}</p><p class="text-xs text-slate-500">تاريخ الافتقاد: ${item["VisitDate"]}</p>`;
         else if (currentTab === "Meetings_Attendance") details = `<p class="text-xs text-slate-600 mb-1 font-semibold">${item["MeetingName"]} - <span class="font-bold ${item["Status"]==='حاضر'?'text-emerald-600':item["Status"]==='معتذر'?'text-amber-600':'text-rose-600'}">${item["Status"]}</span></p><p class="text-xs text-slate-500">التاريخ: ${item["MeetingDate"]}</p>`;
 
-        card.innerHTML = `<div><div class="flex justify-between items-start mb-3"><h4 class="font-black text-sm text-slate-800 truncate">${title}</h4><span class="text-[10px] font-mono font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded">#${idVal}</span></div><div class="mb-4">${details}</div></div><div class="flex justify-end gap-2 pt-3 border-t border-slate-100 no-print"><button onclick="editRecord(${idVal})" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2.5 py-1.5 rounded-lg transition">تعديل</button>${currentUser.Role === "Admin" ? `<button onclick="deleteRecord(${idVal})" class="text-xs font-bold text-rose-600 hover:text-rose-800 bg-rose-50 px-2.5 py-1.5 rounded-lg transition">حذف</button>` : ''}</div>`;
+        card.innerHTML = `<div><div class="flex justify-between items-start mb-3"><h4 class="font-black text-sm text-slate-800 truncate">${title}</h4><span class="text-[10px] font-mono font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded">#${idVal}</span></div><div class="mb-4">${details}</div></div><div class="flex justify-end gap-2 pt-3 border-t border-slate-100 no-print"><button onclick="editRecord(${idVal})" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2.5 py-1.5 rounded-lg transition">تعديل</button>${(currentUser.Role === "Admin" || currentUser.Role === "Priest") ? `<button onclick="deleteRecord(${idVal})" class="text-xs font-bold text-rose-600 hover:text-rose-800 bg-rose-50 px-2.5 py-1.5 rounded-lg transition">حذف</button>` : ''}</div>`;
         container.appendChild(card);
     });
 }
