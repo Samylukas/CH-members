@@ -309,7 +309,7 @@ function getLoginRolePriority(role, name = "") {
 
 function buildSortedLoginList(listData) {
     const items = [];
-    listData.forEach(s => {
+    listData.forEach((s, idx) => {
         if (s.Username && s.Username !== "admin" && s.Status !== "موقوف") {
             const cleanName = String(s.ServantName || s.Username).replace(/\s*\([^)]*\)/g, '').trim();
             const role = String(s.Role || "").trim();
@@ -317,15 +317,17 @@ function buildSortedLoginList(listData) {
                 username: String(s.Username).trim(),
                 label: cleanName,
                 role: role,
-                priority: getLoginRolePriority(role, cleanName)
+                priority: getLoginRolePriority(role, cleanName),
+                origIdx: idx
             });
         }
     });
     items.sort((a, b) => {
         if (a.priority !== b.priority) return a.priority - b.priority;
+        if (a.priority === 1) return a.origIdx - b.origIdx; // يحافظ على ترتيب الكهنة كما هو في الشيت بالضبط
         return a.label.localeCompare(b.label, 'ar');
     });
-    items.push({ username: "admin", label: "الأدمن", role: "Admin", priority: 99 });
+    items.push({ username: "admin", label: "الأدمن", role: "Admin", priority: 99, origIdx: 999999 });
     return items;
 }
 
