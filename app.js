@@ -190,7 +190,7 @@ const ICONS = {
 };
 const STAGE_GRADES = { "حضانة": ["بيبي كلاس", "أولى حضانة", "ثانية حضانة"], "ابتدائي": ["الصف الأول", "الصف الثاني", "الصف الثالث", "الصف الرابع", "الصف الخامس", "الصف السادس"], "إعدادي": ["الصف الأول الإعدادي", "الصف الثاني الإعدادي", "الصف الثالث الإعدادي"], "ثانوي": ["الصف الأول الثانوي", "الصف الثاني الثانوي", "الصف الثالث الثانوي"], "جامعي": ["الفرقة الأولى", "الفرقة الثانية", "الفرقة الثالثة", "الفرقة الرابعة", "بكالوريوس / تخرج"], "خريجين": ["خريج"] };
 const TABS_INFO = {
-    "Names": { label: "أعضاء الكنيسة", desc: "دليل أرباب الأسر والفرز المتقدم", svg: ICONS.users, accent: "from-emerald-500 to-teal-600", iconBg: "bg-emerald-50 ring-emerald-100", hoverText: "group-hover:text-emerald-700", roles: ["Admin", "Priest", "SundaySchool_Admin"] },
+    "Names": { label: "أعضاء الكنيسة", desc: "دليل أرباب الأسر والفرز المتقدم", svg: ICONS.users, accent: "from-emerald-500 to-teal-600", iconBg: "bg-emerald-50 ring-emerald-100", hoverText: "group-hover:text-emerald-700", roles: ["Admin", "Priest"] },
     "Sunday_School": { label: "مدارس الأحد", desc: "كشوف الفصول والحضور والإحصائيات", svg: ICONS.children, accent: "from-blue-500 to-indigo-600", iconBg: "bg-blue-50 ring-blue-100", hoverText: "group-hover:text-blue-700", roles: ["Admin", "Priest", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
     "Visitations": { label: "سجل الافتقاد", desc: "متابعة الزيارات والحالات العاجلة", svg: ICONS.visitations, accent: "from-rose-500 to-pink-600", iconBg: "bg-rose-50 ring-rose-100", hoverText: "group-hover:text-rose-700", roles: ["Admin", "Priest"] },
     "Meetings_Attendance": { label: "حضور الاجتماعات", desc: "رصد حضور اجتماع الخدام الأسبوعي", svg: ICONS.meetings, accent: "from-amber-500 to-orange-600", iconBg: "bg-amber-50 ring-amber-100", hoverText: "group-hover:text-amber-700", roles: ["Admin", "Priest", "SundaySchool_Admin"] },
@@ -241,7 +241,7 @@ const SCHEMAS = {
     "Servants": [
         { id: "ServantName", label: "اسم الخادم (من شيت الأعضاء)", type: "servant_name_autocomplete", required: true }, { id: "Username", label: "اسم المستخدم / رقم الموبايل", type: "text", required: true },
         { id: "Password", label: "كلمة المرور", type: "text", required: true }, { id: "Role", label: "الصلاحية", type: "select", options: ["Admin", "Priest", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
-        { id: "AssignedStage", label: "المرحلة / النطاق المسند", type: "select", options: ["الكل", "مدارس الأحد (حضانة - ثانوي)", "الجامعة والخريجين", ...Object.keys(STAGE_GRADES)] }, { id: "AssignedGrade", label: "الصف المسند", type: "text" },
+        { id: "AssignedStage", label: "المرحلة / النطاق المسند", type: "select", options: ["الكل", "مدارس الأحد (حضانة - ثانوي)", "حضانة وابتدائي", "الجامعة والخريجين", ...Object.keys(STAGE_GRADES)] }, { id: "AssignedGrade", label: "الصف المسند", type: "text" },
         { id: "AssignedClass", label: "الفصل المسند", type: "text" }, { id: "Status", label: "الحالة", type: "select", options: ["نشط", "موقوف"] }
     ]
 };
@@ -324,7 +324,7 @@ function buildSortedLoginList(listData) {
     });
     items.sort((a, b) => {
         if (a.priority !== b.priority) return a.priority - b.priority;
-        if (a.priority === 1) return a.origIdx - b.origIdx; // يحافظ على ترتيب الكهنة كما هو في الشيت بالضبط
+        if (a.priority === 1) return a.origIdx - b.origIdx;
         return a.label.localeCompare(b.label, 'ar');
     });
     items.push({ username: "admin", label: "الأدمن", role: "Admin", priority: 99, origIdx: 999999 });
@@ -429,6 +429,7 @@ function getUserAllowedStages(userObj) {
     const raw = String(userObj.AssignedStage || "").trim();
     if (!raw || raw === "الكل") return allStages;
     if (raw === "مدارس الأحد (حضانة - ثانوي)") return ["حضانة", "ابتدائي", "إعدادي", "ثانوي"];
+    if (raw === "حضانة وابتدائي") return ["حضانة", "ابتدائي"];
     if (raw === "الجامعة والخريجين") return ["جامعي", "خريجين"];
     const parts = raw.split(/[،,]+/).map(s => s.trim()).filter(Boolean);
     const matched = allStages.filter(st => parts.some(p => normalizeArabic(p) === normalizeArabic(st)));
