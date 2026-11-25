@@ -267,7 +267,7 @@ function toggleLoginUserDropdown(e) {
 
 function renderLoginUserOptions(filterText = '') {
     const listEl = document.getElementById('loginUserOptionsList');
-    const currentVal = document.getElementById('loginUser')?.value || 'admin';
+    const currentVal = document.getElementById('loginUser')?.value || '';
     if (!listEl) return;
     const q = normalizeArabic(filterText).toLowerCase();
     const filtered = loginUsersList.filter(u => !q || normalizeArabic(u.label).toLowerCase().includes(q));
@@ -291,10 +291,42 @@ function selectLoginUser(username, label) {
     const menu = document.getElementById('loginUserDropdownMenu');
     const arrow = document.getElementById('loginUserArrow');
     if (hiddenInp) hiddenInp.value = username;
-    if (labelSpan) labelSpan.innerText = label;
+    if (labelSpan) { labelSpan.innerText = label; labelSpan.classList.remove('text-slate-400'); }
     if (menu) menu.classList.add('hidden');
     if (arrow) arrow.style.transform = 'rotate(0deg)';
     document.getElementById('loginPass')?.focus();
+}
+
+function getLoginRolePriority(role, name = "") {
+    const r = String(role || "").trim();
+    if (r === "Priest" || /^(?:قدس\s+)?(?:ابونا\s+)?(?:القمص|القس|ابونا)\b/.test(normalizeArabic(name))) return 1;
+    if (r === "SundaySchool_Admin") return 2;
+    if (r === "Stage_Leader") return 3;
+    if (r === "Class_Servant") return 4;
+    if (r === "Admin") return 99;
+    return 5;
+}
+
+function buildSortedLoginList(listData) {
+    const items = [];
+    listData.forEach(s => {
+        if (s.Username && s.Username !== "admin" && s.Status !== "موقوف") {
+            const cleanName = String(s.ServantName || s.Username).replace(/\s*\([^)]*\)/g, '').trim();
+            const role = String(s.Role || "").trim();
+            items.push({
+                username: String(s.Username).trim(),
+                label: cleanName,
+                role: role,
+                priority: getLoginRolePriority(role, cleanName)
+            });
+        }
+    });
+    items.sort((a, b) => {
+        if (a.priority !== b.priority) return a.priority - b.priority;
+        return a.label.localeCompare(b.label, 'ar');
+    });
+    items.push({ username: "admin", label: "الأدمن", role: "Admin", priority: 99 });
+    return items;
 }
 
 async function loadServantsListForLogin() {
@@ -303,13 +335,7 @@ async function loadServantsListForLogin() {
         const data = await res.json();
         const listData = (data.status === "success" && Array.isArray(data.data)) ? data.data : [];
         if (listData.length > 0) {
-            loginUsersList = [{ username: "admin", label: "الأدمن" }];
-            listData.forEach(s => {
-                if (s.Username && s.Username !== "admin" && s.Status !== "موقوف") {
-                    const cleanName = String(s.ServantName || s.Username).replace(/\s*\([^)]*\)/g, '').trim();
-                    loginUsersList.push({ username: String(s.Username).trim(), label: cleanName });
-                }
-            });
+            loginUsersList = buildSortedLoginList(listData);
             renderLoginUserOptions('');
             return;
         }
@@ -321,13 +347,7 @@ async function loadServantsListForLogin() {
         const data = await res.json();
         if (data.status === "success" && Array.isArray(data.data) && data.data.length > 0) {
             servantsCacheData = data.data;
-            loginUsersList = [{ username: "admin", label: "الأدمن" }];
-            data.data.forEach(s => {
-                if (s.Username && s.Username !== "admin" && s.Status !== "موقوف") {
-                    const cleanName = String(s.ServantName || s.Username).replace(/\s*\([^)]*\)/g, '').trim();
-                    loginUsersList.push({ username: String(s.Username).trim(), label: cleanName });
-                }
-            });
+            loginUsersList = buildSortedLoginList(data.data);
             renderLoginUserOptions('');
         }
     } catch(e) {}
@@ -337,6 +357,10 @@ async function handleLogin(e) {
     if (e) { try { e.preventDefault(); e.stopPropagation(); } catch(err) {} }
     const btn = document.getElementById('loginBtn'), err = document.getElementById('loginError');
     const userVal = (document.getElementById('loginUser')?.value || "").trim(), passVal = (document.getElementById('loginPass')?.value || "").trim();
+    if (!userVal) {
+        if (err) { err.innerText = "يرجى اختيار اسم المستخدم أولاً"; err.classList.remove('hidden'); }
+        return false;
+    }
     if (!passVal) return false;
     if (btn) { btn.disabled = true; btn.innerHTML = `جاري التحقق من السيرفر...`; }
     if (err) err.classList.add('hidden');
