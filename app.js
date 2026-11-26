@@ -471,7 +471,7 @@ function initApp(isRestoredSession = false) {
     if (scBtns) { scBtns.classList.remove('hidden'); scBtns.classList.add('flex'); }
     if (badge && currentUser) {
         const titleLabel = isPriestUser(currentUser) ? "أب الاعتراف:" : "الخادم:";
-        badge.innerHTML = `<span>${titleLabel} <span class="font-black text-indigo-700">${currentUser.ServantName}</span></span> <span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded ml-2 font-mono text-[11px] font-bold border border-indigo-200">${currentUser.Role}</span>`;
+        badge.innerHTML = `<span>${titleLabel} <span class="font-black text-indigo-700">${currentUser.ServantName}</span></span><span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold border border-indigo-200">${currentUser.Role}</span>`;
     }
     buildDashboard();
     showDashboard();
@@ -544,7 +544,7 @@ function loadSection(sectionKey) {
         const el = document.getElementById(id);
         if (el) { el.classList.add('hidden'); if (id === 'sundaySchoolChartsSection') el.style.display = 'none'; }
     });
-    ['btnPrintSundaySchool', 'btnPrintMeetings', 'btnPrintFiltered', 'btnPrintRoster', 'btnPrintVisitReport'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
+    ['btnPrintSundaySchool', 'btnPrintMeetings', 'btnPdfMeetings', 'btnPrintFiltered', 'btnPdfFiltered', 'btnPrintRoster', 'btnPdfRoster', 'btnPrintVisitReport', 'btnPdfVisitReport'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
     
     const btnAdd = document.getElementById('btnAddNewRecord');
     const btnExp = document.getElementById('btnExportExcel');
@@ -559,8 +559,8 @@ function loadSection(sectionKey) {
 
     if (sectionKey === 'Names') { const sw = document.getElementById('namesViewSwitcher'); sw?.classList.remove('hidden'); sw?.classList.add('flex'); switchNamesView('roster'); }
     else if (sectionKey === 'Sunday_School') { const sw = document.getElementById('ssViewSwitcher'); sw?.classList.remove('hidden'); sw?.classList.add('flex'); document.getElementById('btnPrintSundaySchool')?.classList.remove('hidden'); switchSSView('live'); }
-    else if (sectionKey === 'Meetings_Attendance') { const sw = document.getElementById('meetingsViewSwitcher'); sw?.classList.remove('hidden'); sw?.classList.add('flex'); document.getElementById('btnPrintMeetings')?.classList.remove('hidden'); switchMeetingsView('live'); }
-    else if (sectionKey === 'Visitations') { const sw = document.getElementById('visitationsViewSwitcher'); sw?.classList.remove('hidden'); sw?.classList.add('flex'); document.getElementById('btnPrintVisitReport')?.classList.remove('hidden'); switchVisitationsView('dashboard'); }
+    else if (sectionKey === 'Meetings_Attendance') { const sw = document.getElementById('meetingsViewSwitcher'); sw?.classList.remove('hidden'); sw?.classList.add('flex'); document.getElementById('btnPrintMeetings')?.classList.remove('hidden'); document.getElementById('btnPdfMeetings')?.classList.remove('hidden'); switchMeetingsView('live'); }
+    else if (sectionKey === 'Visitations') { const sw = document.getElementById('visitationsViewSwitcher'); sw?.classList.remove('hidden'); sw?.classList.add('flex'); document.getElementById('btnPrintVisitReport')?.classList.remove('hidden'); document.getElementById('btnPdfVisitReport')?.classList.remove('hidden'); switchVisitationsView('dashboard'); }
     else if (sectionKey === 'Confessions') { document.getElementById('priestConfessionsSection')?.classList.remove('hidden'); }
     else if (sectionKey === 'Servants') { const sw = document.getElementById('servantsViewSwitcher'); sw?.classList.remove('hidden'); sw?.classList.add('flex'); switchServantsView('list'); }
     else { document.getElementById('standardSearchContainer')?.classList.remove('hidden'); document.getElementById('standardCardsContainer')?.classList.remove('hidden'); const sInp = document.getElementById('searchInput'); if (sInp) sInp.value = ""; }
@@ -579,13 +579,13 @@ function switchNamesView(viewName) {
         if (btnRoster) btnRoster.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-indigo-700 shadow-sm";
         if (btnFilters) btnFilters.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
         rosterSec?.classList.remove('hidden'); filterSec?.classList.add('hidden'); resultsSec?.classList.add('hidden'); placeholderSec?.classList.add('hidden');
-        btnRosterPrint?.classList.remove('hidden'); btnFiltered?.classList.add('hidden');
+        btnRosterPrint?.classList.remove('hidden'); document.getElementById('btnPdfRoster')?.classList.remove('hidden'); btnFiltered?.classList.add('hidden'); document.getElementById('btnPdfFiltered')?.classList.add('hidden');
         buildAlphabetBar(); renderFamilyHeadsRoster();
     } else {
         if (btnFilters) btnFilters.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-indigo-700 shadow-sm";
         if (btnRoster) btnRoster.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
         rosterSec?.classList.add('hidden'); filterSec?.classList.remove('hidden'); resultsSec?.classList.remove('hidden');
-        btnFiltered?.classList.remove('hidden'); btnRosterPrint?.classList.add('hidden');
+        btnFiltered?.classList.remove('hidden'); document.getElementById('btnPdfFiltered')?.classList.remove('hidden'); btnRosterPrint?.classList.add('hidden'); document.getElementById('btnPdfRoster')?.classList.add('hidden');
         populateAreasDropdown(); resetNamesFilters();
     }
 }
@@ -2112,11 +2112,11 @@ function switchVisitationsView(view) {
     if (view === 'dashboard') {
         if (btnDash) btnDash.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-rose-700 shadow-sm";
         if (btnHist) btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
-        dashSec?.classList.remove('hidden'); cardsSec?.classList.add('hidden'); searchSec?.classList.add('hidden'); btnAdd?.classList.add('hidden'); btnPrint?.classList.remove('hidden'); initVisitationsDashboard();
+        dashSec?.classList.remove('hidden'); cardsSec?.classList.add('hidden'); searchSec?.classList.add('hidden'); btnAdd?.classList.add('hidden'); btnPrint?.classList.remove('hidden'); document.getElementById('btnPdfVisitReport')?.classList.remove('hidden'); initVisitationsDashboard();
     } else {
         if (btnHist) btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-rose-700 shadow-sm";
         if (btnDash) btnDash.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
-        dashSec?.classList.add('hidden'); cardsSec?.classList.remove('hidden'); searchSec?.classList.remove('hidden'); btnAdd?.classList.remove('hidden'); btnPrint?.classList.add('hidden'); renderStandardCards();
+        dashSec?.classList.add('hidden'); cardsSec?.classList.remove('hidden'); searchSec?.classList.remove('hidden'); btnAdd?.classList.remove('hidden'); btnPrint?.classList.add('hidden'); document.getElementById('btnPdfVisitReport')?.classList.add('hidden'); renderStandardCards();
     }
 }
 
@@ -4051,8 +4051,21 @@ function renderServantsConfessionsList() {
         const legacyDate = memberRec ? formatDisplayDate(memberRec["تاريخ اخر اعتراف"]) : "";
         if (legacyDate) allDatesSet.add(legacyDate);
 
-        // تصفية التواريخ على مدار السنة الميلادية المختارة (أو آخر 12 شهر)
+        // تجميع التواريخ حسب كل سنة ميلادية لوحدها
+        const datesByYear = {};
+        Array.from(allDatesSet).forEach(dStr => {
+            const parts = String(dStr).split("/");
+            const yr = (parts.length === 3 && /^\d{4}$/.test(parts[2])) ? parts[2] : "غير محدد";
+            if (!datesByYear[yr]) datesByYear[yr] = [];
+            datesByYear[yr].push(dStr);
+        });
+        Object.keys(datesByYear).forEach(yr => {
+            datesByYear[yr].sort((a, b) => parseDateForSort(b) - parseDateForSort(a));
+        });
+
+        // تصفية التواريخ على مدار السنة الميلادية المختارة (أو كل السنوات أو آخر 12 شهر)
         const periodDates = Array.from(allDatesSet).filter(dStr => {
+            if (yearMode === "all_by_year") return true;
             if (yearMode === "last12m") {
                 const days = getDaysSinceDate(dStr);
                 return days !== null && days <= 365;
@@ -4077,6 +4090,7 @@ function renderServantsConfessionsList() {
             scope,
             rank,
             periodDates,
+            datesByYear,
             latestDate,
             daysSinceLatest,
             isRegular
@@ -4138,9 +4152,24 @@ function renderServantsConfessionsList() {
                 ? `<span class="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full font-black">⚠️ متأخر (${formatRelativeArabicDays(r.daysSinceLatest)})</span>`
                 : `<span class="text-[10px] bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-full font-black">لم يُسجل</span>`;
 
-        const datesHtml = r.periodDates.length > 0
-            ? r.periodDates.map(d => `<span class="inline-block bg-purple-50 text-purple-900 border border-purple-200 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold">✝ ${d}</span>`).join(" ")
-            : `<span class="text-[11px] text-slate-400 font-bold">لا توجد اعترافات مسجلة في (${yearMode === 'last12m' ? 'آخر 12 شهراً' : 'سنة ' + yearMode})</span>`;
+        let datesHtml = "";
+        if (yearMode === "all_by_year") {
+            const yrs = Object.keys(r.datesByYear || {}).sort((a, b) => b.localeCompare(a));
+            if (yrs.length === 0) {
+                datesHtml = `<span class="text-[11px] text-slate-400 font-bold">لا توجد اعترافات مسجلة</span>`;
+            } else {
+                datesHtml = `<div class="w-full space-y-1.5 mt-1">` + yrs.map(yr => `
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <span class="text-[10px] font-black bg-slate-800 text-white px-2 py-0.5 rounded-md">سنة ${yr} (${r.datesByYear[yr].length})</span>
+                        ${r.datesByYear[yr].map(d => `<span class="inline-block bg-purple-50 text-purple-900 border border-purple-200 px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold">✝ ${d}</span>`).join(" ")}
+                    </div>
+                `).join("") + `</div>`;
+            }
+        } else {
+            datesHtml = r.periodDates.length > 0
+                ? r.periodDates.map(d => `<span class="inline-block bg-purple-50 text-purple-900 border border-purple-200 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold">✝ ${d}</span>`).join(" ")
+                : `<span class="text-[11px] text-slate-400 font-bold">لا توجد اعترافات مسجلة في (${yearMode === 'last12m' ? 'آخر 12 شهراً' : 'سنة ' + yearMode})</span>`;
+        }
 
         html += `
             <div class="bg-white/95 rounded-2xl p-4 border border-slate-200 shadow-xs space-y-2.5">
@@ -4222,6 +4251,396 @@ function exportServantsConfessionsExcel() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+
+// ==================== محرك تصدير التقارير الرسمية PDF مع لوجو الكنيسة ومنع قص الصفحات (v40) ====================
+function openOfficialPdfPreview(reportTitle, subtitle, bodyHtml) {
+    const modal = document.getElementById('officialPdfPreviewModal');
+    const contentEl = document.getElementById('officialPdfContent');
+    const titleEl = document.getElementById('officialPdfModalTitle');
+    if (!modal || !contentEl) return;
+
+    const nowStr = new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+    const supervisor = currentUser ? currentUser.ServantName : "إدارة الكنيسة";
+
+    if (titleEl) titleEl.innerText = reportTitle;
+
+    contentEl.innerHTML = `
+        <div class="pdf-avoid-break flex items-center justify-between gap-4 pb-4 mb-5 border-b-2 border-blue-900">
+            <div class="text-right">
+                <p class="text-[11px] font-black text-blue-900">إيبارشية البحر الأحمر للأقباط الأرثوذكس</p>
+                <h2 class="text-base sm:text-lg font-black text-slate-900 mt-0.5">كنيسة السيدة العذراء مريم والشهيدة بربارة بالقصير</h2>
+                <p class="text-xs font-black text-indigo-800 mt-1">${reportTitle}</p>
+                ${subtitle ? `<p class="text-[11px] font-bold text-slate-500 mt-0.5">${subtitle}</p>` : ''}
+            </div>
+            <img src="logo.png" alt="شعار الكنيسة" class="w-16 h-16 sm:w-20 sm:h-20 object-contain shrink-0">
+            <div class="text-left text-[11px] font-bold text-slate-600 shrink-0">
+                <p>التاريخ: <span class="text-slate-900">${nowStr}</span></p>
+                <p class="mt-1">المسؤول: <span class="text-slate-900">${supervisor}</span></p>
+            </div>
+        </div>
+        <div class="space-y-4">
+            ${bodyHtml}
+        </div>
+        <div class="pdf-avoid-break mt-8 pt-3 border-t border-slate-200 flex justify-between items-center text-[10px] font-bold text-slate-500">
+            <span>منظومة الخدمة والرعاية الكنسية — تقرير رسمي</span>
+            <span>توقيع أمين الخدمة / الأب الكاهن: ..........................</span>
+        </div>
+    `;
+
+    modal.classList.remove('hidden');
+    document.body.classList.add('pdf-print-mode');
+}
+
+function closeOfficialPdfPreview() {
+    const modal = document.getElementById('officialPdfPreviewModal');
+    if (modal) modal.classList.add('hidden');
+    document.body.classList.remove('pdf-print-mode');
+}
+
+function triggerOfficialPdfPrint() {
+    document.body.classList.add('pdf-print-mode');
+    window.print();
+}
+
+// 1. PDF رسمي: متابعة اعترافات الخدام (كل خادم تحته مرات الاعتراف لكل سنة لوحدها + أب الاعتراف)
+function exportServantsConfessionsPdf() {
+    if (!currentServantsConfRows || currentServantsConfRows.length === 0) {
+        alert("لا توجد بيانات في تقرير متابعة اعترافات الخدام لتصديرها!");
+        return;
+    }
+    const yearMode = document.getElementById('servantsConfYearSelect')?.value || String(new Date().getFullYear());
+    const periodLabel = yearMode === "all_by_year" ? "جميع السنوات (كل سنة على حدة)" : yearMode === "last12m" ? "آخر 12 شهراً" : `السنة الميلادية ${yearMode}`;
+
+    let html = "";
+    let lastGroup = -1;
+    let counter = 1;
+
+    currentServantsConfRows.forEach(r => {
+        if (r.rank.group !== lastGroup) {
+            if (lastGroup !== -1) html += `</tbody></table>`;
+            lastGroup = r.rank.group;
+            html += `
+                <div class="pdf-group-title mt-4 mb-2 px-3 py-1.5 rounded-lg bg-blue-900 text-white text-xs font-black" style="-webkit-print-color-adjust:exact;print-color-adjust:exact;">
+                    ${r.rank.groupLabel}
+                </div>
+                <table class="pdf-table mb-3">
+                    <thead>
+                        <tr>
+                            <th style="width:6%;text-align:center;">م</th>
+                            <th style="width:24%;">اسم الخادم ومجال الخدمة</th>
+                            <th style="width:18%;">أب الاعتراف</th>
+                            <th style="width:10%;text-align:center;">العدد</th>
+                            <th style="width:42%;">تواريخ الاعتراف (حسب السنة الميلادية)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+        }
+
+        let datesCellHtml = "";
+        if (yearMode === "all_by_year") {
+            const yrs = Object.keys(r.datesByYear || {}).sort((a, b) => b.localeCompare(a));
+            if (yrs.length === 0) {
+                datesCellHtml = `<span style="color:#94a3b8;">لم يُسجل اعتراف</span>`;
+            } else {
+                datesCellHtml = yrs.map(yr => `
+                    <div style="margin-bottom:4px;">
+                        <strong style="color:#1e3a8a;">[${yr}] (${r.datesByYear[yr].length} مرة):</strong>
+                        <span style="font-family:monospace;">${r.datesByYear[yr].join(" ، ")}</span>
+                    </div>
+                `).join("");
+            }
+        } else {
+            datesCellHtml = r.periodDates.length > 0
+                ? `<span style="font-family:monospace;font-weight:700;">${r.periodDates.join(" ، ")}</span>`
+                : `<span style="color:#94a3b8;">لم يُسجل اعتراف خلال الفترة</span>`;
+        }
+
+        html += `
+            <tr>
+                <td style="text-align:center;font-weight:800;">${counter++}</td>
+                <td><strong style="font-size:12px;">${r.name}</strong><div style="font-size:10px;color:#475569;margin-top:2px;">${r.scope}</div></td>
+                <td style="font-weight:700;color:#1e3a8a;">${r.fatherName}</td>
+                <td style="text-align:center;font-weight:900;">${r.periodDates.length}</td>
+                <td>${datesCellHtml}</td>
+            </tr>
+        `;
+    });
+
+    if (lastGroup !== -1) html += `</tbody></table>`;
+    openOfficialPdfPreview("تقرير متابعة اعترافات الخدام", `النطاق الزمني: ${periodLabel} — إجمالي الخدام: ${currentServantsConfRows.length}`, html);
+}
+
+// 2. PDF رسمي: تقرير الحضور المجمع لمدارس الأحد (بفترة)
+function exportSSPeriodReportPdf() {
+    if (!currentSSReportRows || currentSSReportRows.length === 0) {
+        alert("لا توجد بيانات في تقرير الحضور المجمع لتصديرها!");
+        return;
+    }
+    const stage = document.getElementById('ssReportStage')?.value || "كل المراحل";
+    const grade = document.getElementById('ssReportGrade')?.value || "كل الصفوف";
+    const gender = document.getElementById('ssReportGender')?.value || "";
+    const fromD = (document.getElementById('ssReportFromDate')?.value || "").trim() || "البداية";
+    const toD = (document.getElementById('ssReportToDate')?.value || "").trim() || "اليوم";
+    const genderLabel = gender === 'ذكر' ? ' — بنين' : gender === 'انثي' ? ' — بنات' : '';
+
+    const rowsHtml = currentSSReportRows.map((r, idx) => `
+        <tr>
+            <td style="text-align:center;font-weight:800;">${idx + 1}</td>
+            <td><strong>${r.name}</strong><div style="font-size:10px;color:#475569;">${r.stage} - ${r.grade}</div></td>
+            <td style="font-family:monospace;text-align:center;" dir="ltr">${r.phone || "-"}</td>
+            <td style="text-align:center;font-weight:900;color:#047857;">${r.presentCount}</td>
+            <td style="text-align:center;font-weight:800;color:#be123c;">${r.absentCount}</td>
+            <td style="text-align:center;font-weight:800;">${r.pct}%</td>
+            <td style="font-family:monospace;font-size:10px;">${r.presentDatesList.length > 0 ? r.presentDatesList.join(" ، ") : "-"}</td>
+        </tr>
+    `).join("");
+
+    const tableHtml = `
+        <table class="pdf-table">
+            <thead>
+                <tr>
+                    <th style="width:5%;text-align:center;">م</th>
+                    <th style="width:24%;">اسم المخدوم والصف</th>
+                    <th style="width:14%;text-align:center;">المحمول</th>
+                    <th style="width:8%;text-align:center;">حضور</th>
+                    <th style="width:8%;text-align:center;">غياب</th>
+                    <th style="width:9%;text-align:center;">النسبة</th>
+                    <th style="width:32%;">تواريخ الحضور</th>
+                </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+        </table>
+    `;
+    openOfficialPdfPreview(`تقرير الحضور المجمع — مدارس الأحد${genderLabel}`, `المرحلة: ${stage} | الصف: ${grade} | الفترة: من ${fromD} إلى ${toD}`, tableHtml);
+}
+
+// 3. PDF رسمي: كشف حضور وغياب فصل مدارس الأحد (دفتر الحضور)
+async function generateAndExportClassRosterPdf() {
+    const stage = document.getElementById('ssPrintStage')?.value || "";
+    const grade = document.getElementById('ssPrintGrade')?.value || "";
+    const genderFilter = document.getElementById('ssPrintGender')?.value || "";
+    if (!stage) { alert("يرجى اختيار المرحلة الدراسية أولاً!"); return; }
+
+    let membersList = namesCacheData;
+    if (membersList.length === 0) {
+        try { const res = await apiFetch(`${API_URL}?sheet=Names`); if (res.status === "success") membersList = res.data.map(sanitizeRecordFields); } catch (e) {}
+    }
+    const classKids = membersList.filter(item => {
+        if (isMemberDeceased(item) || item["مدارس الأحد"] === "غير مشترك") return false;
+        if (normalizeArabic(item["المرحلة"]) !== normalizeArabic(stage)) return false;
+        if (grade && normalizeArabic(item["الصف"]) !== normalizeArabic(grade)) return false;
+        if (genderFilter && normalizeGender(item["ذكر/انثي"]) !== genderFilter) return false;
+        return true;
+    }).sort((a, b) => String(a["الاسم ثلاثي"]).localeCompare(String(b["الاسم ثلاثي"]), 'ar'));
+
+    if (classKids.length === 0) { alert("لم يتم العثور على مخدومين مسجلين بهذه المواصفات!"); return; }
+    closeSundaySchoolPrintModal();
+
+    const genderLabel = genderFilter === 'ذكر' ? ' (بنين)' : genderFilter === 'انثي' ? ' (بنات)' : ' (مجمّع)';
+    const rowsHtml = classKids.map((kid, idx) => `
+        <tr>
+            <td style="text-align:center;font-weight:800;">${idx + 1}</td>
+            <td style="font-weight:800;">${kid["الاسم ثلاثي"]}</td>
+            <td style="font-family:monospace;text-align:center;" dir="ltr">${kid["تليفون العمل/المحمول"] || kid["هاتف الاسرة"] || "-"}</td>
+            <td></td><td></td><td></td><td></td>
+        </tr>
+    `).join("");
+
+    const tableHtml = `
+        <table class="pdf-table">
+            <thead>
+                <tr>
+                    <th style="width:6%;text-align:center;">م</th>
+                    <th style="width:36%;">اسم المخدوم</th>
+                    <th style="width:18%;text-align:center;">المحمول</th>
+                    <th style="width:10%;text-align:center;">أسبوع 1</th>
+                    <th style="width:10%;text-align:center;">أسبوع 2</th>
+                    <th style="width:10%;text-align:center;">أسبوع 3</th>
+                    <th style="width:10%;text-align:center;">أسبوع 4</th>
+                </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+        </table>
+    `;
+    openOfficialPdfPreview(`كشف حضور وغياب فصل مدارس الأحد${genderLabel}`, `المرحلة: ${stage}${grade ? ' | الصف: ' + grade : ''} — عدد المخدومين: ${classKids.length}`, tableHtml);
+}
+
+// 4. PDF رسمي: كشف حضور اجتماع الخدام
+function exportServantsMeetingPdf() {
+    if (!currentServantsMeetingList || currentServantsMeetingList.length === 0) {
+        alert("لا يوجد خدام في الكشف لتصديره!");
+        return;
+    }
+    const meetingName = document.getElementById('servantsMeetingName')?.value || "اجتماع الخدام الأسبوعي";
+    const meetingDate = document.getElementById('servantsMeetingDate')?.value || "";
+
+    const rowsHtml = currentServantsMeetingList.map((s, idx) => `
+        <tr>
+            <td style="text-align:center;font-weight:800;">${idx + 1}</td>
+            <td style="font-weight:800;">${s.name}</td>
+            <td>${s.scope || "-"}</td>
+            <td style="font-family:monospace;text-align:center;" dir="ltr">${s.phone || "-"}</td>
+            <td style="text-align:center;font-weight:900;color:${s.status === 'حاضر' ? '#047857' : s.status === 'معتذر' ? '#b45309' : '#be123c'};">${s.status}</td>
+            <td>${s.notes || "-"}</td>
+        </tr>
+    `).join("");
+
+    const tableHtml = `
+        <table class="pdf-table">
+            <thead>
+                <tr>
+                    <th style="width:6%;text-align:center;">م</th>
+                    <th style="width:26%;">اسم الخادم</th>
+                    <th style="width:22%;">مجال الخدمة</th>
+                    <th style="width:15%;text-align:center;">المحمول</th>
+                    <th style="width:11%;text-align:center;">الحالة</th>
+                    <th style="width:20%;">ملاحظات</th>
+                </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+        </table>
+    `;
+    openOfficialPdfPreview(`كشف حضور: ${meetingName}`, `تاريخ الاجتماع: ${meetingDate} — إجمالي الخدام: ${currentServantsMeetingList.length}`, tableHtml);
+}
+
+// 5. PDF رسمي: تقرير الافتقاد الرعوي
+function exportVisitReportPdf() {
+    const urgentItems = Array.from(document.getElementById('visitUrgentList')?.children || []).filter(n => n.tagName === "DIV" && n.querySelector('h4'));
+    const followupItems = Array.from(document.getElementById('visitFollowupList')?.children || []).filter(n => n.tagName === "DIV" && n.querySelector('h4'));
+
+    let urgentRows = urgentItems.map((node, idx) => {
+        const name = node.querySelector('h4').innerText;
+        const meta = node.querySelector('p').innerText.split('|');
+        const area = (meta[0] || "").replace('📍', '').trim();
+        const phone = (meta[1] || "").replace('📞', '').trim();
+        const delay = node.querySelectorAll('p')[1]?.innerText.replace('⏳ التأخير:', '').trim() || "";
+        return `<tr><td style="text-align:center;font-weight:800;">${idx + 1}</td><td style="font-weight:800;">${name}</td><td>${area}</td><td style="font-family:monospace;text-align:center;" dir="ltr">${phone}</td><td style="color:#be123c;font-weight:800;">${delay}</td></tr>`;
+    }).join("");
+    if (!urgentRows) urgentRows = `<tr><td colspan="5" style="text-align:center;color:#64748b;">لا توجد حالات متأخرة حالياً</td></tr>`;
+
+    let followRows = followupItems.map((node, idx) => {
+        const name = node.querySelector('h4').innerText;
+        const visitor = node.querySelector('p')?.innerText.replace('👤 الخادم المتابع:', '').trim() || "";
+        const date = node.querySelectorAll('p')[1]?.innerText.replace('🗓️ موعد المتابعة:', '').trim() || "";
+        return `<tr><td style="text-align:center;font-weight:800;">${idx + 1}</td><td style="font-weight:800;">${name}</td><td>${visitor}</td><td style="font-family:monospace;text-align:center;">${date}</td></tr>`;
+    }).join("");
+    if (!followRows) followRows = `<tr><td colspan="4" style="text-align:center;color:#64748b;">لا توجد متابعات مجدولة للأسبوع القادم</td></tr>`;
+
+    const html = `
+        <div class="pdf-group-title mb-2 px-3 py-1.5 rounded-lg bg-rose-700 text-white text-xs font-black" style="-webkit-print-color-adjust:exact;print-color-adjust:exact;">🚨 أسر بحاجة للافتقاد العاجل (+90 يوماً)</div>
+        <table class="pdf-table mb-5">
+            <thead><tr><th style="width:6%;text-align:center;">م</th><th style="width:32%;">اسم رب الأسرة</th><th style="width:22%;">المنطقة</th><th style="width:18%;text-align:center;">الهاتف</th><th style="width:22%;">مدة التأخير</th></tr></thead>
+            <tbody>${urgentRows}</tbody>
+        </table>
+        <div class="pdf-group-title mb-2 px-3 py-1.5 rounded-lg bg-indigo-800 text-white text-xs font-black" style="-webkit-print-color-adjust:exact;print-color-adjust:exact;">🗓️ المتابعات المجدولة للأسبوع القادم</div>
+        <table class="pdf-table">
+            <thead><tr><th style="width:6%;text-align:center;">م</th><th style="width:36%;">اسم المخدوم / الأسرة</th><th style="width:34%;">الخادم المتابع</th><th style="width:24%;text-align:center;">موعد المتابعة</th></tr></thead>
+            <tbody>${followRows}</tbody>
+        </table>
+    `;
+    openOfficialPdfPreview("تقرير الافتقاد الرعوي والمتابعات", `حالات عاجلة: ${urgentItems.length} | متابعات قادمة: ${followupItems.length}`, html);
+}
+
+// 6. PDF رسمي: دليل الأسر ونتائج الفرز المتقدم
+function exportFamiliesMapToPdf(familiesMap, reportTitle) {
+    const sortedHeads = Object.keys(familiesMap).sort((a, b) => a.localeCompare(b, 'ar'));
+    if (sortedHeads.length === 0) { alert("لا توجد أسر مطابقة لتصديرها!"); return; }
+
+    const cardsHtml = sortedHeads.map((headName, idx) => {
+        const members = sortFamilyMembers(familiesMap[headName], headName);
+        const headRec = members.find(m => m["الاسم ثلاثي"] === headName) || members[0];
+        const addressStr = [getMemberArea(headRec), getFieldValNormalized(headRec, "اسم الشارع"), getFieldValNormalized(headRec, "رقم المنزل")].filter(Boolean).join(' - ') || "غير محدد";
+        const phoneStr = headRec?.["هاتف الاسرة"] || headRec?.["تليفون العمل/المحمول"] || "-";
+
+        const mRows = members.map((m, mIdx) => `
+            <tr>
+                <td style="text-align:center;width:6%;">${mIdx + 1}</td>
+                <td style="font-weight:800;width:34%;">${m["الاسم ثلاثي"] || "-"}</td>
+                <td style="width:14%;text-align:center;">${m["صلة القرابة"] || "-"}</td>
+                <td style="width:18%;font-family:monospace;text-align:center;" dir="ltr">${m["تليفون العمل/المحمول"] || "-"}</td>
+                <td style="width:28%;">${m["المرحلة"] ? m["المرحلة"] + (m["الصف"] ? ' (' + m["الصف"] + ')' : '') : (m["المؤهل"] || "-")}</td>
+            </tr>
+        `).join("");
+
+        return `
+            <div class="pdf-card mb-3 border border-slate-300 rounded-xl overflow-hidden">
+                <div style="background:#eff6ff;padding:6px 10px;border-bottom:1px solid #bfdbfe;-webkit-print-color-adjust:exact;print-color-adjust:exact;" class="flex justify-between items-center flex-wrap gap-2 text-xs">
+                    <strong style="color:#1e3a8a;">${idx + 1}. أسرة: ${headName} (${members.length} أفراد)</strong>
+                    <span style="color:#334155;">📍 ${addressStr} | 📞 <span dir="ltr">${phoneStr}</span></span>
+                </div>
+                <table class="pdf-table"><tbody>${mRows}</tbody></table>
+            </div>
+        `;
+    }).join("");
+
+    openOfficialPdfPreview(reportTitle, `إجمالي الأسر: ${sortedHeads.length}`, cardsHtml);
+}
+
+function exportRosterDirectoryPdf() {
+    const query = (document.getElementById('rosterSearchInput')?.value || "").trim().toLowerCase();
+    const familiesMap = {};
+    rawData.forEach(m => {
+        const head = (m["اسم رب الاسرة"] || "").trim(); if (!head) return;
+        const normHead = normalizeArabic(head).toLowerCase();
+        if (selectedLetter !== "الكل" && normHead[0] !== normalizeArabic(selectedLetter)[0]) return;
+        if (query) {
+            const hasHeadMatch = normHead.includes(normalizeArabic(query).toLowerCase());
+            const hasMemberMatch = normalizeArabic(m["الاسم ثلاثي"]).toLowerCase().includes(normalizeArabic(query).toLowerCase());
+            if (!hasHeadMatch && !hasMemberMatch) return;
+        }
+        if (!familiesMap[head]) familiesMap[head] = [];
+        familiesMap[head].push(m);
+    });
+    exportFamiliesMapToPdf(familiesMap, `دليل أرباب الأسر والعائلات الأبجدي (حرف: ${selectedLetter})`);
+}
+
+function exportFilteredResultsPdf() {
+    const headQ = normalizeArabic(document.getElementById('filterFamilyHead')?.value || "").toLowerCase();
+    const nameQ = normalizeArabic(document.getElementById('filterFullName')?.value || "").toLowerCase();
+    const areaQ = (document.getElementById('filterArea')?.value || "").trim();
+    const ageGroupQ = document.getElementById('filterAgeGroup')?.value || "";
+    const genderQ = document.getElementById('filterGender')?.value || "";
+    const electionQ = document.getElementById('filterElection')?.value || "";
+    const maritalQ = document.getElementById('filterMarital')?.value || "";
+    const deceasedQ = document.getElementById('filterDeceased')?.value || "alive";
+
+    const familyAreaMap = buildFamilyAreaMap();
+    const matchedMembers = rawData.filter(item => {
+        const deceased = isMemberDeceased(item);
+        if (deceasedQ === "alive" && deceased) return false;
+        if (deceasedQ === "deceased" && !deceased) return false;
+        const memberArea = getMemberArea(item) || familyAreaMap[normalizeArabic(getFieldValNormalized(item, "اسم رب الاسرة"))] || "";
+        if (areaQ && normalizeArabic(memberArea) !== normalizeArabic(areaQ)) return false;
+        if (genderQ && item["ذكر/انثي"] !== genderQ) return false;
+        if (maritalQ && (item["الحالة الاجتماعية"] || "").trim() !== maritalQ) return false;
+        if (electionQ && (item["البطاقة الانتخابية"] || "").trim() !== electionQ) return false;
+        if (ageGroupQ) {
+            const age = calculateAge(item["تاريخ الميلاد"], item["الرقم القومي"]);
+            if (age === null) return false;
+            if (ageGroupQ === "children" && age >= 12) return false;
+            if (ageGroupQ === "prep" && (age < 12 || age > 15)) return false;
+            if (ageGroupQ === "sec" && (age < 16 || age > 18)) return false;
+            if (ageGroupQ === "youth" && (age < 19 || age > 25)) return false;
+            if (ageGroupQ === "adults" && (age < 26 || age > 50)) return false;
+            if (ageGroupQ === "seniors" && age <= 50) return false;
+        }
+        if (headQ || nameQ) {
+            const idx = getSearchIndex(item);
+            if (headQ && !idx.head.includes(headQ)) return false;
+            if (nameQ && !idx.name.includes(nameQ)) return false;
+        }
+        return true;
+    });
+    if (matchedMembers.length === 0) { alert("لا توجد سجلات مطابقة للفرز المحدد لتصديرها!"); return; }
+
+    const familiesMap = {};
+    matchedMembers.forEach(m => { const head = (m["اسم رب الاسرة"] || "").trim(); if (!head) return; if (!familiesMap[head]) familiesMap[head] = []; familiesMap[head].push(m); });
+    const areaVal = areaQ || "كل المناطق";
+    const ageVal = document.getElementById('filterAgeGroup')?.options[document.getElementById('filterAgeGroup')?.selectedIndex]?.text || "كل الأعمار";
+    exportFamiliesMapToPdf(familiesMap, `بيان فرز السجلات: [${areaVal} - ${ageVal}]`);
 }
 
 /* ==================== نهاية الملف ==================== */

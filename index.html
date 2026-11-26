@@ -29,6 +29,38 @@
         @keyframes pulseGreen { 0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55); } 70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); } }
         .dot-online { width: 9px; height: 9px; border-radius: 9999px; background: #10b981; display: inline-block; animation: pulseGreen 2s infinite; }
         .dot-offline { width: 9px; height: 9px; border-radius: 9999px; background: #ef4444; display: inline-block; }
+        /* تنسيق الطباعة وتصدير PDF الرسمي بدون قص الصفحات */
+        @page { size: A4 portrait; margin: 12mm 10mm; }
+        @media print {
+            body.pdf-print-mode > *:not(#officialPdfPreviewModal) { display: none !important; }
+            body.pdf-print-mode #officialPdfPreviewModal {
+                position: static !important;
+                inset: auto !important;
+                background: #ffffff !important;
+                padding: 0 !important;
+                overflow: visible !important;
+                display: block !important;
+            }
+            body.pdf-print-mode #officialPdfToolbar { display: none !important; }
+            body.pdf-print-mode #officialPdfPaper {
+                box-shadow: none !important;
+                border: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                max-width: 100% !important;
+                width: 100% !important;
+            }
+            .pdf-table { width: 100%; border-collapse: collapse; }
+            .pdf-table thead { display: table-header-group; }
+            .pdf-table tr, .pdf-card, .pdf-avoid-break { break-inside: avoid !important; page-break-inside: avoid !important; }
+            .pdf-group-title { break-after: avoid !important; page-break-after: avoid !important; }
+        }
+        .pdf-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .pdf-table th { background: #1e3a8a !important; color: #ffffff !important; padding: 7px 8px; border: 1px solid #1e3a8a; font-weight: 800; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .pdf-table td { padding: 6px 8px; border: 1px solid #cbd5e1; vertical-align: top; }
+        .pdf-table tbody tr:nth-child(even) { background: #f8fafc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .pdf-badge { display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: 10px; font-weight: 800; border: 1px solid #cbd5e1; background: #f1f5f9; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
     </style>
     <script>
         if ('serviceWorker' in navigator) {
@@ -207,9 +239,9 @@ function togglePasswordVisibilityInline() {
     <div class="max-w-7xl mx-auto px-4 py-2.5 flex flex-col sm:flex-row justify-between items-center gap-4">
         <div class="flex items-center gap-3">
             <img src="logo.png" alt="Logo" class="max-w-[110px] max-h-[42px] object-contain">
-            <div>
-                <h1 class="text-base font-black text-slate-800 leading-tight">منظومة الخدمة والرعاية الكنسية</h1>
-                <p class="text-xs text-slate-500 font-bold" id="userBadge"></p>
+            <div class="flex flex-col justify-center">
+                <h1 class="text-base font-black text-slate-800 leading-snug">منظومة الخدمة والرعاية الكنسية</h1>
+                <div class="text-xs text-slate-500 font-bold mt-1.5 flex items-center gap-1.5 flex-wrap leading-normal" id="userBadge"></div>
             </div>
         </div>
         <div class="flex items-center gap-2 flex-wrap justify-center">
@@ -292,10 +324,14 @@ function togglePasswordVisibilityInline() {
             </div>
 
             <div class="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
-                <button id="btnPrintSundaySchool" onclick="openSundaySchoolPrintModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">💬 إرسال الكشف واتساب</button>
+                <button id="btnPrintSundaySchool" onclick="openSundaySchoolPrintModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">📄 كشف الفصل (PDF / واتساب)</button>
+                <button id="btnPdfMeetings" onclick="exportServantsMeetingPdf()" class="bg-red-700 hover:bg-red-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">📄 تصدير PDF</button>
                 <button id="btnPrintMeetings" onclick="printServantsMeetingRoster()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">💬 إرسال الاجتماع واتساب</button>
+                <button id="btnPdfVisitReport" onclick="exportVisitReportPdf()" class="bg-red-700 hover:bg-red-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">📄 تصدير PDF</button>
                 <button id="btnPrintVisitReport" onclick="printVisitReport()" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">💬 إرسال التقرير واتساب</button>
+                <button id="btnPdfFiltered" onclick="exportFilteredResultsPdf()" class="bg-red-700 hover:bg-red-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">📄 تصدير PDF</button>
                 <button id="btnPrintFiltered" onclick="printFilteredResults()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">💬 إرسال النتائج واتساب</button>
+                <button id="btnPdfRoster" onclick="exportRosterDirectoryPdf()" class="bg-red-700 hover:bg-red-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">📄 تصدير PDF</button>
                 <button id="btnPrintRoster" onclick="printRosterDirectory()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 hidden">💬 إرسال الدليل واتساب</button>
                 <button id="btnExportExcel" onclick="exportCurrentViewToExcel()" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5">📥 تصدير Excel</button>
                 <button id="btnAddNewRecord" onclick="openModal('add')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5"><span>+</span> إضافة سجل جديد</button>
@@ -454,8 +490,9 @@ function togglePasswordVisibilityInline() {
                         <button type="button" onclick="setSSReportQuickRange('all')" class="text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl transition">كل السجلات</button>
                     </div>
                     <div class="flex items-center gap-2 flex-wrap">
+                        <button type="button" onclick="exportSSPeriodReportPdf()" class="bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm transition flex items-center gap-1.5">📄 تصدير PDF رسمي</button>
                         <button type="button" onclick="shareSSPeriodReportWhatsApp()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm transition flex items-center gap-1.5">💬 إرسال التقرير واتساب</button>
-                        <button type="button" onclick="exportSSPeriodReportExcel()" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm transition flex items-center gap-1.5">📥 تصدير التقرير Excel</button>
+                        <button type="button" onclick="exportSSPeriodReportExcel()" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm transition flex items-center gap-1.5">📥 تصدير Excel</button>
                     </div>
                 </div>
             </div>
@@ -607,6 +644,7 @@ function togglePasswordVisibilityInline() {
                         <p class="text-[11px] text-slate-500 font-bold mt-0.5">مرتّب حسب: أمناء عموم الخدمة ➔ أمناء المراحل ➔ خدام الفصول ➔ الخدام غير المكلفين بفصول (مع اسم أب الاعتراف وتواريخ الاعتراف)</p>
                     </div>
                     <div class="flex items-center gap-2 flex-wrap">
+                        <button type="button" onclick="exportServantsConfessionsPdf()" class="bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm transition flex items-center gap-1.5">📄 تصدير PDF رسمي</button>
                         <button type="button" onclick="shareServantsConfessionsWhatsApp()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm transition flex items-center gap-1.5">💬 إرسال التقرير واتساب</button>
                         <button type="button" onclick="exportServantsConfessionsExcel()" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm transition flex items-center gap-1.5">📥 تصدير Excel</button>
                     </div>
@@ -615,6 +653,7 @@ function togglePasswordVisibilityInline() {
                     <div>
                         <label class="block text-xs font-bold text-slate-600 mb-1">السنة الميلادية</label>
                         <select id="servantsConfYearSelect" onchange="renderServantsConfessionsList()" class="w-full p-2.5 bg-purple-50/50 border border-purple-200 rounded-xl text-xs font-black text-purple-900 outline-none focus:ring-2 focus:ring-purple-500">
+                            <option value="all_by_year">كل السنوات (كل سنة لوحدها)</option>
                             <option value="2026">سنة 2026 كاملة (يناير - ديسمبر)</option>
                             <option value="2025">سنة 2025 كاملة (يناير - ديسمبر)</option>
                             <option value="2027">سنة 2027 كاملة (يناير - ديسمبر)</option>
@@ -733,7 +772,8 @@ function togglePasswordVisibilityInline() {
         </div>
         <div class="pt-5 mt-4 border-t flex justify-end gap-2">
             <button onclick="closeSundaySchoolPrintModal()" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">إلغاء</button>
-            <button onclick="generateAndPrintClassRoster()" class="px-6 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition">💬 استخراج وإرسال واتساب</button>
+            <button onclick="generateAndExportClassRosterPdf()" class="px-5 py-2 rounded-xl bg-red-700 hover:bg-red-800 text-white font-bold text-xs shadow-md transition">📄 تصدير PDF رسمي</button>
+            <button onclick="generateAndPrintClassRoster()" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition">💬 إرسال واتساب</button>
         </div>
     </div>
 </div>
@@ -773,6 +813,26 @@ function togglePasswordVisibilityInline() {
     </button>
 </div>
 
-<script src="app.js?v=39"></script>
+<!-- نافذة معاينة وتصدير التقارير الرسمية PDF (متوافقة مع الكمبيوتر والموبايل وبدون قص صفحات) -->
+<div id="officialPdfPreviewModal" class="hidden fixed inset-0 bg-slate-900/75 z-[100] overflow-y-auto p-3 sm:p-6 backdrop-blur-sm">
+    <div id="officialPdfToolbar" class="max-w-4xl mx-auto mb-3 bg-white rounded-2xl p-3 shadow-lg border border-slate-200 flex flex-wrap items-center justify-between gap-2 sticky top-2 z-10 no-print">
+        <div class="flex items-center gap-2">
+            <span class="text-lg">📄</span>
+            <div>
+                <p id="officialPdfModalTitle" class="text-xs sm:text-sm font-black text-slate-800">معاينة التقرير الرسمي</p>
+                <p class="text-[10px] text-slate-500 font-bold">اضغط «حفظ كملف PDF / طباعة» ثم اختر (Save as PDF / حفظ بتنسيق PDF)</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <button type="button" onclick="triggerOfficialPdfPrint()" class="px-4 py-2 rounded-xl bg-red-700 hover:bg-red-800 text-white font-black text-xs shadow-md transition cursor-pointer">🖨️ حفظ كملف PDF / طباعة</button>
+            <button type="button" onclick="closeOfficialPdfPreview()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer">✕ إغلاق</button>
+        </div>
+    </div>
+    <div id="officialPdfPaper" class="max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 sm:p-8 text-right">
+        <div id="officialPdfContent"></div>
+    </div>
+</div>
+
+<script src="app.js?v=40"></script>
 </body>
 </html>

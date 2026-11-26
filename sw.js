@@ -1,9 +1,9 @@
-// Service Worker - منظومة الخدمة والرعاية الكنسية (v39 Servants Confessions + 2s Real Ping)
-const CACHE_NAME = 'church-system-cache-v39';
+// Service Worker - منظومة الخدمة والرعاية الكنسية (v40 Official PDF Reports + Header Fix)
+const CACHE_NAME = 'church-system-cache-v40';
 const APP_SHELL = [
     './',
     './index.html',
-    './app.js?v=39',
+    './app.js?v=40',
     './style.css',
     './logo.png',
     './manifest.json'
