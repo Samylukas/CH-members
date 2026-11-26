@@ -3456,21 +3456,67 @@ let isAppOnline = navigator.onLine;
 let isOfflineSession = false;
 let isSyncingQueue = false;
 
+let connectivityCheckTimer = null;
+
+async function checkRealConnectivity() {
+    if (!navigator.onLine) {
+        updateConnectionIndicator(false);
+        return false;
+    }
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 3500) : null;
+    try {
+        const res = await fetch(`./manifest.json?ping=${Date.now()}`, {
+            method: 'GET',
+            cache: 'no-store',
+            signal: controller ? controller.signal : undefined
+        });
+        if (timeoutId) clearTimeout(timeoutId);
+        const wasOffline = !isAppOnline;
+        const ok = Boolean(res && res.ok);
+        updateConnectionIndicator(ok);
+        if (ok && wasOffline) {
+            loadServantsListForLogin();
+            if (currentUser) syncOfflineQueue(false);
+        }
+        return ok;
+    } catch (e) {
+        if (timeoutId) clearTimeout(timeoutId);
+        updateConnectionIndicator(false);
+        return false;
+    }
+}
+
 function initOfflineSupport() {
     updateConnectionIndicator(navigator.onLine);
     updatePendingSyncUI();
+    checkRealConnectivity();
 
     window.addEventListener('online', () => {
-        updateConnectionIndicator(true);
-        loadServantsListForLogin();
-        if (currentUser) {
-            syncOfflineQueue(false);
-        }
+        checkRealConnectivity();
     });
 
     window.addEventListener('offline', () => {
         updateConnectionIndicator(false);
     });
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            checkRealConnectivity();
+        }
+    });
+
+    window.addEventListener('focus', () => {
+        checkRealConnectivity();
+    });
+
+    // فحص دوري كل 8 ثوانٍ لاكتشاف انقطاع الإنترنت الحقيقي حتى لو الواي فاي ما زال متصلاً
+    if (connectivityCheckTimer) clearInterval(connectivityCheckTimer);
+    connectivityCheckTimer = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+            checkRealConnectivity();
+        }
+    }, 8000);
 }
 
 function updateConnectionIndicator(onlineState) {

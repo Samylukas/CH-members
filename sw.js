@@ -1,9 +1,9 @@
-// Service Worker - منظومة الخدمة والرعاية الكنسية (v35 Offline Cache + Fast Search Index)
-const CACHE_NAME = 'church-system-cache-v35';
+// Service Worker - منظومة الخدمة والرعاية الكنسية (v36 Real Offline Detection + Fast Index)
+const CACHE_NAME = 'church-system-cache-v36';
 const APP_SHELL = [
     './',
     './index.html',
-    './app.js?v=35',
+    './app.js?v=36',
     './style.css',
     './logo.png',
     './manifest.json'
@@ -46,8 +46,8 @@ self.addEventListener('fetch', (event) => {
 
     const url = new URL(req.url);
 
-    // استثناء طلبات API (Google Apps Script) لأنها تُدار عبر نظام الكاش والمزامنة في app.js
-    if (url.hostname.includes('script.google.com') || url.hostname.includes('script.googleusercontent.com')) {
+    // استثناء طلبات فحص الاتصال الحقيقي (?ping=) وطلبات API (Google Apps Script) من الكاش
+    if (url.searchParams.has('ping') || url.hostname.includes('script.google.com') || url.hostname.includes('script.googleusercontent.com')) {
         return;
     }
 

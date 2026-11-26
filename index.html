@@ -81,7 +81,7 @@
 <div id="landingScreen" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden overflow-y-auto" style="display: none; background: radial-gradient(circle at center, #ffffff 0%, #f1f5f9 100%);">
     <!-- مؤشر حالة الاتصال بالإنترنت على الشاشة الافتتاحية -->
     <div class="fixed top-4 right-4 z-50 flex items-center gap-2">
-        <div id="landingConnBadge" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-black border shadow-sm bg-emerald-50 text-emerald-700 border-emerald-200 transition-all">
+        <div id="landingConnBadge" onclick="checkRealConnectivity()" title="اضغط لفحص الاتصال" class="cursor-pointer inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-black border shadow-sm bg-emerald-50 text-emerald-700 border-emerald-200 transition-all">
             <span class="dot-online"></span>
             <span>متصل</span>
         </div>
@@ -207,7 +207,7 @@ function togglePasswordVisibilityInline() {
         </div>
         <div class="flex items-center gap-2 flex-wrap justify-center">
             <!-- مؤشر الاتصال (أخضر متصل / أحمر غير متصل) -->
-            <div id="headerConnBadge" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border bg-emerald-50 text-emerald-700 border-emerald-200 transition-all">
+            <div id="headerConnBadge" onclick="checkRealConnectivity()" title="اضغط لفحص الاتصال" class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border bg-emerald-50 text-emerald-700 border-emerald-200 transition-all">
                 <span class="dot-online"></span>
                 <span>متصل</span>
             </div>
@@ -718,6 +718,6 @@ function togglePasswordVisibilityInline() {
     </button>
 </div>
 
-<script src="app.js?v=35"></script>
+<script src="app.js?v=36"></script>
 </body>
 </html>
