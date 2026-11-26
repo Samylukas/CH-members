@@ -42,6 +42,7 @@ jobs:
           cp logo.png assets/icon-only.png
           cp logo.png assets/icon-foreground.png
           cp logo.png assets/splash.png
+          python3 -c "import zlib, struct; w=h=1024; raw=b''.join(b'\x00'+b'\xff\xff\xff'*w for _ in range(h)); chunk=lambda t,d: struct.pack('!I',len(d))+t+d+struct.pack('!I',zlib.crc32(t+d)&0xffffffff); open('assets/icon-background.png','wb').write(b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('!IIBBBBB',w,h,8,2,0,0,0))+chunk(b'IDAT',zlib.compress(raw,9))+chunk(b'IEND',b''))"
           npx capacitor-assets generate --android \
             --iconBackgroundColor '#ffffff' \
             --iconBackgroundColorDark '#ffffff' \
