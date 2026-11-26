@@ -1,9 +1,9 @@
-// Service Worker - منظومة الخدمة والرعاية الكنسية (v34 Offline Cache)
-const CACHE_NAME = 'church-system-cache-v34';
+// Service Worker - منظومة الخدمة والرعاية الكنسية (v35 Offline Cache + Fast Search Index)
+const CACHE_NAME = 'church-system-cache-v35';
 const APP_SHELL = [
     './',
     './index.html',
-    './app.js?v=34',
+    './app.js?v=35',
     './style.css',
     './logo.png',
     './manifest.json'

@@ -271,7 +271,7 @@ function renderLoginUserOptions(filterText = '') {
     const currentVal = document.getElementById('loginUser')?.value || '';
     if (!listEl) return;
     const q = normalizeArabic(filterText).toLowerCase();
-    const filtered = loginUsersList.filter(u => !q || normalizeArabic(u.label).toLowerCase().includes(q));
+    const filtered = loginUsersList.filter(u => !q || (u.normLabel || normalizeArabic(u.label).toLowerCase()).includes(q));
     if (filtered.length === 0) {
         listEl.innerHTML = `<li class="px-4 py-3 text-xs text-slate-400 text-center">لا يوجد اسم مطابق</li>`;
         return;
@@ -317,6 +317,7 @@ function buildSortedLoginList(listData) {
             items.push({
                 username: String(s.Username).trim(),
                 label: cleanName,
+                normLabel: normalizeArabic(cleanName).toLowerCase(),
                 role: role,
                 priority: getLoginRolePriority(role, cleanName),
                 origIdx: idx
@@ -606,7 +607,102 @@ function buildAlphabetBar() {
 }
 
 function normalizeArabic(text) { return String(text || "").trim().replace(/ـ/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/\s+/g, " "); }
-function filterRoster() { renderFamilyHeadsRoster(); }
+
+// ==================== فهرس البحث السريع (Pre-normalized Index + Debounce) ====================
+let cachedFamiliesRosterIndex = null;
+let cachedFamiliesRosterSourceRef = null;
+let cachedPriestConfSummaryMap = new Map();
+
+function createDebounce(fn, delayMs = 150) {
+    let timerId = null;
+    return function (...args) {
+        if (timerId) clearTimeout(timerId);
+        timerId = setTimeout(() => {
+            timerId = null;
+            fn.apply(this, args);
+        }, delayMs);
+    };
+}
+
+function getSearchIndex(row) {
+    if (!row || typeof row !== "object") {
+        return { name: "", head: "", phone: "", area: "", all: "" };
+    }
+    if (row._searchIdx) return row._searchIdx;
+    const name = normalizeArabic(row["الاسم ثلاثي"] || row["ChildName"] || row["ServantName"] || row["MemberName"] || "").toLowerCase();
+    const head = normalizeArabic(row["اسم رب الاسرة"] || "").toLowerCase();
+    const phone = String(row["تليفون العمل/المحمول"] || row["هاتف الاسرة"] || row["رقم التليفون"] || "").trim();
+    const area = normalizeArabic(row["المنطقة"] || "").toLowerCase();
+    const all = normalizeArabic(Object.values(row).map(v => (v === null || v === undefined ? "" : String(v))).join(" ")).toLowerCase();
+    const idxObj = { name, head, phone, area, all };
+    try {
+        Object.defineProperty(row, "_searchIdx", {
+            value: idxObj,
+            enumerable: false,
+            configurable: true,
+            writable: true
+        });
+    } catch (e) {}
+    return idxObj;
+}
+
+function rebuildFamiliesRosterIndex() {
+    const familiesMap = {};
+    rawData.forEach(member => {
+        const headName = String(member["اسم رب الاسرة"] || "").trim();
+        if (!headName) return;
+        if (!familiesMap[headName]) familiesMap[headName] = [];
+        familiesMap[headName].push(member);
+    });
+
+    const sortedHeadNames = Object.keys(familiesMap).sort((a, b) => a.localeCompare(b, 'ar'));
+    cachedFamiliesRosterIndex = sortedHeadNames.map(headName => {
+        const members = sortFamilyMembers(familiesMap[headName], headName);
+        const normHead = normalizeArabic(headName).toLowerCase();
+        const combinedSearch = normHead + " " + members.map(m => {
+            const idx = getSearchIndex(m);
+            return `${idx.name} ${idx.phone}`;
+        }).join(" ");
+        return {
+            headName,
+            normHead,
+            firstChar: normHead ? normHead[0] : "",
+            members,
+            searchBlob: combinedSearch
+        };
+    });
+    cachedFamiliesRosterSourceRef = rawData;
+    return cachedFamiliesRosterIndex;
+}
+
+function getFamiliesRosterIndex() {
+    if (cachedFamiliesRosterIndex && cachedFamiliesRosterSourceRef === rawData) {
+        return cachedFamiliesRosterIndex;
+    }
+    return rebuildFamiliesRosterIndex();
+}
+
+function rebuildPriestConfSummaryIndex() {
+    cachedPriestConfSummaryMap = new Map();
+    priestSpiritualChildren.forEach(m => {
+        getSearchIndex(m);
+        const hist = getMemberConfessionHistory(m);
+        const latestDate = hist.length > 0 ? hist[0].date : "";
+        const days = latestDate ? getDaysSinceDate(latestDate) : null;
+        cachedPriestConfSummaryMap.set(String(m["ID"]), { latestDate, days, count: hist.length });
+    });
+}
+
+const debouncedRenderRoster = createDebounce(() => renderFamilyHeadsRoster(), 150);
+const debouncedApplyNamesFilter = createDebounce(() => applyNamesFilter(), 150);
+const debouncedRenderStandardCards = createDebounce(() => renderStandardCards(), 150);
+const debouncedFilterPriestChildren = createDebounce(() => filterPriestChildrenList(), 150);
+
+function onNamesSearchInput() { debouncedApplyNamesFilter(); }
+function onStandardSearchInput() { debouncedRenderStandardCards(); }
+function onConfessionSearchInput() { debouncedFilterPriestChildren(); }
+
+function filterRoster() { debouncedRenderRoster(); }
 
 function getFieldValNormalized(obj, targetKey) {
     if (!obj) return "";
@@ -789,34 +885,23 @@ function renderFamilyHeadsRoster() {
     const container = document.getElementById('rosterCardsContainer');
     if (!container) return;
     container.innerHTML = "";
-    const query = (document.getElementById('rosterSearchInput')?.value || "").trim().toLowerCase();
+    const normQuery = normalizeArabic(document.getElementById('rosterSearchInput')?.value || "").toLowerCase();
+    const normLetterChar = selectedLetter !== "الكل" ? normalizeArabic(selectedLetter)[0] : "";
 
-    let familiesMap = {};
-    rawData.forEach(member => {
-        const headName = String(member["اسم رب الاسرة"] || "").trim();
-        if (!headName) return;
-        if (!familiesMap[headName]) familiesMap[headName] = [];
-        familiesMap[headName].push(member);
-    });
-
-    let sortedHeadNames = Object.keys(familiesMap).sort((a, b) => a.localeCompare(b, 'ar'));
-    let filteredHeadNames = sortedHeadNames.filter(head => {
-        const normHead = normalizeArabic(head).toLowerCase();
-        if (selectedLetter !== "الكل" && normHead[0] !== normalizeArabic(selectedLetter)[0]) return false;
-        if (query) {
-            const hasHeadMatch = normHead.includes(normalizeArabic(query).toLowerCase());
-            const hasMemberMatch = familiesMap[head].some(m => normalizeArabic(m["الاسم ثلاثي"]).toLowerCase().includes(normalizeArabic(query).toLowerCase()));
-            if (!hasHeadMatch && !hasMemberMatch) return false;
-        }
+    const rosterIndex = getFamiliesRosterIndex();
+    const filteredFamilies = rosterIndex.filter(entry => {
+        if (normLetterChar && entry.firstChar !== normLetterChar) return false;
+        if (normQuery && !entry.searchBlob.includes(normQuery)) return false;
         return true;
     });
 
     const recCount = document.getElementById('recordCount');
-    if (recCount) recCount.innerText = `${filteredHeadNames.length} أسرة`;
-    if (filteredHeadNames.length === 0) { container.innerHTML = `<div class="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300 text-slate-400 font-bold">لم يتم العثور على أرباب أسر مطابقين</div>`; return; }
+    if (recCount) recCount.innerText = `${filteredFamilies.length} أسرة`;
+    if (filteredFamilies.length === 0) { container.innerHTML = `<div class="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300 text-slate-400 font-bold">لم يتم العثور على أرباب أسر مطابقين</div>`; return; }
 
-    filteredHeadNames.forEach((headName, index) => {
-        const familyMembers = sortFamilyMembers(familiesMap[headName], headName);
+    filteredFamilies.forEach((entry, index) => {
+        const headName = entry.headName;
+        const familyMembers = entry.members;
         const headMemberRecord = familyMembers.find(m => m["الاسم ثلاثي"] === headName || m["صلة القرابة"] === "زوج" || m["صلة القرابة"] === "رب أسرة") || familyMembers[0];
         const headId = headMemberRecord ? (headMemberRecord["ID"] || headMemberRecord[Object.keys(headMemberRecord)[0]]) : null;
         const area = (headMemberRecord ? getMemberArea(headMemberRecord) : "") || (familyMembers.map(m => getMemberArea(m)).find(Boolean)) || "غير محددة";
@@ -913,7 +998,7 @@ function resetNamesFilters() {
 }
 
 function applyNamesFilter() {
-    const headQ = (document.getElementById('filterFamilyHead')?.value || "").trim().toLowerCase(), nameQ = (document.getElementById('filterFullName')?.value || "").trim().toLowerCase();
+    const headQ = normalizeArabic(document.getElementById('filterFamilyHead')?.value || "").toLowerCase(), nameQ = normalizeArabic(document.getElementById('filterFullName')?.value || "").toLowerCase();
     const areaQ = (document.getElementById('filterArea')?.value || "").trim(), ageGroupQ = document.getElementById('filterAgeGroup')?.value || "";
     const genderQ = document.getElementById('filterGender')?.value || "", electionQ = document.getElementById('filterElection')?.value || "";
     const maritalQ = document.getElementById('filterMarital')?.value || "", deceasedQ = document.getElementById('filterDeceased')?.value || "alive";
@@ -951,8 +1036,11 @@ function applyNamesFilter() {
             if (ageGroupQ === "adults" && (age < 26 || age > 50)) return false;
             if (ageGroupQ === "seniors" && age <= 50) return false;
         }
-        if (headQ && !String(item["اسم رب الاسرة"] || "").toLowerCase().includes(headQ)) return false;
-        if (nameQ && !String(item["الاسم ثلاثي"] || "").toLowerCase().includes(nameQ)) return false;
+        if (headQ || nameQ) {
+            const idx = getSearchIndex(item);
+            if (headQ && !idx.head.includes(headQ)) return false;
+            if (nameQ && !idx.name.includes(nameQ)) return false;
+        }
         return true;
     });
 
@@ -1036,8 +1124,11 @@ function printFilteredResults() {
             if (ageGroupQ === "sec" && (age < 16 || age > 18)) return false; if (ageGroupQ === "youth" && (age < 19 || age > 25)) return false;
             if (ageGroupQ === "adults" && (age < 26 || age > 50)) return false; if (ageGroupQ === "seniors" && age <= 50) return false;
         }
-        if (headQ && !String(item["اسم رب الاسرة"] || "").toLowerCase().includes(headQ)) return false;
-        if (nameQ && !String(item["الاسم ثلاثي"] || "").toLowerCase().includes(nameQ)) return false;
+        if (headQ || nameQ) {
+            const idx = getSearchIndex(item);
+            if (headQ && !idx.head.includes(headQ)) return false;
+            if (nameQ && !idx.name.includes(nameQ)) return false;
+        }
         return true;
     });
     if (matchedMembers.length === 0) { alert("لا توجد سجلات مطابقة للفرز المحدد للطباعة!"); return; }
@@ -2319,7 +2410,7 @@ async function deleteRecord(id) {
 
 function renderStandardCards() {
     if (currentTab === 'Names') return;
-    const query = (document.getElementById('searchInput')?.value || "").trim().toLowerCase(), container = document.getElementById('standardCardsContainer');
+    const query = normalizeArabic(document.getElementById('searchInput')?.value || "").toLowerCase(), container = document.getElementById('standardCardsContainer');
     if (!container) return; container.innerHTML = "";
 
     let filtered = rawData.filter(item => {
@@ -2327,7 +2418,8 @@ function renderStandardCards() {
             if (!isStageAllowedForUser(item["Stage"], currentUser)) return false;
             if (currentUser.Role === "Class_Servant" && currentUser.AssignedClass && currentUser.AssignedClass !== "الكل" && item["ClassName"] !== currentUser.AssignedClass) return false;
         }
-        return Object.values(item).some(val => String(val).toLowerCase().includes(query));
+        if (!query) return true;
+        return getSearchIndex(item).all.includes(query);
     });
 
     const recCount = document.getElementById('recordCount'); if (recCount) recCount.innerText = `${filtered.length} سجل`;
@@ -3013,6 +3105,7 @@ async function initPriestConfessionsView() {
     const titleEl = document.getElementById('priestPortalTitle');
     if (titleEl) titleEl.innerText = `أهلاً بقدسك — ${currentUser.ServantName}`;
 
+    rebuildPriestConfSummaryIndex();
     updatePriestConfessionsKpis();
     filterPriestChildrenList();
 
@@ -3074,17 +3167,15 @@ function filterPriestChildrenList() {
     const q = normalizeArabic(document.getElementById('confessionSearchInput')?.value || "").toLowerCase();
 
     const filtered = priestSpiritualChildren.filter(m => {
-        const hist = getMemberConfessionHistory(m);
-        const days = hist.length > 0 ? getDaysSinceDate(hist[0].date) : null;
+        const summary = cachedPriestConfSummaryMap.get(String(m["ID"]));
+        const days = summary ? summary.days : null;
 
         if (priestConfFilterMode === "overdue" && !(days === null || days > 90)) return false;
         if (priestConfFilterMode === "recent" && !(days !== null && days <= 365)) return false;
 
         if (q) {
-            const n = normalizeArabic(m["الاسم ثلاثي"]).toLowerCase();
-            const h = normalizeArabic(m["اسم رب الاسرة"]).toLowerCase();
-            const p = String(m["تليفون العمل/المحمول"] || "").trim();
-            if (!n.includes(q) && !h.includes(q) && !p.includes(q)) return false;
+            const idx = getSearchIndex(m);
+            if (!idx.name.includes(q) && !idx.head.includes(q) && !idx.phone.includes(q)) return false;
         }
         return true;
     });
@@ -3097,9 +3188,9 @@ function filterPriestChildrenList() {
     const displaySlice = filtered.slice(0, 60);
     let html = displaySlice.map(m => {
         const mId = m["ID"];
-        const hist = getMemberConfessionHistory(m);
-        const latestDate = hist.length > 0 ? hist[0].date : "";
-        const days = latestDate ? getDaysSinceDate(latestDate) : null;
+        const summary = cachedPriestConfSummaryMap.get(String(mId));
+        const latestDate = summary ? summary.latestDate : "";
+        const days = summary ? summary.days : null;
         const isSelected = selectedConfessorMember && String(selectedConfessorMember["ID"]) === String(mId);
 
         let badgeHtml = `<span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">لم يُسجل بعد</span>`;
