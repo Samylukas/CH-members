@@ -1927,17 +1927,105 @@ function switchMeetingsView(view) {
     }
 }
 
+function isSundaySchoolMeetingServant(s) {
+    if (!s) return false;
+    const status = String(s["Status"] || "").trim();
+    const username = String(s["Username"] || "").trim().toLowerCase();
+    const role = String(s["Role"] || "").trim();
+    if (status === "موقوف" || username === "admin" || role === "Admin") return false;
+
+    const stageNorm = normalizeArabic(s["AssignedStage"] || "");
+    const classNorm = normalizeArabic(s["AssignedClass"] || "");
+
+    // استبعاد كهنة وخدام الجامعة والخريجين والشباب
+    if (stageNorm.includes("جامع") || stageNorm.includes("خريج") || stageNorm.includes("شباب")) return false;
+
+    // استبعاد خدام القطاعات والخدمات الأخرى خارج مدارس الأحد
+    const excludedSectors = ["المرضي", "السيدات", "الكشافه", "الكورال", "المسرح", "الكرازه", "الشمامسه", "الشباب", "الجامعه", "الخريجين"];
+    if (excludedSectors.some(sec => classNorm.includes(sec))) return false;
+
+    return true;
+}
+
+function getMeetingStageOrder(stageStr) {
+    const st = normalizeArabic(stageStr || "");
+    if (st.includes("حضانه وابتدائي") || st.includes("مدارس الاحد")) return 0;
+    if (st.includes("حضانه")) return 1;
+    if (st.includes("ابتدائي")) return 2;
+    if (st.includes("اعدادي")) return 3;
+    if (st.includes("ثانوي")) return 4;
+    return 9;
+}
+
+function getMeetingGradeOrder(stageStr, gradeStr) {
+    const gNorm = normalizeArabic(gradeStr || "");
+    if (!gNorm || gNorm === "الكل") return 0;
+    const allGrades = Object.values(STAGE_GRADES).flat();
+    const idx = allGrades.findIndex(g => normalizeArabic(g) === gNorm);
+    return idx >= 0 ? idx + 1 : 99;
+}
+
+function getServantMeetingRank(s, origIdx) {
+    const role = String(s["Role"] || "").trim();
+    const stageNorm = normalizeArabic(s["AssignedStage"] || "");
+    const isSSStage = ["حضانه", "ابتدائي", "اعدادي", "ثانوي"].some(st => stageNorm.includes(st));
+
+    // 1. الآباء الكهنة (بنفس ترتيب الشيت)
+    if (role === "Priest" || isPriestUser(s)) {
+        return { group: 1, stageOrd: 0, gradeOrd: 0, origIdx };
+    }
+    // 2. أمين عام الخدمة
+    if (role === "SundaySchool_Admin") {
+        return { group: 2, stageOrd: 0, gradeOrd: 0, origIdx };
+    }
+    // 3. أمناء خدمة المراحل
+    if (role === "Stage_Leader") {
+        return { group: 3, stageOrd: getMeetingStageOrder(s["AssignedStage"]), gradeOrd: 0, origIdx };
+    }
+    // 4. خدام الفصول (حضانة -> ابتدائي -> إعدادي -> ثانوي، ومرتبين بالصفوف)
+    if (isSSStage) {
+        return {
+            group: 4,
+            stageOrd: getMeetingStageOrder(s["AssignedStage"]),
+            gradeOrd: getMeetingGradeOrder(s["AssignedStage"], s["AssignedGrade"]),
+            origIdx
+        };
+    }
+    // 5. الخدام غير المكلفين بفصول (التابعون لمدارس الأحد مثل الافتقاد والخدمة المعاونة)
+    return { group: 5, stageOrd: 9, gradeOrd: 99, origIdx };
+}
+
 async function initServantsMeetingLiveView() {
     const dateInput = document.getElementById('servantsMeetingDate'), now = new Date();
     if (dateInput) dateInput.value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
     if (servantsCacheData.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Servants`); if (res.status === "success") servantsCacheData = res.data; } catch(e) {} }
     if (namesCacheData.length === 0) { try { const [res, famRes] = await Promise.all([apiFetch(`${API_URL}?sheet=Names`), apiFetch(`${API_URL}?sheet=${encodeURIComponent("Family name")}`).catch(() => ({ status: "err" }))]); if (res.status === "success") namesCacheData = ((famRes.status === "success") ? mergeFamilySheetIntoNames(res.data, famRes.data) : res.data).map(sanitizeRecordFields); } catch(e) {} }
-    const activeServants = servantsCacheData.filter(s => s["Status"] !== "موقوف" && s["Username"] !== "admin");
-    currentServantsMeetingList = activeServants.map(s => {
-        const member = namesCacheData.find(m => m["الاسم ثلاثي"] === s["ServantName"]);
+
+    const activeServants = servantsCacheData
+        .map((s, idx) => ({ s, idx }))
+        .filter(({ s }) => isSundaySchoolMeetingServant(s));
+
+    currentServantsMeetingList = activeServants.map(({ s, idx }) => {
+        const member = namesCacheData.find(m => normalizeArabic(m["الاسم ثلاثي"]) === normalizeArabic(s["ServantName"]));
         let realPhone = (member && member["تليفون العمل/المحمول"]) ? member["تليفون العمل/المحمول"] : (/^\d+$/.test(s["Username"]) ? s["Username"] : "-");
-        return { id: s["ID"] || s[Object.keys(s)[0]], name: s["ServantName"], phone: realPhone, role: s["Role"] || "خادم", scope: `${s["AssignedStage"] || "الكل"} ${s["AssignedGrade"] ? '- ' + s["AssignedGrade"] : ''} ${s["AssignedClass"] ? '(' + s["AssignedClass"] + ')' : ''}`, status: "حاضر", notes: "" };
-    }).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+        const rank = getServantMeetingRank(s, idx);
+        return {
+            id: s["ID"] || s[Object.keys(s)[0]],
+            name: s["ServantName"],
+            phone: realPhone,
+            role: s["Role"] || "خادم",
+            scope: `${s["AssignedStage"] || "الكل"} ${s["AssignedGrade"] ? '- ' + s["AssignedGrade"] : ''} ${s["AssignedClass"] ? '(' + s["AssignedClass"] + ')' : ''}`,
+            status: "حاضر",
+            notes: "",
+            _rank: rank
+        };
+    }).sort((a, b) => {
+        if (a._rank.group !== b._rank.group) return a._rank.group - b._rank.group;
+        if (a._rank.group === 1) return a._rank.origIdx - b._rank.origIdx;
+        if (a._rank.stageOrd !== b._rank.stageOrd) return a._rank.stageOrd - b._rank.stageOrd;
+        if (a._rank.gradeOrd !== b._rank.gradeOrd) return a._rank.gradeOrd - b._rank.gradeOrd;
+        return String(a.name || "").localeCompare(String(b.name || ""), 'ar');
+    });
     renderServantsMeetingTable();
 }
 

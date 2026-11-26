@@ -1,9 +1,9 @@
-// Service Worker - منظومة الخدمة والرعاية الكنسية (v37 App Icon + Real Offline Detection)
-const CACHE_NAME = 'church-system-cache-v37';
+// Service Worker - منظومة الخدمة والرعاية الكنسية (v38 Servants Meeting Order + Offline PWA)
+const CACHE_NAME = 'church-system-cache-v38';
 const APP_SHELL = [
     './',
     './index.html',
-    './app.js?v=37',
+    './app.js?v=38',
     './style.css',
     './logo.png',
     './manifest.json'
