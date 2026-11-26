@@ -23,6 +23,7 @@ window.addEventListener('load', () => {
     if (window.location.hash === '#family') {
         openFamilyPortal();
     }
+    initOfflineSupport();
     loadServantsListForLogin();
 });
 
@@ -332,13 +333,29 @@ function buildSortedLoginList(listData) {
 }
 
 async function loadServantsListForLogin() {
+    // تحميل فوري من الكاش المحلي لتظهر الأسماء حتى بدون إنترنت
+    try {
+        const cachedList = JSON.parse(localStorage.getItem('church_cache_login_users') || 'null');
+        if (Array.isArray(cachedList) && cachedList.length > 0) {
+            loginUsersList = cachedList;
+            renderLoginUserOptions('');
+        }
+    } catch (e) {}
+
+    if (!navigator.onLine) {
+        updateConnectionIndicator(false);
+        return;
+    }
+
     try {
         const res = await fetch(`${API_URL}?sheet=Servants_List`);
         const data = await res.json();
         const listData = (data.status === "success" && Array.isArray(data.data)) ? data.data : [];
         if (listData.length > 0) {
             loginUsersList = buildSortedLoginList(listData);
+            try { localStorage.setItem('church_cache_login_users', JSON.stringify(loginUsersList)); } catch (e) {}
             renderLoginUserOptions('');
+            updateConnectionIndicator(true);
             return;
         }
     } catch(e) {}
@@ -350,7 +367,9 @@ async function loadServantsListForLogin() {
         if (data.status === "success" && Array.isArray(data.data) && data.data.length > 0) {
             servantsCacheData = data.data;
             loginUsersList = buildSortedLoginList(data.data);
+            try { localStorage.setItem('church_cache_login_users', JSON.stringify(loginUsersList)); } catch (e) {}
             renderLoginUserOptions('');
+            updateConnectionIndicator(true);
         }
     } catch(e) {}
 }
@@ -367,21 +386,64 @@ async function handleLogin(e) {
     if (btn) { btn.disabled = true; btn.innerHTML = `جاري التحقق من السيرفر...`; }
     if (err) err.classList.add('hidden');
 
+    // محاولة الدخول في وضع عدم الاتصال (الكاش) إذا لم يتوفر إنترنت
+    if (!navigator.onLine) {
+        const offlineUser = await verifyOfflineCredentials(userVal, passVal);
+        if (offlineUser) {
+            currentUser = offlineUser.user;
+            sessionToken = offlineUser.token || `offline_${Date.now()}`;
+            isOfflineSession = true;
+            sessionStorage.setItem('church_current_user', JSON.stringify(currentUser));
+            sessionStorage.setItem('church_session_token', sessionToken);
+            if (btn) { btn.disabled = false; btn.innerText = "تسجيل الدخول"; }
+            updateConnectionIndicator(false);
+            initApp(false);
+            return false;
+        } else {
+            if (err) {
+                err.innerText = "أنت غير متصل بالإنترنت. للدخول بدون نت، يجب تسجيل الدخول مرة واحدة مسبقاً على هذا الجهاز أثناء وجود إنترنت بنفس كلمة المرور.";
+                err.classList.remove('hidden');
+            }
+            if (btn) { btn.disabled = false; btn.innerText = "تسجيل الدخول"; }
+            return false;
+        }
+    }
+
     try {
         const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'login', data: { username: userVal, password: passVal } }) });
         const data = await res.json();
         if (data.status === "success" && data.user) {
             currentUser = data.user;
             sessionToken = data.token || `local_${Date.now()}`;
+            isOfflineSession = false;
             sessionStorage.setItem('church_current_user', JSON.stringify(currentUser));
             sessionStorage.setItem('church_session_token', sessionToken);
+            await saveOfflineCredentials(userVal, passVal, currentUser, sessionToken);
+            updateConnectionIndicator(true);
             initApp(false);
+            // مزامنة أي عمليات معلقة وتجهيز الكاش في الخلفية
+            setTimeout(() => {
+                syncOfflineQueue(false);
+                warmOfflineCachesInBackground();
+            }, 600);
             return false;
         } else if (err) {
             err.innerText = data.message || "اسم المستخدم أو كلمة المرور غير صحيحة";
             err.classList.remove('hidden');
         }
     } catch (error) {
+        // في حالة انقطاع الإنترنت المفاجئ أثناء الضغط على تسجيل الدخول، نحاول الدخول من الكاش
+        updateConnectionIndicator(false);
+        const offlineUser = await verifyOfflineCredentials(userVal, passVal);
+        if (offlineUser) {
+            currentUser = offlineUser.user;
+            sessionToken = offlineUser.token || `offline_${Date.now()}`;
+            isOfflineSession = true;
+            sessionStorage.setItem('church_current_user', JSON.stringify(currentUser));
+            sessionStorage.setItem('church_session_token', sessionToken);
+            initApp(false);
+            return false;
+        }
         if (err) { err.innerText = "تعذر الاتصال بالسيرفر، تأكد من الإنترنت وحاول مرة أخرى."; err.classList.remove('hidden'); }
     } finally {
         if (btn) { btn.disabled = false; btn.innerText = "تسجيل الدخول"; }
@@ -2316,33 +2378,71 @@ function handleSessionExpired() {
 }
 
 async function apiFetch(url) {
+    const sheetMatch = url.match(/[?&]sheet=([^&]+)/);
+    const sheetKey = sheetMatch ? decodeURIComponent(sheetMatch[1]) : "";
+
+    // إذا لم يكن هناك إنترنت، نرجع البيانات المخزنة في الكاش فوراً
+    if (!navigator.onLine) {
+        updateConnectionIndicator(false);
+        const cached = getCachedSheetData(sheetKey);
+        if (cached) return { ...cached, fromCache: true };
+        return { status: "success", data: [], areas: [], fromCache: true, noCacheYet: true };
+    }
+
     const sep = url.includes('?') ? '&' : '?';
     const fullUrl = `${url}${sep}token=${encodeURIComponent(sessionToken)}&t=${Date.now()}`;
-    const response = await fetch(fullUrl, { method: 'GET', redirect: 'follow' });
-    if (!response.ok) throw new Error(`خطأ استجابة السيرفر: ${response.status}`);
-    const res = await response.json();
-    if (res.status === "unauthorized") {
-        alert(res.message || "انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى.");
-        handleSessionExpired();
-        throw new Error("Unauthorized");
+    try {
+        const response = await fetch(fullUrl, { method: 'GET', redirect: 'follow' });
+        if (!response.ok) throw new Error(`خطأ استجابة السيرفر: ${response.status}`);
+        const res = await response.json();
+        updateConnectionIndicator(true);
+        if (res.status === "unauthorized") {
+            alert(res.message || "انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى.");
+            handleSessionExpired();
+            throw new Error("Unauthorized");
+        }
+        if (res.status === "success" && sheetKey) {
+            saveCachedSheetData(sheetKey, res);
+        }
+        return res;
+    } catch (err) {
+        if (err.message === "Unauthorized") throw err;
+        // في حال انقطاع الاتصال الفعلي، نرجع من الكاش تلقائياً
+        updateConnectionIndicator(false);
+        const cached = getCachedSheetData(sheetKey);
+        if (cached) return { ...cached, fromCache: true };
+        throw err;
     }
-    return res;
 }
 
 async function apiPost(bodyObj) {
     const payloadWithToken = { ...bodyObj, token: sessionToken, user: currentUser ? currentUser.ServantName : "" };
-    const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payloadWithToken) });
-    const res = await response.json();
-    if (res.status === "unauthorized") {
-        alert(res.message || "انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى.");
-        handleSessionExpired();
-        throw new Error("Unauthorized");
+
+    // في وضع عدم الاتصال: نحفظ العملية في طابور المزامنة ونحدّث الكاش المحلي فوراً
+    if (!navigator.onLine) {
+        updateConnectionIndicator(false);
+        return queueOfflineOperation(bodyObj);
     }
-    return res;
+
+    try {
+        const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payloadWithToken) });
+        const res = await response.json();
+        updateConnectionIndicator(true);
+        if (res.status === "unauthorized") {
+            alert(res.message || "انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى.");
+            handleSessionExpired();
+            throw new Error("Unauthorized");
+        }
+        return res;
+    } catch (err) {
+        if (err.message === "Unauthorized") throw err;
+        updateConnectionIndicator(false);
+        return queueOfflineOperation(bodyObj);
+    }
 }
 
 function sendAuditLog(actionType, targetSheet, recordDetails) {
-    if (!currentUser) return;
+    if (!currentUser || !navigator.onLine) return;
     fetch(API_URL, {
         method: 'POST',
         body: JSON.stringify({
@@ -3256,6 +3356,304 @@ async function deleteConfessionEntry(confessionId) {
         }
     } catch (e) {
         alert("تعذر الاتصال بالسيرفر.");
+    }
+}
+
+
+// ==================== نظام الكاش والمزامنة ومؤشر الاتصال (Offline-First v34) ====================
+let isAppOnline = navigator.onLine;
+let isOfflineSession = false;
+let isSyncingQueue = false;
+
+function initOfflineSupport() {
+    updateConnectionIndicator(navigator.onLine);
+    updatePendingSyncUI();
+
+    window.addEventListener('online', () => {
+        updateConnectionIndicator(true);
+        loadServantsListForLogin();
+        if (currentUser) {
+            syncOfflineQueue(false);
+        }
+    });
+
+    window.addEventListener('offline', () => {
+        updateConnectionIndicator(false);
+    });
+}
+
+function updateConnectionIndicator(onlineState) {
+    isAppOnline = Boolean(onlineState);
+    const headerBadge = document.getElementById('headerConnBadge');
+    const landingBadge = document.getElementById('landingConnBadge');
+
+    const applyBadge = (el) => {
+        if (!el) return;
+        if (isAppOnline) {
+            el.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border bg-emerald-50 text-emerald-700 border-emerald-200 transition-all";
+            el.innerHTML = `<span class="dot-online"></span><span>متصل</span>`;
+        } else {
+            el.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border bg-rose-50 text-rose-700 border-rose-200 transition-all";
+            el.innerHTML = `<span class="dot-offline"></span><span>غير متصل (وضع الكاش)</span>`;
+        }
+    };
+
+    applyBadge(headerBadge);
+    applyBadge(landingBadge);
+    updatePendingSyncUI();
+}
+
+function getSheetCacheStorageKey(sheetName) {
+    const uKey = (sheetName === 'Confessions_Log' || sheetName === 'Priest_Members')
+        ? `_${normalizeArabic(currentUser?.Username || 'guest')}`
+        : '';
+    return `church_sheet_cache_${sheetName}${uKey}`;
+}
+
+function saveCachedSheetData(sheetName, resObj) {
+    if (!sheetName || !resObj) return;
+    try {
+        const toSave = {
+            status: "success",
+            data: resObj.data || [],
+            areas: resObj.areas || [],
+            savedAt: Date.now()
+        };
+        localStorage.setItem(getSheetCacheStorageKey(sheetName), JSON.stringify(toSave));
+    } catch (e) {
+        // إذا امتلأت مساحة التخزين، ننظف كاش سجل المراقبة الأقل أهمية
+        try { localStorage.removeItem('church_sheet_cache_Audit_Log'); } catch (err) {}
+    }
+}
+
+function getCachedSheetData(sheetName) {
+    if (!sheetName) return null;
+    try {
+        const raw = localStorage.getItem(getSheetCacheStorageKey(sheetName));
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch (e) {
+        return null;
+    }
+}
+
+async function hashPasswordForOffline(username, password) {
+    const rawStr = `church_v34::${String(username).trim()}::${String(password).trim()}`;
+    try {
+        if (window.crypto && window.crypto.subtle) {
+            const buf = new TextEncoder().encode(rawStr);
+            const hashBuf = await window.crypto.subtle.digest('SHA-256', buf);
+            return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+    } catch (e) {}
+    // احتياطي FNV-1a في حال عدم توفر Web Crypto
+    let h = 2166136261;
+    for (let i = 0; i < rawStr.length; i++) {
+        h ^= rawStr.charCodeAt(i);
+        h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+    }
+    return String(h >>> 0);
+}
+
+async function saveOfflineCredentials(username, password, userObj, token) {
+    try {
+        const authMap = JSON.parse(localStorage.getItem('church_offline_auth_map') || '{}');
+        const h = await hashPasswordForOffline(username, password);
+        authMap[String(username).trim()] = {
+            hash: h,
+            user: userObj,
+            token: token,
+            savedAt: Date.now()
+        };
+        localStorage.setItem('church_offline_auth_map', JSON.stringify(authMap));
+    } catch (e) {}
+}
+
+async function verifyOfflineCredentials(username, password) {
+    try {
+        const authMap = JSON.parse(localStorage.getItem('church_offline_auth_map') || '{}');
+        const rec = authMap[String(username).trim()];
+        if (!rec || !rec.hash || !rec.user) return null;
+        const h = await hashPasswordForOffline(username, password);
+        if (h === rec.hash) return rec;
+    } catch (e) {}
+    return null;
+}
+
+function getOfflineSyncQueue() {
+    try {
+        const q = JSON.parse(localStorage.getItem('church_offline_sync_queue') || '[]');
+        return Array.isArray(q) ? q : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveOfflineSyncQueue(queue) {
+    try {
+        localStorage.setItem('church_offline_sync_queue', JSON.stringify(queue || []));
+    } catch (e) {}
+    updatePendingSyncUI();
+}
+
+function updatePendingSyncUI() {
+    const btn = document.getElementById('pendingSyncBtn');
+    const lbl = document.getElementById('pendingSyncLabel');
+    if (!btn || !lbl) return;
+    const queue = getOfflineSyncQueue();
+    if (queue.length === 0) {
+        btn.classList.add('hidden');
+        return;
+    }
+    btn.classList.remove('hidden');
+    if (isSyncingQueue) {
+        lbl.innerText = `جاري المزامنة (${queue.length})...`;
+        btn.disabled = true;
+    } else {
+        lbl.innerText = isAppOnline ? `مزامنة الآن (${queue.length})` : `بانتظار النت (${queue.length})`;
+        btn.disabled = false;
+    }
+}
+
+function queueOfflineOperation(bodyObj) {
+    if (!bodyObj || bodyObj.sheet === 'Audit_Log') {
+        return { status: "success", offlineQueued: true };
+    }
+
+    const queue = getOfflineSyncQueue();
+    queue.push({
+        id: `q_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
+        body: bodyObj,
+        createdAt: new Date().toISOString()
+    });
+    saveOfflineSyncQueue(queue);
+
+    // تحديث متفائل للكاش المحلي ليظهر السجل المضاف فوراً على الشاشة حتى قبل المزامنة
+    try {
+        if (bodyObj.action === 'batch_add' && bodyObj.sheet && Array.isArray(bodyObj.data)) {
+            const cached = getCachedSheetData(bodyObj.sheet) || { status: "success", data: [], areas: [] };
+            const baseId = Date.now();
+            bodyObj.data.forEach((item, idx) => {
+                cached.data.push({ ID: baseId + idx, ...item });
+            });
+            saveCachedSheetData(bodyObj.sheet, cached);
+        } else if (bodyObj.action === 'add' && bodyObj.sheet && bodyObj.data) {
+            const cached = getCachedSheetData(bodyObj.sheet) || { status: "success", data: [], areas: [] };
+            cached.data.push({ ID: Date.now(), ...bodyObj.data });
+            saveCachedSheetData(bodyObj.sheet, cached);
+        } else if (bodyObj.action === 'add_confession' && bodyObj.data) {
+            const cached = getCachedSheetData('Confessions_Log') || { status: "success", data: [], areas: [] };
+            const tempRec = {
+                ID: Date.now(),
+                MemberID: bodyObj.data.MemberID,
+                MemberName: bodyObj.data.MemberName,
+                PriestName: currentUser?.ServantName || "",
+                ConfessionDate: bodyObj.data.ConfessionDate,
+                Notes: bodyObj.data.Notes || ""
+            };
+            cached.data.push(tempRec);
+            saveCachedSheetData('Confessions_Log', cached);
+            return {
+                status: "success",
+                offlineQueued: true,
+                record: tempRec,
+                latestConfessionDate: bodyObj.data.ConfessionDate,
+                message: "تم الحفظ في الكاش المحلي (غير متصل) — سيتم المزامنة تلقائياً فور عودة الإنترنت."
+            };
+        }
+    } catch (e) {}
+
+    return {
+        status: "success",
+        offlineQueued: true,
+        message: "تم الحفظ في الكاش المحلي (غير متصل) — سيتم المزامنة تلقائياً فور عودة الإنترنت."
+    };
+}
+
+async function syncOfflineQueue(showAlertIfEmpty = false) {
+    if (isSyncingQueue) return;
+    const queue = getOfflineSyncQueue();
+    if (queue.length === 0) {
+        if (showAlertIfEmpty) alert("✓ جميع البيانات متزامنة بالفعل مع السيرفر.");
+        return;
+    }
+    if (!navigator.onLine) {
+        if (showAlertIfEmpty) alert("⚠️ لا يوجد اتصال بالإنترنت حالياً. ستتم المزامنة تلقائياً فور عودة الاتصال.");
+        return;
+    }
+
+    isSyncingQueue = true;
+    updatePendingSyncUI();
+
+    let syncedCount = 0;
+    const remaining = [];
+    let authFailed = false;
+
+    for (let i = 0; i < queue.length; i++) {
+        const item = queue[i];
+        try {
+            const payload = {
+                ...item.body,
+                token: sessionToken,
+                user: currentUser ? currentUser.ServantName : ""
+            };
+            const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+            const res = await response.json();
+            if (res.status === "success") {
+                syncedCount++;
+            } else if (res.status === "unauthorized") {
+                authFailed = true;
+                remaining.push(...queue.slice(i));
+                break;
+            } else {
+                // في حالة خطأ بيانات منطقي، نتجاهل هذا العنصر حتى لا يعطل باقي الطابور
+                syncedCount++;
+            }
+        } catch (err) {
+            // انقطع الإنترنت مرة أخرى أثناء المزامنة
+            updateConnectionIndicator(false);
+            remaining.push(...queue.slice(i));
+            break;
+        }
+    }
+
+    isSyncingQueue = false;
+    saveOfflineSyncQueue(remaining);
+
+    if (authFailed) {
+        alert(`⚠️ تم الاحتفاظ بـ (${remaining.length}) عملية في الكاش، يرجى إعادة تسجيل الدخول الآن لإتمام مزامنتها مع السيرفر.`);
+        handleSessionExpired();
+        return;
+    }
+
+    if (syncedCount > 0) {
+        alert(`✓ تمت مزامنة (${syncedCount}) عملية بنجاح مع السيرفر!`);
+        if (currentTab) {
+            loadData(true);
+        }
+    }
+}
+
+async function warmOfflineCachesInBackground() {
+    if (!navigator.onLine || !currentUser) return;
+    const sheetsToWarm = [];
+    const role = currentUser.Role;
+    if (role === "Admin" || role === "Priest") {
+        sheetsToWarm.push("Names", "Family name", "Sunday_School", "Visitations", "Meetings_Attendance");
+        if (isPriestUser(currentUser)) {
+            sheetsToWarm.push("Priest_Members", "Confessions_Log");
+        }
+    } else if (role === "SundaySchool_Admin") {
+        sheetsToWarm.push("Names", "Family name", "Sunday_School", "Meetings_Attendance", "Servants");
+    } else {
+        sheetsToWarm.push("Names", "Family name", "Sunday_School", "Visitations");
+    }
+
+    for (const sh of sheetsToWarm) {
+        if (!navigator.onLine) break;
+        try {
+            await apiFetch(`${API_URL}?sheet=${encodeURIComponent(sh)}`);
+        } catch (e) {}
     }
 }
 

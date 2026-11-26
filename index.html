@@ -8,12 +8,28 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/png" href="logo.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e3a8a">
     <style>
+        /* قواعد طوارئ أساسية لضمان عدم انهيار الواجهة في حال فتح التطبيق بدون إنترنت قبل تفعيل الكاش */
+        .hidden { display: none !important; }
+        svg { max-width: 48px; max-height: 48px; }
+        img { max-width: 100%; height: auto; }
         .nice-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .nice-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 999px; }
         .nice-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 999px; }
         .nice-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        @keyframes pulseGreen { 0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55); } 70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); } }
+        .dot-online { width: 9px; height: 9px; border-radius: 9999px; background: #10b981; display: inline-block; animation: pulseGreen 2s infinite; }
+        .dot-offline { width: 9px; height: 9px; border-radius: 9999px; background: #ef4444; display: inline-block; }
     </style>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(() => {});
+            });
+        }
+    </script>
 </head>
 <body class="flex flex-col min-h-screen bg-slate-50 relative overflow-x-hidden">
 
@@ -63,6 +79,13 @@
 
 <!-- 1.5 النافذة الافتتاحية (لوجو الكنيسة الكبير فقط + زر استعلام عن أسرة أزرق بكتابة ذهبية) -->
 <div id="landingScreen" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden overflow-y-auto" style="display: none; background: radial-gradient(circle at center, #ffffff 0%, #f1f5f9 100%);">
+    <!-- مؤشر حالة الاتصال بالإنترنت على الشاشة الافتتاحية -->
+    <div class="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <div id="landingConnBadge" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-black border shadow-sm bg-emerald-50 text-emerald-700 border-emerald-200 transition-all">
+            <span class="dot-online"></span>
+            <span>متصل</span>
+        </div>
+    </div>
     <div class="w-full max-w-md flex flex-col items-center justify-center text-center my-auto">
         <div id="landingChurchLogoBox" ondblclick="openServantsLoginModal()" ontouchend="handleLandingLogoTouch(event)" class="w-64 h-64 sm:w-80 sm:h-80 rounded-[2.75rem] bg-white p-7 shadow-[0_22px_55px_-12px_rgba(15,23,42,0.16)] border border-slate-100 flex items-center justify-center mb-10 select-none transition-transform duration-300 hover:scale-[1.02]">
             <img src="logo.png" alt="شعار الكنيسة" draggable="false" class="w-full h-full object-contain select-none">
@@ -182,7 +205,17 @@ function togglePasswordVisibilityInline() {
                 <p class="text-xs text-slate-500 font-bold" id="userBadge"></p>
             </div>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap justify-center">
+            <!-- مؤشر الاتصال (أخضر متصل / أحمر غير متصل) -->
+            <div id="headerConnBadge" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border bg-emerald-50 text-emerald-700 border-emerald-200 transition-all">
+                <span class="dot-online"></span>
+                <span>متصل</span>
+            </div>
+            <!-- زر المزامنة (يظهر عند وجود عمليات محفوظة في الكاش) -->
+            <button id="pendingSyncBtn" type="button" onclick="syncOfflineQueue(true)" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-300 shadow-xs transition cursor-pointer">
+                <span>⏳</span>
+                <span id="pendingSyncLabel">مزامنة (0)</span>
+            </button>
             <button onclick="showDashboard()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold transition">الرئيسية</button>
             <button onclick="logout()" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-4 py-2 rounded-xl text-xs font-bold transition">خروج</button>
         </div>
@@ -685,6 +718,6 @@ function togglePasswordVisibilityInline() {
     </button>
 </div>
 
-<script src="app.js?v=33"></script>
+<script src="app.js?v=34"></script>
 </body>
 </html>
