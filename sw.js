@@ -1,9 +1,9 @@
-// Service Worker - منظومة الخدمة والرعاية الكنسية (v38 Servants Meeting Order + Offline PWA)
-const CACHE_NAME = 'church-system-cache-v38';
+// Service Worker - منظومة الخدمة والرعاية الكنسية (v39 Servants Confessions + 2s Real Ping)
+const CACHE_NAME = 'church-system-cache-v39';
 const APP_SHELL = [
     './',
     './index.html',
-    './app.js?v=38',
+    './app.js?v=39',
     './style.css',
     './logo.png',
     './manifest.json'
@@ -47,7 +47,7 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(req.url);
 
     // استثناء طلبات فحص الاتصال الحقيقي (?ping=) وطلبات API (Google Apps Script) من الكاش
-    if (url.searchParams.has('ping') || url.hostname.includes('script.google.com') || url.hostname.includes('script.googleusercontent.com')) {
+    if (url.searchParams.has('ping') || url.hostname.includes('clients3.google.com') || url.pathname.includes('generate_204') || url.hostname.includes('script.google.com') || url.hostname.includes('script.googleusercontent.com')) {
         return;
     }
 

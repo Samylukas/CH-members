@@ -3,7 +3,8 @@
 // 1. الإعدادات الأساسية والمتغيرات العامة والجلسة
 const API_URL = "https://script.google.com/macros/s/AKfycbxUSj07z5nkCv88hrgob88-bB21SLs2OmK9-BbSSUu_4m2eirI8cBHCl-5xUv0cyTSZ6Q/exec";
 let currentUser = null, sessionToken = "", currentTab = "", rawData = [], backendAreas = [], namesCacheData = [], servantsCacheData = [], visitationsData = [];
-let currentNamesView = "roster", currentSSView = "live", currentMeetingsView = "live", currentVisitView = "dashboard";
+let currentNamesView = "roster", currentSSView = "live", currentMeetingsView = "live", currentVisitView = "dashboard", currentServantsView = "list";
+let servantsConfessionsSummaryData = [], currentServantsConfRows = [];
 let selectedLetter = "الكل", currentSSLiveKids = [], currentSSReportRows = [], currentServantsMeetingList = [], ssChartInstances = {}, selectedChartStage = "الكل";
 let loginUsersList = [{ username: "admin", label: "الأدمن" }];
 
@@ -538,8 +539,8 @@ function loadSection(sectionKey) {
     const info = TABS_INFO[sectionKey];
     if (info) document.getElementById('currentTabTitle').innerHTML = `${info.label}`;
 
-    ['namesViewSwitcher', 'ssViewSwitcher', 'meetingsViewSwitcher', 'visitationsViewSwitcher'].forEach(id => { const el = document.getElementById(id); el?.classList.add('hidden'); el?.classList.remove('flex'); });
-    ['sundaySchoolLiveSection', 'sundaySchoolReportSection', 'sundaySchoolChartsSection', 'servantsMeetingLiveSection', 'visitationDashboardSection', 'priestConfessionsSection', 'namesRosterSection', 'namesFilterSection', 'namesPlaceholder', 'familyResultsContainer', 'standardSearchContainer', 'standardCardsContainer'].forEach(id => {
+    ['namesViewSwitcher', 'ssViewSwitcher', 'meetingsViewSwitcher', 'visitationsViewSwitcher', 'servantsViewSwitcher'].forEach(id => { const el = document.getElementById(id); el?.classList.add('hidden'); el?.classList.remove('flex'); });
+    ['sundaySchoolLiveSection', 'sundaySchoolReportSection', 'sundaySchoolChartsSection', 'servantsMeetingLiveSection', 'visitationDashboardSection', 'priestConfessionsSection', 'servantsConfessionsSection', 'namesRosterSection', 'namesFilterSection', 'namesPlaceholder', 'familyResultsContainer', 'standardSearchContainer', 'standardCardsContainer'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.classList.add('hidden'); if (id === 'sundaySchoolChartsSection') el.style.display = 'none'; }
     });
@@ -561,6 +562,7 @@ function loadSection(sectionKey) {
     else if (sectionKey === 'Meetings_Attendance') { const sw = document.getElementById('meetingsViewSwitcher'); sw?.classList.remove('hidden'); sw?.classList.add('flex'); document.getElementById('btnPrintMeetings')?.classList.remove('hidden'); switchMeetingsView('live'); }
     else if (sectionKey === 'Visitations') { const sw = document.getElementById('visitationsViewSwitcher'); sw?.classList.remove('hidden'); sw?.classList.add('flex'); document.getElementById('btnPrintVisitReport')?.classList.remove('hidden'); switchVisitationsView('dashboard'); }
     else if (sectionKey === 'Confessions') { document.getElementById('priestConfessionsSection')?.classList.remove('hidden'); }
+    else if (sectionKey === 'Servants') { const sw = document.getElementById('servantsViewSwitcher'); sw?.classList.remove('hidden'); sw?.classList.add('flex'); switchServantsView('list'); }
     else { document.getElementById('standardSearchContainer')?.classList.remove('hidden'); document.getElementById('standardCardsContainer')?.classList.remove('hidden'); const sInp = document.getElementById('searchInput'); if (sInp) sInp.value = ""; }
     loadData();
 }
@@ -2711,7 +2713,8 @@ async function loadData(force = false) {
                 } else if (currentTab === 'Confessions') {
                     await initPriestConfessionsView();
                 } else if (currentTab === 'Servants') {
-                    servantsCacheData = rawData; renderStandardCards();
+                    servantsCacheData = rawData;
+                    if (currentServantsView === 'confessions') initServantsConfessionsView(); else renderStandardCards();
                 } else {
                     renderStandardCards();
                 }
@@ -2745,6 +2748,9 @@ function showLoader(s) {
         else document.getElementById('standardCardsContainer')?.classList.toggle('hidden', s);
     } else if (currentTab === 'Confessions') {
         document.getElementById('priestConfessionsSection')?.classList.toggle('hidden', s);
+    } else if (currentTab === 'Servants') {
+        if (currentServantsView === 'confessions') document.getElementById('servantsConfessionsSection')?.classList.toggle('hidden', s);
+        else document.getElementById('standardCardsContainer')?.classList.toggle('hidden', s);
     } else {
         document.getElementById('standardCardsContainer')?.classList.toggle('hidden', s);
     }
@@ -3545,33 +3551,40 @@ let isOfflineSession = false;
 let isSyncingQueue = false;
 
 let connectivityCheckTimer = null;
+let isCheckingConnectivity = false;
+let lastRenderedConnState = null;
 
 async function checkRealConnectivity() {
+    if (isCheckingConnectivity) return isAppOnline;
     if (!navigator.onLine) {
         updateConnectionIndicator(false);
         return false;
     }
+    isCheckingConnectivity = true;
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timeoutId = controller ? setTimeout(() => controller.abort(), 3500) : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 1800) : null;
     try {
-        const res = await fetch(`./manifest.json?ping=${Date.now()}`, {
+        // فحص اتصال إنترنت خارجي حقيقي (لا يتأثر بالملفات المحلية داخل APK الأندرويد أو كاش المتصفح)
+        await fetch(`https://clients3.google.com/generate_204?ping=${Date.now()}`, {
             method: 'GET',
+            mode: 'no-cors',
             cache: 'no-store',
             signal: controller ? controller.signal : undefined
         });
         if (timeoutId) clearTimeout(timeoutId);
         const wasOffline = !isAppOnline;
-        const ok = Boolean(res && res.ok);
-        updateConnectionIndicator(ok);
-        if (ok && wasOffline) {
+        updateConnectionIndicator(true);
+        if (wasOffline) {
             loadServantsListForLogin();
             if (currentUser) syncOfflineQueue(false);
         }
-        return ok;
+        return true;
     } catch (e) {
         if (timeoutId) clearTimeout(timeoutId);
         updateConnectionIndicator(false);
         return false;
+    } finally {
+        isCheckingConnectivity = false;
     }
 }
 
@@ -3598,27 +3611,33 @@ function initOfflineSupport() {
         checkRealConnectivity();
     });
 
-    // فحص دوري كل 8 ثوانٍ لاكتشاف انقطاع الإنترنت الحقيقي حتى لو الواي فاي ما زال متصلاً
+    // فحص دوري كل ثانيتين (2000ms) وتثبيت الحالة لحين تغيّرها فعلياً
     if (connectivityCheckTimer) clearInterval(connectivityCheckTimer);
     connectivityCheckTimer = setInterval(() => {
         if (document.visibilityState === 'visible') {
             checkRealConnectivity();
         }
-    }, 8000);
+    }, 2000);
 }
 
 function updateConnectionIndicator(onlineState) {
-    isAppOnline = Boolean(onlineState);
+    const nextState = Boolean(onlineState);
+    isAppOnline = nextState;
+    if (lastRenderedConnState === nextState) {
+        return; // تثبيت المؤشر بدون إعادة رسم إلا عند تغيّر الحالة فعلياً
+    }
+    lastRenderedConnState = nextState;
+
     const headerBadge = document.getElementById('headerConnBadge');
     const landingBadge = document.getElementById('landingConnBadge');
 
     const applyBadge = (el) => {
         if (!el) return;
         if (isAppOnline) {
-            el.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border bg-emerald-50 text-emerald-700 border-emerald-200 transition-all";
+            el.className = "cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border bg-emerald-50 text-emerald-700 border-emerald-200 transition-all";
             el.innerHTML = `<span class="dot-online"></span><span>متصل</span>`;
         } else {
-            el.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border bg-rose-50 text-rose-700 border-rose-200 transition-all";
+            el.className = "cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border bg-rose-50 text-rose-700 border-rose-200 transition-all";
             el.innerHTML = `<span class="dot-offline"></span><span>غير متصل (وضع الكاش)</span>`;
         }
     };
@@ -3880,6 +3899,329 @@ async function warmOfflineCachesInBackground() {
             await apiFetch(`${API_URL}?sheet=${encodeURIComponent(sh)}`);
         } catch (e) {}
     }
+}
+
+
+// ==================== سجل متابعة اعترافات الخدام (داخل تبويب إدارة الخدام) ====================
+function switchServantsView(view) {
+    currentServantsView = view;
+    const btnList = document.getElementById('btnServantsList');
+    const btnConf = document.getElementById('btnServantsConfessions');
+    const cardsSec = document.getElementById('standardCardsContainer');
+    const searchSec = document.getElementById('standardSearchContainer');
+    const confSec = document.getElementById('servantsConfessionsSection');
+    const btnAdd = document.getElementById('btnAddNewRecord');
+
+    if (view === 'list') {
+        if (btnList) btnList.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-purple-700 shadow-sm";
+        if (btnConf) btnConf.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
+        cardsSec?.classList.remove('hidden');
+        searchSec?.classList.remove('hidden');
+        confSec?.classList.add('hidden');
+        btnAdd?.classList.remove('hidden');
+        renderStandardCards();
+    } else {
+        if (btnConf) btnConf.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-purple-700 shadow-sm";
+        if (btnList) btnList.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
+        cardsSec?.classList.add('hidden');
+        searchSec?.classList.add('hidden');
+        confSec?.classList.remove('hidden');
+        btnAdd?.classList.add('hidden');
+        initServantsConfessionsView();
+    }
+}
+
+function getServantConfessionFollowupRank(s, origIdx) {
+    const role = String(s["Role"] || "").trim();
+    const stageNorm = normalizeArabic(s["AssignedStage"] || "");
+    const isSSStage = ["حضانه", "ابتدائي", "اعدادي", "ثانوي"].some(st => stageNorm.includes(st));
+
+    // 1. أمناء عموم الخدمة
+    if (role === "SundaySchool_Admin") {
+        return { group: 1, groupLabel: "أمناء عموم الخدمة", stageOrd: 0, gradeOrd: 0, origIdx };
+    }
+    // 2. أمناء المراحل
+    if (role === "Stage_Leader") {
+        return { group: 2, groupLabel: "أمناء المراحل", stageOrd: getMeetingStageOrder(s["AssignedStage"]), gradeOrd: 0, origIdx };
+    }
+    // 3. خدام الفصول (حضانة -> ابتدائي -> إعدادي -> ثانوي، وبالصفوف)
+    if (isSSStage) {
+        return {
+            group: 3,
+            groupLabel: "خدام الفصول",
+            stageOrd: getMeetingStageOrder(s["AssignedStage"]),
+            gradeOrd: getMeetingGradeOrder(s["AssignedStage"], s["AssignedGrade"]),
+            origIdx
+        };
+    }
+    // 4. الخدام غير المكلفين بفصول
+    return { group: 4, groupLabel: "الخدام غير المكلفين بفصول", stageOrd: 9, gradeOrd: 99, origIdx };
+}
+
+async function initServantsConfessionsView() {
+    const yearSel = document.getElementById('servantsConfYearSelect');
+    if (yearSel && !yearSel.value) {
+        yearSel.value = String(new Date().getFullYear());
+    }
+
+    if (servantsCacheData.length === 0) {
+        try {
+            const res = await apiFetch(`${API_URL}?sheet=Servants`);
+            if (res.status === "success") servantsCacheData = res.data;
+        } catch (e) {}
+    }
+
+    if (namesCacheData.length === 0) {
+        try {
+            const [res, famRes] = await Promise.all([
+                apiFetch(`${API_URL}?sheet=Names`),
+                apiFetch(`${API_URL}?sheet=${encodeURIComponent("Family name")}`).catch(() => ({ status: "err" }))
+            ]);
+            if (res.status === "success") {
+                namesCacheData = ((famRes.status === "success") ? mergeFamilySheetIntoNames(res.data, famRes.data) : res.data).map(sanitizeRecordFields);
+            }
+        } catch (e) {}
+    }
+
+    try {
+        const res = await apiFetch(`${API_URL}?sheet=Servants_Confessions_Summary`);
+        if (res.status === "success" && Array.isArray(res.data)) {
+            servantsConfessionsSummaryData = res.data.map(r => ({
+                MemberID: String(r.MemberID || "").trim(),
+                MemberName: String(r.MemberName || "").trim(),
+                PriestName: String(r.PriestName || "").trim(),
+                ConfessionDate: formatDisplayDate(r.ConfessionDate) || String(r.ConfessionDate || "").trim()
+            }));
+        }
+    } catch (e) {}
+
+    renderServantsConfessionsList();
+}
+
+function renderServantsConfessionsList() {
+    const container = document.getElementById('servantsConfListContainer');
+    const kpiEl = document.getElementById('servantsConfKpiCards');
+    if (!container) return;
+
+    const yearMode = document.getElementById('servantsConfYearSelect')?.value || String(new Date().getFullYear());
+    const searchQ = normalizeArabic(document.getElementById('servantsConfSearchInput')?.value || "").toLowerCase();
+    const statusFilter = document.getElementById('servantsConfStatusFilter')?.value || "all";
+
+    // استبعاد الأدمن والآباء الكهنة والموقوفين
+    const targetServants = servantsCacheData
+        .map((s, idx) => ({ s, idx }))
+        .filter(({ s }) => {
+            const status = String(s["Status"] || "").trim();
+            const role = String(s["Role"] || "").trim();
+            const username = String(s["Username"] || "").trim().toLowerCase();
+            if (status === "موقوف" || username === "admin" || role === "Admin" || role === "Priest" || isPriestUser(s)) return false;
+            return true;
+        });
+
+    const rows = targetServants.map(({ s, idx }) => {
+        const sName = String(s["ServantName"] || "").trim();
+        const normSName = normalizeArabic(sName);
+        const sTokens = normSName.split(" ").filter(Boolean);
+
+        // مطابقة الخادم مع سجل العضو في شيت Names لاستخراج أب الاعتراف و ID وتاريخ آخر اعتراف
+        const memberRec = namesCacheData.find(m => {
+            const mNorm = normalizeArabic(m["الاسم ثلاثي"]);
+            if (mNorm === normSName) return true;
+            const mTokens = mNorm.split(" ").filter(Boolean);
+            if (sTokens.length >= 3 && mTokens.length >= 3 && sTokens.slice(0, 3).join(" ") === mTokens.slice(0, 3).join(" ")) return true;
+            return false;
+        });
+
+        const memberId = memberRec ? String(memberRec["ID"] || "").trim() : "";
+        let fatherName = memberRec ? String(memberRec["اب الاعتراف"] || "").trim() : "";
+        const phone = memberRec ? (memberRec["تليفون العمل/المحمول"] || memberRec["هاتف الاسرة"] || "") : "";
+
+        // جمع تواريخ الاعتراف من Confessions_Log (ملخص الخدام) + تاريخ آخر اعتراف في Names
+        const allDatesSet = new Set();
+        servantsConfessionsSummaryData.forEach(log => {
+            const lMid = String(log.MemberID || "").trim();
+            const lNorm = normalizeArabic(log.MemberName);
+            const isMatch = (memberId && lMid && lMid === memberId) || (lNorm && lNorm === normSName);
+            if (isMatch && log.ConfessionDate) {
+                allDatesSet.add(log.ConfessionDate);
+                if (!fatherName && log.PriestName) fatherName = log.PriestName;
+            }
+        });
+
+        const legacyDate = memberRec ? formatDisplayDate(memberRec["تاريخ اخر اعتراف"]) : "";
+        if (legacyDate) allDatesSet.add(legacyDate);
+
+        // تصفية التواريخ على مدار السنة الميلادية المختارة (أو آخر 12 شهر)
+        const periodDates = Array.from(allDatesSet).filter(dStr => {
+            if (yearMode === "last12m") {
+                const days = getDaysSinceDate(dStr);
+                return days !== null && days <= 365;
+            }
+            const parts = String(dStr).split("/");
+            return parts.length === 3 && parts[2] === yearMode;
+        }).sort((a, b) => parseDateForSort(b) - parseDateForSort(a));
+
+        const allSortedDates = Array.from(allDatesSet).sort((a, b) => parseDateForSort(b) - parseDateForSort(a));
+        const latestDate = allSortedDates.length > 0 ? allSortedDates[0] : "";
+        const daysSinceLatest = latestDate ? getDaysSinceDate(latestDate) : null;
+        const isRegular = daysSinceLatest !== null && daysSinceLatest <= 90;
+
+        const rank = getServantConfessionFollowupRank(s, idx);
+        const scope = [s["AssignedStage"], s["AssignedGrade"], s["AssignedClass"]].filter(v => v && String(v).trim() !== "" && String(v).trim() !== "الكل").join(" - ") || (s["AssignedStage"] || "الخدمة");
+
+        return {
+            name: sName,
+            fatherName: fatherName || "غير مسجل",
+            phone,
+            role: s["Role"] || "Class_Servant",
+            scope,
+            rank,
+            periodDates,
+            latestDate,
+            daysSinceLatest,
+            isRegular
+        };
+    }).sort((a, b) => {
+        if (a.rank.group !== b.rank.group) return a.rank.group - b.rank.group;
+        if (a.rank.stageOrd !== b.rank.stageOrd) return a.rank.stageOrd - b.rank.stageOrd;
+        if (a.rank.gradeOrd !== b.rank.gradeOrd) return a.rank.gradeOrd - b.rank.gradeOrd;
+        return a.name.localeCompare(b.name, 'ar');
+    });
+
+    const filtered = rows.filter(r => {
+        if (statusFilter === "regular" && !r.isRegular) return false;
+        if (statusFilter === "overdue" && r.isRegular) return false;
+        if (searchQ) {
+            const blob = normalizeArabic(`${r.name} ${r.fatherName} ${r.scope}`).toLowerCase();
+            if (!blob.includes(searchQ)) return false;
+        }
+        return true;
+    });
+
+    currentServantsConfRows = filtered;
+
+    const recCount = document.getElementById('recordCount');
+    if (recCount) recCount.innerText = `${filtered.length} خادم`;
+
+    const totalCount = filtered.length;
+    const regularCount = filtered.filter(r => r.isRegular).length;
+    const overdueCount = filtered.filter(r => !r.isRegular && r.latestDate).length;
+    const neverCount = filtered.filter(r => !r.latestDate).length;
+
+    if (kpiEl) {
+        kpiEl.innerHTML = `
+            <div class="bg-white/95 p-4 rounded-2xl border border-purple-200 shadow-sm text-center"><span class="block text-xs font-bold text-slate-500 mb-1">إجمالي الخدام</span><span class="text-2xl font-black text-purple-700">${totalCount}</span></div>
+            <div class="bg-white/95 p-4 rounded-2xl border border-emerald-200 shadow-sm text-center"><span class="block text-xs font-bold text-slate-500 mb-1">منتظمون (آخر 3 شهور)</span><span class="text-2xl font-black text-emerald-600">${regularCount}</span></div>
+            <div class="bg-white/95 p-4 rounded-2xl border border-amber-200 shadow-sm text-center"><span class="block text-xs font-bold text-slate-500 mb-1">متأخرون (+3 شهور)</span><span class="text-2xl font-black text-amber-600">${overdueCount}</span></div>
+            <div class="bg-white/95 p-4 rounded-2xl border border-rose-200 shadow-sm text-center"><span class="block text-xs font-bold text-slate-500 mb-1">لم يُسجل لهم اعتراف</span><span class="text-2xl font-black text-rose-600">${neverCount}</span></div>
+        `;
+    }
+
+    if (filtered.length === 0) {
+        container.innerHTML = `<div class="text-center py-14 bg-white rounded-2xl border border-dashed border-slate-300 text-slate-400 font-bold text-xs">لا يوجد خدام مطابقون للبحث المحدد</div>`;
+        return;
+    }
+
+    let html = "";
+    let lastGroup = -1;
+    let counter = 1;
+
+    filtered.forEach(r => {
+        if (r.rank.group !== lastGroup) {
+            lastGroup = r.rank.group;
+            html += `<div class="pt-2"><span class="inline-block px-3.5 py-1 rounded-xl bg-purple-900 text-white text-xs font-black shadow-xs">${r.rank.groupLabel}</span></div>`;
+        }
+
+        const statusBadge = r.isRegular
+            ? `<span class="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full font-black">✓ منتظم</span>`
+            : r.latestDate
+                ? `<span class="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full font-black">⚠️ متأخر (${formatRelativeArabicDays(r.daysSinceLatest)})</span>`
+                : `<span class="text-[10px] bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-full font-black">لم يُسجل</span>`;
+
+        const datesHtml = r.periodDates.length > 0
+            ? r.periodDates.map(d => `<span class="inline-block bg-purple-50 text-purple-900 border border-purple-200 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold">✝ ${d}</span>`).join(" ")
+            : `<span class="text-[11px] text-slate-400 font-bold">لا توجد اعترافات مسجلة في (${yearMode === 'last12m' ? 'آخر 12 شهراً' : 'سنة ' + yearMode})</span>`;
+
+        html += `
+            <div class="bg-white/95 rounded-2xl p-4 border border-slate-200 shadow-xs space-y-2.5">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="w-6 h-6 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center text-[11px] font-black">${counter++}</span>
+                        <h4 class="text-sm font-black text-slate-800">${r.name}</h4>
+                        <span class="text-[11px] bg-indigo-50 text-indigo-800 border border-indigo-200 px-2.5 py-0.5 rounded-full font-bold">أب الاعتراف: ${r.fatherName}</span>
+                        <span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">${r.scope}</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        ${statusBadge}
+                        <span class="text-[11px] font-black text-purple-800 bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-100">${r.periodDates.length} مرة</span>
+                    </div>
+                </div>
+                <div class="pt-2 border-t border-slate-100 flex flex-wrap gap-1.5 items-center">
+                    <span class="text-[11px] font-black text-slate-500 ml-1">تواريخ الاعتراف:</span>
+                    ${datesHtml}
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+function shareServantsConfessionsWhatsApp() {
+    if (!currentServantsConfRows || currentServantsConfRows.length === 0) {
+        alert("لا توجد بيانات للمشاركة!");
+        return;
+    }
+    const yearMode = document.getElementById('servantsConfYearSelect')?.value || String(new Date().getFullYear());
+    const periodLabel = yearMode === "last12m" ? "آخر 12 شهراً" : `سنة ${yearMode}`;
+    let text = `*تقرير متابعة اعترافات الخدام (${periodLabel})*
+
+`;
+    let lastG = -1;
+    currentServantsConfRows.forEach((r, idx) => {
+        if (r.rank.group !== lastG) {
+            lastG = r.rank.group;
+            text += `
+📌 *${r.rank.groupLabel}*
+`;
+        }
+        text += `${idx + 1}. *${r.name}* — أب الاعتراف: ${r.fatherName}
+`;
+        text += `   ✝ التواريخ (${r.periodDates.length}): ${r.periodDates.length > 0 ? r.periodDates.join(' ، ') : 'لا يوجد'}
+`;
+    });
+    shareToWhatsApp(text);
+}
+
+function exportServantsConfessionsExcel() {
+    if (!currentServantsConfRows || currentServantsConfRows.length === 0) {
+        alert("لا توجد بيانات للتصدير!");
+        return;
+    }
+    const yearMode = document.getElementById('servantsConfYearSelect')?.value || String(new Date().getFullYear());
+    const headers = ["م", "التصنيف", "اسم الخادم", "أب الاعتراف", "مجال الخدمة", "عدد الاعترافات", "تواريخ الاعتراف", "آخر اعتراف"];
+    const csvRows = [headers.join(",")];
+    currentServantsConfRows.forEach((r, idx) => {
+        const vals = [
+            idx + 1,
+            r.rank.groupLabel,
+            r.name,
+            r.fatherName,
+            r.scope,
+            r.periodDates.length,
+            r.periodDates.join(" - "),
+            r.latestDate || "-"
+        ].map(v => `"${String(v ?? "").replace(/"/g, '""')}"`);
+        csvRows.push(vals.join(","));
+    });
+    const csvString = "\uFEFF" + csvRows.join("\n");
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `متابعة_اعترافات_الخدام_${yearMode}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 /* ==================== نهاية الملف ==================== */
