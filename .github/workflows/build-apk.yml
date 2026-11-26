@@ -1,52 +1,64 @@
-name: Build Android APK
+name: Build Android APK (ChurchApp)
 
 on:
-  workflow_dispatch:
   push:
-    branches: ["main"]
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
-  build-apk:
+  build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Java JDK
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '17'
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Prepare Web Directory
+      - name: Prepare Web Assets (www)
         run: |
           mkdir -p www
-          cp index.html style.css app.js www/
-          cp logo.png www/ 2>/dev/null || true
-          cp "ch logo.png" www/logo.png 2>/dev/null || true
-          cp manifest.json www/ 2>/dev/null || true
+          cp index.html app.js style.css logo.png manifest.json sw.js www/
 
-      - name: Install Dependencies & Setup Capacitor
+      - name: Initialize Capacitor Project
         run: |
           npm init -y
-          npm install @capacitor/core@latest @capacitor/cli@latest @capacitor/android@latest
-          npx cap init "ChurchApp" "com.church.management" --web-dir "www"
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/assets
+          npx cap init "ChurchApp" "com.church.members" --web-dir www
           npx cap add android
-          npx cap sync android
+
+      - name: Generate Android App Icon from logo.png
+        run: |
+          mkdir -p assets
+          cp logo.png assets/icon-only.png
+          cp logo.png assets/icon-foreground.png
+          cp logo.png assets/splash.png
+          npx capacitor-assets generate --android \
+            --iconBackgroundColor '#ffffff' \
+            --iconBackgroundColorDark '#ffffff' \
+            --splashBackgroundColor '#ffffff' \
+            --splashBackgroundColorDark '#ffffff'
+
+      - name: Sync Capacitor Android
+        run: npx cap sync android
 
       - name: Build Android Debug APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --no-parallel -Dorg.gradle.vfs.watch=false
+          ./gradlew assembleDebug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Church-Management-App
+          name: ChurchApp-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
