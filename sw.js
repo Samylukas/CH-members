@@ -1,9 +1,9 @@
-// Service Worker - منظومة الخدمة والرعاية الكنسية (v45 Mobile PDF + Stable Connectivity)
-const CACHE_NAME = 'church-system-cache-v45';
+// Service Worker - منظومة الخدمة والرعاية الكنسية (v46 Strict Server Save Verification for Meetings)
+const CACHE_NAME = 'church-system-cache-v46';
 const APP_SHELL = [
     './',
     './index.html',
-    './app.js?v=45',
+    './app.js?v=46',
     './style.css',
     './logo.png',
     './manifest.json'

@@ -2738,34 +2738,36 @@ async function saveMeetingConfigItem() {
     try {
         if (isUpdate) {
             payload.ID = Number(editId);
+            const res = await apiPost({ sheet: "Meetings_Config", action: "update", data: payload });
+            if (res.status !== "success") {
+                alert("❌ لم يتم الحفظ على السيرفر!\nالسبب: " + (res.message || "تأكد من تحديث Code.gs ونشر نسخة جديدة (New version) في Google Apps Script."));
+                return;
+            }
             const idx = MEETINGS_CATALOG.findIndex(m => String(m.id) === String(editId));
             if (idx >= 0) {
                 MEETINGS_CATALOG[idx] = { id: Number(editId), key: meetingKey, name, audience, frequency, keywords };
             }
             saveMeetingsCatalogToCache();
-            try {
-                await apiPost({ sheet: "Meetings_Config", action: "update", data: payload });
-            } catch (e) {}
             sendAuditLog("تعديل اجتماع", "Meetings_Config", `تم تعديل اجتماع: ${name}`);
-            alert("✓ تم حفظ تعديل الاجتماع بنجاح!");
+            alert(res.offlineQueued ? "⏳ تم الحفظ في الكاش (غير متصل) وسيُرفع تلقائياً عند عودة النت." : "✓ تم حفظ تعديل الاجتماع على Google Sheets بنجاح!");
         } else {
-            const newId = MEETINGS_CATALOG.reduce((mx, m) => Math.max(mx, Number(m.id || 0)), 0) + 1;
+            const res = await apiPost({ sheet: "Meetings_Config", action: "add", data: payload });
+            if (res.status !== "success") {
+                alert("❌ لم يتم حفظ الاجتماع الجديد على Google Sheets!\nالسبب: " + (res.message || "تأكد من تحديث Code.gs ونشر نسخة جديدة (New version) في Google Apps Script."));
+                return;
+            }
+            const newId = res.id ? Number(res.id) : (MEETINGS_CATALOG.reduce((mx, m) => Math.max(mx, Number(m.id || 0)), 0) + 1);
             MEETINGS_CATALOG.push({ id: newId, key: meetingKey, name, audience, frequency, keywords });
             saveMeetingsCatalogToCache();
-            try {
-                const res = await apiPost({ sheet: "Meetings_Config", action: "add", data: payload });
-                if (res.status === "success" && res.id) {
-                    MEETINGS_CATALOG[MEETINGS_CATALOG.length - 1].id = Number(res.id);
-                    saveMeetingsCatalogToCache();
-                }
-            } catch (e) {}
             sendAuditLog("إضافة اجتماع جديد", "Meetings_Config", `تم إضافة اجتماع: ${name}`);
-            alert("✓ تم إضافة الاجتماع الجديد بنجاح!");
+            alert(res.offlineQueued ? "⏳ تم الحفظ في الكاش (غير متصل) وسيُرفع تلقائياً عند عودة النت." : "✓ تم حفظ الاجتماع الجديد على Google Sheets بنجاح!");
         }
         resetMeetingConfigForm();
         renderMeetingsConfigTable();
+    } catch (err) {
+        alert("❌ حدث خطأ أثناء الاتصال بالسيرفر: " + (err.message || "حاول مرة أخرى"));
     } finally {
-        if (btn) { btn.disabled = false; btn.innerText = isUpdate ? "+ إضافة الاجتماع" : "+ إضافة الاجتماع"; }
+        if (btn) { btn.disabled = false; btn.innerText = isUpdate ? "💾 حفظ التعديل" : "+ إضافة الاجتماع"; }
     }
 }
 
