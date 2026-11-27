@@ -1,9 +1,9 @@
-// Service Worker - منظومة الخدمة والرعاية الكنسية (v43 Multi-Meetings Hub + Weekly/Monthly Table)
-const CACHE_NAME = 'church-system-cache-v43';
+// Service Worker - منظومة الخدمة والرعاية الكنسية (v44 Admin Manage Meetings + Sat Prayer & Deacons)
+const CACHE_NAME = 'church-system-cache-v44';
 const APP_SHELL = [
     './',
     './index.html',
-    './app.js?v=43',
+    './app.js?v=44',
     './style.css',
     './logo.png',
     './manifest.json'

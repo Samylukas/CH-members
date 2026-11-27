@@ -473,8 +473,10 @@ function initApp(isRestoredSession = false) {
         const titleLabel = isPriestUser(currentUser) ? "أب الاعتراف:" : "الخادم:";
         badge.innerHTML = `<span>${titleLabel} <span class="font-black text-indigo-700">${currentUser.ServantName}</span></span><span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold border border-indigo-200">${currentUser.Role}</span>`;
     }
+    loadMeetingsCatalogFromCache();
     buildDashboard();
     showDashboard();
+    loadMeetingsCatalogFromServer().then(() => { if (!currentTab) buildDashboard(); }).catch(() => {});
     if (!isRestoredSession) {
         sendAuditLog("تسجيل دخول", "النظام", "تم تسجيل الدخول بنجاح");
     }
@@ -541,7 +543,7 @@ function loadSection(sectionKey) {
     if (info) document.getElementById('currentTabTitle').innerHTML = `${info.label}`;
 
     ['namesViewSwitcher', 'ssViewSwitcher', 'meetingsViewSwitcher', 'visitationsViewSwitcher', 'servantsViewSwitcher'].forEach(id => { const el = document.getElementById(id); el?.classList.add('hidden'); el?.classList.remove('flex'); });
-    ['sundaySchoolLiveSection', 'sundaySchoolReportSection', 'sundaySchoolChartsSection', 'servantsMeetingLiveSection', 'meetingsHistorySection', 'visitationDashboardSection', 'visitationReportsSection', 'priestConfessionsSection', 'servantsConfessionsSection', 'namesRosterSection', 'namesFilterSection', 'namesPlaceholder', 'familyResultsContainer', 'standardSearchContainer', 'standardCardsContainer'].forEach(id => {
+    ['sundaySchoolLiveSection', 'sundaySchoolReportSection', 'sundaySchoolChartsSection', 'servantsMeetingLiveSection', 'meetingsHistorySection', 'meetingsManageSection', 'visitationDashboardSection', 'visitationReportsSection', 'priestConfessionsSection', 'servantsConfessionsSection', 'namesRosterSection', 'namesFilterSection', 'namesPlaceholder', 'familyResultsContainer', 'standardSearchContainer', 'standardCardsContainer'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.classList.add('hidden'); if (id === 'sundaySchoolChartsSection') el.style.display = 'none'; }
     });
@@ -1915,18 +1917,67 @@ async function generateAndPrintClassRoster() {
 }
 
 // 9. قسم رصد حضور الاجتماعات (اجتماع الخدام + الشباب + درس الكتاب + السيدات + الأسرة + جدول أسبوعي وشهري)
-const MEETINGS_CATALOG = [
-    { key: "servants", name: "اجتماع الخدام الأسبوعي", audience: "servants", keywords: ["خدام", "مدارس الاحد"] },
-    { key: "servants", name: "اجتماع الخدام الشهري", audience: "servants", keywords: ["خدام", "مدارس الاحد"] },
-    { key: "youth", name: "اجتماع الشباب والجامعة", audience: "general", keywords: ["شباب", "جامعة", "خريج"] },
-    { key: "bible", name: "اجتماع درس الكتاب", audience: "general", keywords: ["درس الكتاب", "كتاب", "الاجتماعات"] },
-    { key: "women", name: "اجتماع السيدات", audience: "general", keywords: ["سيدات", "السيدات"] },
-    { key: "family", name: "اجتماع الأسرة العام", audience: "general", keywords: ["اسره", "الاسرة", "الاجتماعات"] },
-    { key: "deacons", name: "اجتماع الشمامسة", audience: "general", keywords: ["شمامسه", "الشمامسه"] }
-    { key: "family", name: "اجتماع الصلاه", audience: "general", keywords: ["اسره", "الاسرة", "الاجتماعات"] },
+const DEFAULT_MEETINGS_CATALOG = [
+    { id: 1, key: "servants", name: "اجتماع الخدام الأسبوعي", audience: "servants", frequency: "أسبوعي", keywords: ["خدام", "مدارس الاحد"] },
+    { id: 2, key: "youth", name: "اجتماع الشباب والجامعة", audience: "general", frequency: "أسبوعي", keywords: ["شباب", "جامع", "خريج"] },
+    { id: 3, key: "bible", name: "اجتماع درس الكتاب", audience: "general", frequency: "أسبوعي", keywords: ["درس الكتاب", "كتاب", "الاجتماعات"] },
+    { id: 4, key: "women", name: "اجتماع السيدات", audience: "women", frequency: "أسبوعي", keywords: ["سيدات", "السيدات"] },
+    { id: 5, key: "family", name: "اجتماع الأسرة العام", audience: "general", frequency: "أسبوعي", keywords: ["اسره", "الاسرة", "الاجتماعات"] },
+    { id: 6, key: "sat_prayer", name: "اجتماع الصلاة مساء السبت", audience: "general", frequency: "أسبوعي", keywords: ["صلاه", "الصلاه", "مساء السبت", "الاجتماعات"] },
+    { id: 7, key: "deacons_weekly", name: "اجتماع الشمامسة الأسبوعي", audience: "general", frequency: "أسبوعي", keywords: ["شمامسه", "الشمامسه", "الشمامسة"] },
+    { id: 8, key: "deacons_monthly", name: "اجتماع الشمامسة الشهري", audience: "general", frequency: "شهري", keywords: ["شمامسه", "الشمامسه", "الشمامسة"] }
 ];
 
+let MEETINGS_CATALOG = DEFAULT_MEETINGS_CATALOG.map(m => ({ ...m, keywords: [...m.keywords] }));
+let meetingsCatalogLoadedFromServer = false;
 let currentSelectedMeetingKey = "servants";
+
+function parseKeywordsString(val) {
+    if (Array.isArray(val)) return val.map(s => String(s || "").trim()).filter(Boolean);
+    return String(val || "").split(/[،,]+/).map(s => s.trim()).filter(Boolean);
+}
+
+function saveMeetingsCatalogToCache() {
+    try { localStorage.setItem('church_meetings_catalog_v44', JSON.stringify(MEETINGS_CATALOG)); } catch (e) {}
+}
+
+function loadMeetingsCatalogFromCache() {
+    try {
+        const cached = JSON.parse(localStorage.getItem('church_meetings_catalog_v44') || 'null');
+        if (Array.isArray(cached) && cached.length > 0) {
+            MEETINGS_CATALOG = cached.map((m, idx) => ({
+                id: m.id || (idx + 1),
+                key: m.key || `custom_${idx + 1}`,
+                name: String(m.name || "").trim(),
+                audience: m.audience || "general",
+                frequency: m.frequency || "أسبوعي",
+                keywords: parseKeywordsString(m.keywords)
+            })).filter(m => m.name);
+        }
+    } catch (e) {}
+}
+
+async function loadMeetingsCatalogFromServer(force = false) {
+    if (meetingsCatalogLoadedFromServer && !force) return MEETINGS_CATALOG;
+    try {
+        const res = await apiFetch(`${API_URL}?sheet=Meetings_Config`);
+        if (res.status === "success" && Array.isArray(res.data) && res.data.length > 0) {
+            MEETINGS_CATALOG = res.data.map((r, idx) => ({
+                id: Number(r["ID"] || (idx + 1)),
+                key: String(r["MeetingKey"] || `m_${r["ID"] || (idx + 1)}`).trim(),
+                name: String(r["MeetingName"] || "").trim(),
+                audience: String(r["Audience"] || "general").trim(),
+                frequency: String(r["Frequency"] || "أسبوعي").trim(),
+                keywords: parseKeywordsString(r["Keywords"])
+            })).filter(m => m.name);
+            meetingsCatalogLoadedFromServer = true;
+            saveMeetingsCatalogToCache();
+        }
+    } catch (e) {
+        loadMeetingsCatalogFromCache();
+    }
+    return MEETINGS_CATALOG;
+}
 let currentMeetingsHistoryRows = [];
 const debouncedGeneralMeetingSearch = createDebounce(() => renderGeneralMeetingSearchResults(), 150);
 function onGeneralMeetingSearch() { debouncedGeneralMeetingSearch(); }
@@ -1955,8 +2006,10 @@ function switchMeetingsView(view) {
     currentMeetingsView = view;
     const btnLive = document.getElementById('btnMeetingsLiveRoster');
     const btnHist = document.getElementById('btnMeetingsHistory');
+    const btnManage = document.getElementById('btnMeetingsManage');
     const liveSec = document.getElementById('servantsMeetingLiveSection');
     const histSec = document.getElementById('meetingsHistorySection');
+    const manageSec = document.getElementById('meetingsManageSection');
     const cardsSec = document.getElementById('standardCardsContainer');
     const searchSec = document.getElementById('standardSearchContainer');
     const btnAdd = document.getElementById('btnAddNewRecord');
@@ -1966,22 +2019,36 @@ function switchMeetingsView(view) {
     cardsSec?.classList.add('hidden');
     searchSec?.classList.add('hidden');
     btnAdd?.classList.add('hidden');
+    liveSec?.classList.add('hidden');
+    histSec?.classList.add('hidden');
+    manageSec?.classList.add('hidden');
+    btnPrint?.classList.add('hidden');
+    btnPdf?.classList.add('hidden');
+
+    if (btnManage) {
+        if (currentUser && currentUser.Role === "Admin") btnManage.classList.remove('hidden');
+        else btnManage.classList.add('hidden');
+    }
+
+    [btnLive, btnHist, btnManage].forEach(b => {
+        if (b) b.className = b.classList.contains('hidden')
+            ? "hidden px-3.5 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900"
+            : "px-3.5 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
+    });
 
     if (view === 'live') {
-        if (btnLive) btnLive.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-amber-700 shadow-sm";
-        if (btnHist) btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
+        if (btnLive) btnLive.className = "px-3.5 py-2 rounded-lg text-xs font-black transition bg-white text-amber-700 shadow-sm";
         liveSec?.classList.remove('hidden');
-        histSec?.classList.add('hidden');
         btnPrint?.classList.remove('hidden');
         btnPdf?.classList.remove('hidden');
         initServantsMeetingLiveView();
+    } else if (view === 'manage' && currentUser && currentUser.Role === "Admin") {
+        if (btnManage) btnManage.className = "px-3.5 py-2 rounded-lg text-xs font-black transition bg-white text-amber-700 shadow-sm";
+        manageSec?.classList.remove('hidden');
+        initMeetingsManageView();
     } else {
-        if (btnHist) btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-amber-700 shadow-sm";
-        if (btnLive) btnLive.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
-        liveSec?.classList.add('hidden');
+        if (btnHist) btnHist.className = "px-3.5 py-2 rounded-lg text-xs font-black transition bg-white text-amber-700 shadow-sm";
         histSec?.classList.remove('hidden');
-        btnPrint?.classList.add('hidden');
-        btnPdf?.classList.add('hidden');
         initMeetingsHistoryView();
     }
 }
@@ -2139,7 +2206,7 @@ function renderGeneralMeetingSearchResults() {
     const meetingKey = currentSelectedMeetingKey;
     const matches = namesCacheData.filter(m => {
         if (isMemberDeceased(m)) return false;
-        if (meetingKey === "women" && normalizeGender(m["ذكر/انثي"]) === "ذكر") return false;
+        const curMObj = MEETINGS_CATALOG.find(x => x.key === meetingKey); if ((meetingKey === "women" || curMObj?.audience === "women") && normalizeGender(m["ذكر/انثي"]) === "ذكر") return false;
         const idx = getSearchIndex(m);
         return idx.name.includes(q) || idx.head.includes(q) || idx.phone.includes(q);
     }).slice(0, 18);
@@ -2575,6 +2642,183 @@ async function populateServantsDatalist() {
 function onServantNameSelected(selectedName) {
     const member = namesCacheData.find(m => m["الاسم ثلاثي"] === selectedName), usernameInput = document.querySelector('input[name="Username"]');
     if (member && usernameInput && !usernameInput.value && member["تليفون العمل/المحمول"]) usernameInput.value = member["تليفون العمل/المحمول"];
+}
+
+
+// ==================== إدارة الاجتماعات (إضافة وتعديل وحذف — للأدمن فقط) ====================
+async function initMeetingsManageView() {
+    if (!currentUser || currentUser.Role !== "Admin") {
+        switchMeetingsView('live');
+        return;
+    }
+    await loadMeetingsCatalogFromServer();
+    resetMeetingConfigForm();
+    renderMeetingsConfigTable();
+}
+
+function resetMeetingConfigForm() {
+    const idInp = document.getElementById('editMeetingRowId');
+    const keyInp = document.getElementById('editMeetingKey');
+    const nameInp = document.getElementById('cfgMeetingName');
+    const audSel = document.getElementById('cfgMeetingAudience');
+    const freqSel = document.getElementById('cfgMeetingFrequency');
+    const kwInp = document.getElementById('cfgMeetingKeywords');
+    const heading = document.getElementById('meetingFormHeading');
+    const saveBtn = document.getElementById('btnSaveMeetingConfig');
+    const cancelBtn = document.getElementById('btnCancelMeetingEdit');
+
+    if (idInp) idInp.value = "";
+    if (keyInp) keyInp.value = "";
+    if (nameInp) nameInp.value = "";
+    if (audSel) audSel.value = "general";
+    if (freqSel) freqSel.value = "أسبوعي";
+    if (kwInp) kwInp.value = "";
+    if (heading) heading.innerHTML = `<span>⚙️</span> إضافة اجتماع جديد`;
+    if (saveBtn) saveBtn.innerText = "+ إضافة الاجتماع";
+    cancelBtn?.classList.add('hidden');
+}
+
+function startEditMeetingConfig(idx) {
+    const m = MEETINGS_CATALOG[idx];
+    if (!m) return;
+    document.getElementById('editMeetingRowId').value = m.id || "";
+    document.getElementById('editMeetingKey').value = m.key || "";
+    document.getElementById('cfgMeetingName').value = m.name || "";
+    document.getElementById('cfgMeetingAudience').value = m.audience || "general";
+    document.getElementById('cfgMeetingFrequency').value = m.frequency || "أسبوعي";
+    document.getElementById('cfgMeetingKeywords').value = (m.keywords || []).join("، ");
+
+    const heading = document.getElementById('meetingFormHeading');
+    const saveBtn = document.getElementById('btnSaveMeetingConfig');
+    const cancelBtn = document.getElementById('btnCancelMeetingEdit');
+    if (heading) heading.innerHTML = `<span>✏️</span> تعديل اجتماع: ${m.name}`;
+    if (saveBtn) saveBtn.innerText = "💾 حفظ التعديل";
+    cancelBtn?.classList.remove('hidden');
+    document.getElementById('cfgMeetingName')?.focus();
+}
+
+async function saveMeetingConfigItem() {
+    if (!currentUser || currentUser.Role !== "Admin") return;
+    const editId = (document.getElementById('editMeetingRowId')?.value || "").trim();
+    const editKey = (document.getElementById('editMeetingKey')?.value || "").trim();
+    const name = (document.getElementById('cfgMeetingName')?.value || "").trim();
+    const audience = document.getElementById('cfgMeetingAudience')?.value || "general";
+    const frequency = document.getElementById('cfgMeetingFrequency')?.value || "أسبوعي";
+    const keywordsRaw = (document.getElementById('cfgMeetingKeywords')?.value || "").trim();
+    const keywords = parseKeywordsString(keywordsRaw);
+
+    if (!name) {
+        alert("⚠️ يرجى كتابة اسم الاجتماع أولاً!");
+        document.getElementById('cfgMeetingName')?.focus();
+        return;
+    }
+
+    const isUpdate = Boolean(editId);
+    const dup = MEETINGS_CATALOG.find(m =>
+        normalizeArabic(m.name) === normalizeArabic(name) &&
+        (!isUpdate || String(m.id) !== String(editId))
+    );
+    if (dup) {
+        alert(`⚠️ يوجد اجتماع مسجل بالفعل بنفس الاسم "${name}"!`);
+        return;
+    }
+
+    const btn = document.getElementById('btnSaveMeetingConfig');
+    if (btn) { btn.disabled = true; btn.innerText = "جاري الحفظ..."; }
+
+    const meetingKey = editKey || `meeting_${Date.now()}`;
+    const payload = {
+        MeetingKey: meetingKey,
+        MeetingName: name,
+        Audience: audience,
+        Frequency: frequency,
+        Keywords: keywords.join(", ")
+    };
+
+    try {
+        if (isUpdate) {
+            payload.ID = Number(editId);
+            const idx = MEETINGS_CATALOG.findIndex(m => String(m.id) === String(editId));
+            if (idx >= 0) {
+                MEETINGS_CATALOG[idx] = { id: Number(editId), key: meetingKey, name, audience, frequency, keywords };
+            }
+            saveMeetingsCatalogToCache();
+            try {
+                await apiPost({ sheet: "Meetings_Config", action: "update", data: payload });
+            } catch (e) {}
+            sendAuditLog("تعديل اجتماع", "Meetings_Config", `تم تعديل اجتماع: ${name}`);
+            alert("✓ تم حفظ تعديل الاجتماع بنجاح!");
+        } else {
+            const newId = MEETINGS_CATALOG.reduce((mx, m) => Math.max(mx, Number(m.id || 0)), 0) + 1;
+            MEETINGS_CATALOG.push({ id: newId, key: meetingKey, name, audience, frequency, keywords });
+            saveMeetingsCatalogToCache();
+            try {
+                const res = await apiPost({ sheet: "Meetings_Config", action: "add", data: payload });
+                if (res.status === "success" && res.id) {
+                    MEETINGS_CATALOG[MEETINGS_CATALOG.length - 1].id = Number(res.id);
+                    saveMeetingsCatalogToCache();
+                }
+            } catch (e) {}
+            sendAuditLog("إضافة اجتماع جديد", "Meetings_Config", `تم إضافة اجتماع: ${name}`);
+            alert("✓ تم إضافة الاجتماع الجديد بنجاح!");
+        }
+        resetMeetingConfigForm();
+        renderMeetingsConfigTable();
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerText = isUpdate ? "+ إضافة الاجتماع" : "+ إضافة الاجتماع"; }
+    }
+}
+
+async function deleteMeetingConfigItem(idx) {
+    if (!currentUser || currentUser.Role !== "Admin") return;
+    const m = MEETINGS_CATALOG[idx];
+    if (!m) return;
+    if (m.key === "servants") {
+        alert("⚠️ لا يمكن حذف اجتماع الخدام الأسبوعي الأساسي، يمكنك تعديل اسمه فقط.");
+        return;
+    }
+    if (!confirm(`هل أنت متأكد من حذف اجتماع "${m.name}" من القائمة؟
+(ستبقى سجلات الحضور السابقة محفوظة في الشيت)`)) return;
+
+    const delId = m.id;
+    MEETINGS_CATALOG.splice(idx, 1);
+    saveMeetingsCatalogToCache();
+    renderMeetingsConfigTable();
+    try {
+        await apiPost({ sheet: "Meetings_Config", action: "delete", data: { ID: Number(delId) } });
+        sendAuditLog("حذف اجتماع", "Meetings_Config", `تم حذف اجتماع: ${m.name}`);
+    } catch (e) {}
+}
+
+function renderMeetingsConfigTable() {
+    const tbody = document.getElementById('meetingsConfigTableBody');
+    const badge = document.getElementById('meetingsConfigCountBadge');
+    const recCount = document.getElementById('recordCount');
+    if (badge) badge.innerText = `${MEETINGS_CATALOG.length} اجتماع`;
+    if (recCount) recCount.innerText = `${MEETINGS_CATALOG.length} اجتماع`;
+    if (!tbody) return;
+
+    const audLabels = {
+        servants: `<span class="px-2 py-0.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-black">🛡️ خدام مدارس الأحد</span>`,
+        women: `<span class="px-2 py-0.5 rounded-lg bg-pink-50 text-pink-700 border border-pink-200 text-[10px] font-black">👩 سيدات فقط</span>`,
+        general: `<span class="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-black">👥 شعب الكنيسة</span>`
+    };
+
+    tbody.innerHTML = MEETINGS_CATALOG.map((m, idx) => `
+        <tr class="hover:bg-slate-50">
+            <td class="p-3 text-center text-slate-400 font-bold">${idx + 1}</td>
+            <td class="p-3 font-black text-slate-800">${m.name}</td>
+            <td class="p-3 text-center">${audLabels[m.audience] || audLabels.general}</td>
+            <td class="p-3 text-center"><span class="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 font-bold text-[11px]">${m.frequency || "أسبوعي"}</span></td>
+            <td class="p-3 text-[11px] text-slate-500">${(m.keywords || []).join(" ، ") || "الأدمن والكهنة فقط"}</td>
+            <td class="p-3 text-center">
+                <div class="flex items-center justify-center gap-1.5">
+                    <button type="button" onclick="startEditMeetingConfig(${idx})" class="bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer">✏️ تعديل</button>
+                    ${m.key !== 'servants' ? `<button type="button" onclick="deleteMeetingConfigItem(${idx})" class="bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer">حذف</button>` : ''}
+                </div>
+            </td>
+        </tr>
+    `).join('');
 }
 
 // 10. قسم الافتقاد والمتابعة الرعوية الذكي (حسب الصلاحية: كاهن/أدمن بالمناطق والأسر والأفراد، أمين مرحلة، خادم فصل)
@@ -3897,7 +4141,10 @@ async function loadData(force = false) {
                     else if (currentSSView === 'charts') initSSChartsView();
                     else renderStandardCards();
                 } else if (currentTab === 'Meetings_Attendance') {
-                    if (currentMeetingsView === 'live') initServantsMeetingLiveView(); else initMeetingsHistoryView();
+                    await loadMeetingsCatalogFromServer();
+                    if (currentMeetingsView === 'live') initServantsMeetingLiveView();
+                    else if (currentMeetingsView === 'manage') initMeetingsManageView();
+                    else initMeetingsHistoryView();
                 } else if (currentTab === 'Visitations') {
                     visitationsData = rawData;
                     if (currentVisitView === 'dashboard') initVisitationsDashboard();
@@ -3935,6 +4182,7 @@ function showLoader(s) {
         else document.getElementById('standardCardsContainer')?.classList.toggle('hidden', s);
     } else if (currentTab === 'Meetings_Attendance') {
         if (currentMeetingsView === 'live') document.getElementById('servantsMeetingLiveSection')?.classList.toggle('hidden', s);
+        else if (currentMeetingsView === 'manage') document.getElementById('meetingsManageSection')?.classList.toggle('hidden', s);
         else document.getElementById('meetingsHistorySection')?.classList.toggle('hidden', s);
     } else if (currentTab === 'Visitations') {
         if (currentVisitView === 'dashboard') document.getElementById('visitationDashboardSection')?.classList.toggle('hidden', s);

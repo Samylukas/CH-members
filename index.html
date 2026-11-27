@@ -308,9 +308,10 @@ function togglePasswordVisibilityInline() {
                 <button id="btnSSCharts" onclick="switchSSView('charts')" class="px-3.5 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900">📊 الإحصائيات والرسوم البيانية</button>
             </div>
 
-            <div id="meetingsViewSwitcher" class="flex items-center gap-2 bg-slate-200/80 p-1 rounded-xl hidden">
-                <button id="btnMeetingsLiveRoster" onclick="switchMeetingsView('live')" class="px-4 py-2 rounded-lg text-xs font-black transition bg-white text-amber-700 shadow-sm">📋 رصد حضور الاجتماع</button>
-                <button id="btnMeetingsHistory" onclick="switchMeetingsView('history')" class="px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900">📊 سجل الاجتماعات (أسبوعي / شهري)</button>
+            <div id="meetingsViewSwitcher" class="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-xl hidden flex-wrap">
+                <button id="btnMeetingsLiveRoster" onclick="switchMeetingsView('live')" class="px-3.5 py-2 rounded-lg text-xs font-black transition bg-white text-amber-700 shadow-sm">📋 رصد حضور الاجتماع</button>
+                <button id="btnMeetingsHistory" onclick="switchMeetingsView('history')" class="px-3.5 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900">📊 سجل الاجتماعات (أسبوعي / شهري)</button>
+                <button id="btnMeetingsManage" onclick="switchMeetingsView('manage')" class="hidden px-3.5 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900">⚙️ إدارة الاجتماعات</button>
             </div>
 
             <div id="visitationsViewSwitcher" class="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-xl hidden flex-wrap">
@@ -631,6 +632,74 @@ function togglePasswordVisibilityInline() {
 
             <!-- لوحة تفاصيل اجتماع معيّن عند الضغط على عرض التفاصيل -->
             <div id="meetingSessionDetailPanel" class="hidden bg-white/95 rounded-2xl border-2 border-amber-300 shadow-md overflow-hidden"></div>
+        </div>
+
+        <!-- 3.2 قسم إدارة الاجتماعات (إضافة وتعديل وحذف الاجتماعات — للأدمن فقط) -->
+        <div id="meetingsManageSection" class="hidden space-y-5 no-print">
+            <div class="bg-white/95 p-5 rounded-2xl border border-amber-200 shadow-sm space-y-4">
+                <div class="flex flex-wrap justify-between items-center gap-2 pb-3 border-b border-slate-100">
+                    <div>
+                        <h3 id="meetingFormHeading" class="text-base font-black text-amber-950 flex items-center gap-2"><span>⚙️</span> إضافة / تعديل اجتماع</h3>
+                        <p class="text-[11px] text-slate-500 font-bold mt-0.5">يمكن للأدمن إضافة اجتماعات جديدة أو تعديل أسماء وصلاحيات الاجتماعات القائمة وتظهر فوراً في النظام</p>
+                    </div>
+                    <button type="button" id="btnCancelMeetingEdit" onclick="resetMeetingConfigForm()" class="hidden px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer">✕ إلغاء التعديل</button>
+                </div>
+
+                <input type="hidden" id="editMeetingRowId" value="">
+                <input type="hidden" id="editMeetingKey" value="">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">اسم الاجتماع *</label>
+                        <input type="text" id="cfgMeetingName" placeholder="مثال: اجتماع الصلاة مساء السبت" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">الجمهور / نوع الحضور</label>
+                        <select id="cfgMeetingAudience" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500">
+                            <option value="general">👥 شعب الكنيسة (عام بالبحث السريع)</option>
+                            <option value="servants">🛡️ خدام مدارس الأحد فقط (كشف تلقائي)</option>
+                            <option value="women">👩 سيدات فقط (بحث سريع للسيدات)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">دورية الاجتماع</label>
+                        <select id="cfgMeetingFrequency" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500">
+                            <option value="أسبوعي">أسبوعي</option>
+                            <option value="شهري">شهري</option>
+                            <option value="نصف شهري">نصف شهري</option>
+                            <option value="مناسبات">مناسبات / خاص</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">كلمات صلاحية الخدام (مفصولة بفاصلة)</label>
+                        <input type="text" id="cfgMeetingKeywords" placeholder="مثال: شمامسة, شباب, صلاة" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500">
+                    </div>
+                </div>
+                <div class="flex justify-end pt-2">
+                    <button type="button" id="btnSaveMeetingConfig" onclick="saveMeetingConfigItem()" class="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2.5 rounded-xl font-black text-xs shadow-md transition cursor-pointer">+ إضافة الاجتماع</button>
+                </div>
+            </div>
+
+            <div class="bg-white/95 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                    <h4 class="text-xs sm:text-sm font-black text-slate-800">📋 قائمة الاجتماعات المسجلة بالنظام</h4>
+                    <span id="meetingsConfigCountBadge" class="bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-full text-xs font-black">0</span>
+                </div>
+                <div class="overflow-x-auto nice-scrollbar">
+                    <table class="w-full text-right text-xs">
+                        <thead class="bg-slate-100 text-slate-700 font-black border-b border-slate-200">
+                            <tr>
+                                <th class="p-3 w-10 text-center">م</th>
+                                <th class="p-3">اسم الاجتماع</th>
+                                <th class="p-3 text-center">الجمهور</th>
+                                <th class="p-3 text-center">الدورية</th>
+                                <th class="p-3">كلمات صلاحية الخدام</th>
+                                <th class="p-3 text-center w-36">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="meetingsConfigTableBody" class="divide-y divide-slate-100 font-semibold"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <!-- 4. قسم الافتقاد المباشر (ذكي حسب الصلاحية: كاهن/أدمن بالمناطق والأسر والأفراد، أمين مرحلة بمرحلته، خادم فصل بفصله) -->
@@ -1000,6 +1069,6 @@ function togglePasswordVisibilityInline() {
     </div>
 </div>
 
-<script src="app.js?v=43"></script>
+<script src="app.js?v=44"></script>
 </body>
 </html>
