@@ -1,9 +1,9 @@
-// Service Worker - منظومة الخدمة والرعاية الكنسية (v42 Visitations Progress & Cancel Followup)
-const CACHE_NAME = 'church-system-cache-v42';
+// Service Worker - منظومة الخدمة والرعاية الكنسية (v43 Multi-Meetings Hub + Weekly/Monthly Table)
+const CACHE_NAME = 'church-system-cache-v43';
 const APP_SHELL = [
     './',
     './index.html',
-    './app.js?v=42',
+    './app.js?v=43',
     './style.css',
     './logo.png',
     './manifest.json'

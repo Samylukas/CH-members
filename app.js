@@ -195,7 +195,7 @@ const TABS_INFO = {
     "Names": { label: "أعضاء الكنيسة", desc: "دليل أرباب الأسر والفرز المتقدم", svg: ICONS.users, accent: "from-emerald-500 to-teal-600", iconBg: "bg-emerald-50 ring-emerald-100", hoverText: "group-hover:text-emerald-700", roles: ["Admin", "Priest"] },
     "Sunday_School": { label: "مدارس الأحد", desc: "كشوف الفصول والحضور والإحصائيات", svg: ICONS.children, accent: "from-blue-500 to-indigo-600", iconBg: "bg-blue-50 ring-blue-100", hoverText: "group-hover:text-blue-700", roles: ["Admin", "Priest", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
     "Visitations": { label: "سجل الافتقاد", desc: "افتقاد الفصول والأسر وتقارير الإنجاز", svg: ICONS.visitations, accent: "from-rose-500 to-pink-600", iconBg: "bg-rose-50 ring-rose-100", hoverText: "group-hover:text-rose-700", roles: ["Admin", "Priest", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"] },
-    "Meetings_Attendance": { label: "حضور الاجتماعات", desc: "رصد حضور اجتماع الخدام الأسبوعي", svg: ICONS.meetings, accent: "from-amber-500 to-orange-600", iconBg: "bg-amber-50 ring-amber-100", hoverText: "group-hover:text-amber-700", roles: ["Admin", "Priest", "SundaySchool_Admin"] },
+    "Meetings_Attendance": { label: "حضور الاجتماعات", desc: "اجتماع الخدام والشباب ودرس الكتاب", svg: ICONS.meetings, accent: "from-amber-500 to-orange-600", iconBg: "bg-amber-50 ring-amber-100", hoverText: "group-hover:text-amber-700", roles: ["Admin", "Priest", "SundaySchool_Admin", "Stage_Leader", "Class_Servant"], meetingAccessCheck: true },
     "Servants": { label: "إدارة الخدام", desc: "توزيع الصلاحيات وربط الخدام", svg: ICONS.servants, accent: "from-purple-500 to-violet-600", iconBg: "bg-purple-50 ring-purple-100", hoverText: "group-hover:text-purple-700", roles: ["Admin"] },
     "Audit_Log": { label: "سجل المراقبة", desc: "متابعة دخول الخدام والتعديلات", svg: ICONS.audit, accent: "from-slate-600 to-slate-800", iconBg: "bg-slate-100 ring-slate-200", hoverText: "group-hover:text-slate-900", roles: ["Admin"] },
     "Confessions": { label: "سجل الاعترافات", desc: "سجل اعترافات الأبناء (للآباء الكهنة فقط)", svg: ICONS.cross, accent: "from-purple-600 to-indigo-700", iconBg: "bg-purple-50 ring-purple-200", hoverText: "group-hover:text-purple-800", roles: ["Priest", "Admin"], priestOnly: true }
@@ -512,6 +512,7 @@ function buildDashboard() {
     const visibleKeys = Object.keys(TABS_INFO).filter(k => {
         if (!TABS_INFO[k].roles.includes(currentUser.Role)) return false;
         if (TABS_INFO[k].priestOnly && !isPriestUser(currentUser)) return false;
+        if (TABS_INFO[k].meetingAccessCheck && getAllowedMeetingsForUser(currentUser).length === 0) return false;
         return true;
     });
     grid.className = `grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-${Math.min(visibleKeys.length, 6)} gap-4 w-full`;
@@ -540,7 +541,7 @@ function loadSection(sectionKey) {
     if (info) document.getElementById('currentTabTitle').innerHTML = `${info.label}`;
 
     ['namesViewSwitcher', 'ssViewSwitcher', 'meetingsViewSwitcher', 'visitationsViewSwitcher', 'servantsViewSwitcher'].forEach(id => { const el = document.getElementById(id); el?.classList.add('hidden'); el?.classList.remove('flex'); });
-    ['sundaySchoolLiveSection', 'sundaySchoolReportSection', 'sundaySchoolChartsSection', 'servantsMeetingLiveSection', 'visitationDashboardSection', 'visitationReportsSection', 'priestConfessionsSection', 'servantsConfessionsSection', 'namesRosterSection', 'namesFilterSection', 'namesPlaceholder', 'familyResultsContainer', 'standardSearchContainer', 'standardCardsContainer'].forEach(id => {
+    ['sundaySchoolLiveSection', 'sundaySchoolReportSection', 'sundaySchoolChartsSection', 'servantsMeetingLiveSection', 'meetingsHistorySection', 'visitationDashboardSection', 'visitationReportsSection', 'priestConfessionsSection', 'servantsConfessionsSection', 'namesRosterSection', 'namesFilterSection', 'namesPlaceholder', 'familyResultsContainer', 'standardSearchContainer', 'standardCardsContainer'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.classList.add('hidden'); if (id === 'sundaySchoolChartsSection') el.style.display = 'none'; }
     });
@@ -1913,19 +1914,72 @@ async function generateAndPrintClassRoster() {
     shareToWhatsApp(text);
 }
 
-// 9. قسم رصد اجتماع الخدام
+// 9. قسم رصد حضور الاجتماعات (اجتماع الخدام + الشباب + درس الكتاب + السيدات + الأسرة + جدول أسبوعي وشهري)
+const MEETINGS_CATALOG = [
+    { key: "servants", name: "اجتماع الخدام الأسبوعي", audience: "servants", keywords: ["خدام", "مدارس الاحد"] },
+    { key: "youth", name: "اجتماع الشباب والجامعة", audience: "general", keywords: ["شباب", "جامع", "خريج"] },
+    { key: "bible", name: "اجتماع درس الكتاب", audience: "general", keywords: ["درس الكتاب", "كتاب", "الاجتماعات"] },
+    { key: "women", name: "اجتماع السيدات", audience: "general", keywords: ["سيدات", "السيدات"] },
+    { key: "family", name: "اجتماع الأسرة العام", audience: "general", keywords: ["اسره", "الاسرة", "الاجتماعات"] }
+];
+
+let currentSelectedMeetingKey = "servants";
+let currentMeetingsHistoryRows = [];
+const debouncedGeneralMeetingSearch = createDebounce(() => renderGeneralMeetingSearchResults(), 150);
+function onGeneralMeetingSearch() { debouncedGeneralMeetingSearch(); }
+
+function getAllowedMeetingsForUser(userObj = currentUser) {
+    if (!userObj) return [];
+    const role = String(userObj.Role || "").trim();
+    if (role === "Admin" || role === "Priest" || isPriestUser(userObj)) {
+        return MEETINGS_CATALOG;
+    }
+    const allowed = [];
+    if (role === "SundaySchool_Admin") {
+        allowed.push(MEETINGS_CATALOG[0]);
+    }
+    const scopeText = normalizeArabic(`${userObj.AssignedStage || ""} ${userObj.AssignedGrade || ""} ${userObj.AssignedClass || ""}`).toLowerCase();
+    MEETINGS_CATALOG.forEach(m => {
+        if (m.key === "servants") return;
+        if (m.keywords.some(kw => scopeText.includes(normalizeArabic(kw).toLowerCase()))) {
+            if (!allowed.some(a => a.key === m.key)) allowed.push(m);
+        }
+    });
+    return allowed;
+}
+
 function switchMeetingsView(view) {
     currentMeetingsView = view;
-    const btnLive = document.getElementById('btnMeetingsLiveRoster'), btnHist = document.getElementById('btnMeetingsHistory');
-    const liveSec = document.getElementById('servantsMeetingLiveSection'), cardsSec = document.getElementById('standardCardsContainer'), searchSec = document.getElementById('standardSearchContainer'), btnAdd = document.getElementById('btnAddNewRecord');
+    const btnLive = document.getElementById('btnMeetingsLiveRoster');
+    const btnHist = document.getElementById('btnMeetingsHistory');
+    const liveSec = document.getElementById('servantsMeetingLiveSection');
+    const histSec = document.getElementById('meetingsHistorySection');
+    const cardsSec = document.getElementById('standardCardsContainer');
+    const searchSec = document.getElementById('standardSearchContainer');
+    const btnAdd = document.getElementById('btnAddNewRecord');
+    const btnPrint = document.getElementById('btnPrintMeetings');
+    const btnPdf = document.getElementById('btnPdfMeetings');
+
+    cardsSec?.classList.add('hidden');
+    searchSec?.classList.add('hidden');
+    btnAdd?.classList.add('hidden');
+
     if (view === 'live') {
         if (btnLive) btnLive.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-amber-700 shadow-sm";
         if (btnHist) btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
-        liveSec?.classList.remove('hidden'); cardsSec?.classList.add('hidden'); searchSec?.classList.add('hidden'); btnAdd?.classList.add('hidden'); initServantsMeetingLiveView();
+        liveSec?.classList.remove('hidden');
+        histSec?.classList.add('hidden');
+        btnPrint?.classList.remove('hidden');
+        btnPdf?.classList.remove('hidden');
+        initServantsMeetingLiveView();
     } else {
         if (btnHist) btnHist.className = "px-4 py-2 rounded-lg text-xs font-black transition bg-white text-amber-700 shadow-sm";
         if (btnLive) btnLive.className = "px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900";
-        liveSec?.classList.add('hidden'); cardsSec?.classList.remove('hidden'); searchSec?.classList.remove('hidden'); btnAdd?.classList.remove('hidden'); renderStandardCards();
+        liveSec?.classList.add('hidden');
+        histSec?.classList.remove('hidden');
+        btnPrint?.classList.add('hidden');
+        btnPdf?.classList.add('hidden');
+        initMeetingsHistoryView();
     }
 }
 
@@ -1939,13 +1993,9 @@ function isSundaySchoolMeetingServant(s) {
     const stageNorm = normalizeArabic(s["AssignedStage"] || "");
     const classNorm = normalizeArabic(s["AssignedClass"] || "");
 
-    // استبعاد كهنة وخدام الجامعة والخريجين والشباب
     if (stageNorm.includes("جامع") || stageNorm.includes("خريج") || stageNorm.includes("شباب")) return false;
-
-    // استبعاد خدام القطاعات والخدمات الأخرى خارج مدارس الأحد
     const excludedSectors = ["المرضي", "السيدات", "الكشافه", "الكورال", "المسرح", "الكرازه", "الشمامسه", "الشباب", "الجامعه", "الخريجين"];
     if (excludedSectors.some(sec => classNorm.includes(sec))) return false;
-
     return true;
 }
 
@@ -1972,63 +2022,205 @@ function getServantMeetingRank(s, origIdx) {
     const stageNorm = normalizeArabic(s["AssignedStage"] || "");
     const isSSStage = ["حضانه", "ابتدائي", "اعدادي", "ثانوي"].some(st => stageNorm.includes(st));
 
-    // 1. الآباء الكهنة (بنفس ترتيب الشيت)
-    if (role === "Priest" || isPriestUser(s)) {
-        return { group: 1, stageOrd: 0, gradeOrd: 0, origIdx };
-    }
-    // 2. أمين عام الخدمة
-    if (role === "SundaySchool_Admin") {
-        return { group: 2, stageOrd: 0, gradeOrd: 0, origIdx };
-    }
-    // 3. أمناء خدمة المراحل
-    if (role === "Stage_Leader") {
-        return { group: 3, stageOrd: getMeetingStageOrder(s["AssignedStage"]), gradeOrd: 0, origIdx };
-    }
-    // 4. خدام الفصول (حضانة -> ابتدائي -> إعدادي -> ثانوي، ومرتبين بالصفوف)
+    if (role === "Priest" || isPriestUser(s)) return { group: 1, stageOrd: 0, gradeOrd: 0, origIdx };
+    if (role === "SundaySchool_Admin") return { group: 2, stageOrd: 0, gradeOrd: 0, origIdx };
+    if (role === "Stage_Leader") return { group: 3, stageOrd: getMeetingStageOrder(s["AssignedStage"]), gradeOrd: 0, origIdx };
     if (isSSStage) {
-        return {
-            group: 4,
-            stageOrd: getMeetingStageOrder(s["AssignedStage"]),
-            gradeOrd: getMeetingGradeOrder(s["AssignedStage"], s["AssignedGrade"]),
-            origIdx
-        };
+        return { group: 4, stageOrd: getMeetingStageOrder(s["AssignedStage"]), gradeOrd: getMeetingGradeOrder(s["AssignedStage"], s["AssignedGrade"]), origIdx };
     }
-    // 5. الخدام غير المكلفين بفصول (التابعون لمدارس الأحد مثل الافتقاد والخدمة المعاونة)
     return { group: 5, stageOrd: 9, gradeOrd: 99, origIdx };
 }
 
 async function initServantsMeetingLiveView() {
     const dateInput = document.getElementById('servantsMeetingDate'), now = new Date();
-    if (dateInput) dateInput.value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-    if (servantsCacheData.length === 0) { try { const res = await apiFetch(`${API_URL}?sheet=Servants`); if (res.status === "success") servantsCacheData = res.data; } catch(e) {} }
-    if (namesCacheData.length === 0) { try { const [res, famRes] = await Promise.all([apiFetch(`${API_URL}?sheet=Names`), apiFetch(`${API_URL}?sheet=${encodeURIComponent("Family name")}`).catch(() => ({ status: "err" }))]); if (res.status === "success") namesCacheData = ((famRes.status === "success") ? mergeFamilySheetIntoNames(res.data, famRes.data) : res.data).map(sanitizeRecordFields); } catch(e) {} }
+    if (dateInput && !dateInput.value) dateInput.value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
 
-    const activeServants = servantsCacheData
-        .map((s, idx) => ({ s, idx }))
-        .filter(({ s }) => isSundaySchoolMeetingServant(s));
+    const allowedMeetings = getAllowedMeetingsForUser(currentUser);
+    const typeSel = document.getElementById('meetingTypeSelect');
+    if (typeSel && allowedMeetings.length > 0) {
+        typeSel.innerHTML = allowedMeetings.map(m => `<option value="${m.key}">${m.name}</option>`).join('');
+        if (!allowedMeetings.some(m => m.key === currentSelectedMeetingKey)) {
+            currentSelectedMeetingKey = allowedMeetings[0].key;
+        }
+        typeSel.value = currentSelectedMeetingKey;
+        typeSel.disabled = allowedMeetings.length === 1;
+    }
 
-    currentServantsMeetingList = activeServants.map(({ s, idx }) => {
-        const member = namesCacheData.find(m => normalizeArabic(m["الاسم ثلاثي"]) === normalizeArabic(s["ServantName"]));
-        let realPhone = (member && member["تليفون العمل/المحمول"]) ? member["تليفون العمل/المحمول"] : (/^\d+$/.test(s["Username"]) ? s["Username"] : "-");
-        const rank = getServantMeetingRank(s, idx);
-        return {
-            id: s["ID"] || s[Object.keys(s)[0]],
-            name: s["ServantName"],
-            phone: realPhone,
-            role: s["Role"] || "خادم",
-            scope: `${s["AssignedStage"] || "الكل"} ${s["AssignedGrade"] ? '- ' + s["AssignedGrade"] : ''} ${s["AssignedClass"] ? '(' + s["AssignedClass"] + ')' : ''}`,
-            status: "حاضر",
-            notes: "",
-            _rank: rank
-        };
-    }).sort((a, b) => {
-        if (a._rank.group !== b._rank.group) return a._rank.group - b._rank.group;
-        if (a._rank.group === 1) return a._rank.origIdx - b._rank.origIdx;
-        if (a._rank.stageOrd !== b._rank.stageOrd) return a._rank.stageOrd - b._rank.stageOrd;
-        if (a._rank.gradeOrd !== b._rank.gradeOrd) return a._rank.gradeOrd - b._rank.gradeOrd;
-        return String(a.name || "").localeCompare(String(b.name || ""), 'ar');
+    if (namesCacheData.length === 0) {
+        try {
+            const [res, famRes] = await Promise.all([
+                apiFetch(`${API_URL}?sheet=Names`),
+                apiFetch(`${API_URL}?sheet=${encodeURIComponent("Family name")}`).catch(() => ({ status: "err" }))
+            ]);
+            if (res.status === "success") namesCacheData = ((famRes.status === "success") ? mergeFamilySheetIntoNames(res.data, famRes.data) : res.data).map(sanitizeRecordFields);
+        } catch (e) {}
+    }
+
+    await onMeetingTypeChange(currentSelectedMeetingKey);
+}
+
+async function onMeetingTypeChange(meetingKey) {
+    currentSelectedMeetingKey = meetingKey;
+    const meetingObj = MEETINGS_CATALOG.find(m => m.key === meetingKey) || MEETINGS_CATALOG[0];
+    const hiddenNameInp = document.getElementById('servantsMeetingName');
+    if (hiddenNameInp) hiddenNameInp.value = meetingObj.name;
+
+    const bulkBar = document.getElementById('servantsMeetingBulkBar');
+    const genBar = document.getElementById('generalMeetingSearchBar');
+    const addServantWrap = document.getElementById('btnAddServantQuickWrapper');
+    const thead = document.getElementById('servantsMeetingTableHead');
+
+    if (meetingObj.audience === "servants") {
+        bulkBar?.classList.remove('hidden');
+        genBar?.classList.add('hidden');
+        addServantWrap?.classList.remove('hidden');
+        if (thead) {
+            thead.innerHTML = `<tr><th class="p-3 w-12 text-center">م</th><th class="p-3">اسم الخادم</th><th class="p-3">مجال الخدمة المسند</th><th class="p-3">المحمول</th><th class="p-3 text-center w-48">حالة الحضور</th><th class="p-3">سبب الاعتذار / ملاحظات</th></tr>`;
+        }
+        if (servantsCacheData.length === 0) {
+            try { const res = await apiFetch(`${API_URL}?sheet=Servants`); if (res.status === "success") servantsCacheData = res.data; } catch (e) {}
+        }
+        const activeServants = servantsCacheData
+            .map((s, idx) => ({ s, idx }))
+            .filter(({ s }) => isSundaySchoolMeetingServant(s));
+
+        currentServantsMeetingList = activeServants.map(({ s, idx }) => {
+            const member = namesCacheData.find(m => normalizeArabic(m["الاسم ثلاثي"]) === normalizeArabic(s["ServantName"]));
+            let realPhone = (member && member["تليفون العمل/المحمول"]) ? member["تليفون العمل/المحمول"] : (/^\d+$/.test(s["Username"]) ? s["Username"] : "-");
+            const rank = getServantMeetingRank(s, idx);
+            return {
+                id: s["ID"] || s[Object.keys(s)[0]],
+                name: s["ServantName"],
+                phone: realPhone,
+                role: s["Role"] || "خادم",
+                scope: `${s["AssignedStage"] || "الكل"} ${s["AssignedGrade"] ? '- ' + s["AssignedGrade"] : ''} ${s["AssignedClass"] ? '(' + s["AssignedClass"] + ')' : ''}`,
+                status: "حاضر",
+                notes: "",
+                _rank: rank
+            };
+        }).sort((a, b) => {
+            if (a._rank.group !== b._rank.group) return a._rank.group - b._rank.group;
+            if (a._rank.group === 1) return a._rank.origIdx - b._rank.origIdx;
+            if (a._rank.stageOrd !== b._rank.stageOrd) return a._rank.stageOrd - b._rank.stageOrd;
+            if (a._rank.gradeOrd !== b._rank.gradeOrd) return a._rank.gradeOrd - b._rank.gradeOrd;
+            return String(a.name || "").localeCompare(String(b.name || ""), 'ar');
+        });
+        renderServantsMeetingTable();
+    } else {
+        // اجتماعات الشعب (الشباب / درس الكتاب / السيدات / الأسرة)
+        bulkBar?.classList.add('hidden');
+        genBar?.classList.remove('hidden');
+        addServantWrap?.classList.add('hidden');
+        if (thead) {
+            thead.innerHTML = `<tr><th class="p-3 w-12 text-center">م</th><th class="p-3">اسم الحاضر</th><th class="p-3">الأسرة / المنطقة</th><th class="p-3">المحمول</th><th class="p-3 text-center w-28">الحالة</th><th class="p-3">ملاحظات</th><th class="p-3 w-16 text-center">إزالة</th></tr>`;
+        }
+        currentServantsMeetingList = [];
+        const searchInp = document.getElementById('generalMeetingMemberSearch');
+        if (searchInp) searchInp.value = "";
+        document.getElementById('generalMeetingSearchResults')?.classList.add('hidden');
+        renderGeneralMeetingAttendeesTable();
+    }
+}
+
+function renderGeneralMeetingSearchResults() {
+    const q = normalizeArabic(document.getElementById('generalMeetingMemberSearch')?.value || "").toLowerCase();
+    const resBox = document.getElementById('generalMeetingSearchResults');
+    if (!resBox) return;
+
+    if (!q || q.length < 2) {
+        resBox.classList.add('hidden');
+        resBox.innerHTML = "";
+        return;
+    }
+
+    const meetingKey = currentSelectedMeetingKey;
+    const matches = namesCacheData.filter(m => {
+        if (isMemberDeceased(m)) return false;
+        if (meetingKey === "women" && normalizeGender(m["ذكر/انثي"]) === "ذكر") return false;
+        const idx = getSearchIndex(m);
+        return idx.name.includes(q) || idx.head.includes(q) || idx.phone.includes(q);
+    }).slice(0, 18);
+
+    if (matches.length === 0) {
+        resBox.innerHTML = `<div class="sm:col-span-2 lg:col-span-3 text-center py-4 text-xs text-slate-400 font-bold">لم يتم العثور على عضو مطابق</div>`;
+        resBox.classList.remove('hidden');
+        return;
+    }
+
+    resBox.innerHTML = matches.map(m => {
+        const mId = m["ID"] || "";
+        const mName = m["الاسم ثلاثي"] || "-";
+        const alreadyAdded = currentServantsMeetingList.some(x => String(x.id) === String(mId) && normalizeArabic(x.name) === normalizeArabic(mName));
+        return `
+            <div onclick="addGeneralMeetingAttendee('${mId}')" class="p-2.5 rounded-xl border cursor-pointer transition flex items-center justify-between gap-2 ${alreadyAdded ? 'bg-emerald-50 border-emerald-300' : 'bg-white hover:bg-amber-50 border-slate-200'}">
+                <div class="min-w-0">
+                    <p class="text-xs font-black text-slate-800 truncate">${mName}</p>
+                    <p class="text-[10px] text-slate-500 font-semibold truncate">📍 ${getMemberArea(m) || '-'} | 📱 ${m["تليفون العمل/المحمول"] || '-'}</p>
+                </div>
+                <span class="shrink-0 text-[10px] font-black px-2 py-1 rounded-lg ${alreadyAdded ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-900'}">${alreadyAdded ? '✓ مسجل' : '+ حضور'}</span>
+            </div>
+        `;
+    }).join('');
+    resBox.classList.remove('hidden');
+}
+
+function addGeneralMeetingAttendee(memberId) {
+    const member = namesCacheData.find(m => String(m["ID"]) === String(memberId));
+    if (!member) return;
+    if (currentServantsMeetingList.some(x => String(x.id) === String(member["ID"]))) return;
+
+    currentServantsMeetingList.push({
+        id: member["ID"],
+        name: member["الاسم ثلاثي"] || "-",
+        phone: member["تليفون العمل/المحمول"] || member["هاتف الاسرة"] || "-",
+        role: "شعب",
+        scope: `${member["اسم رب الاسرة"] || "-"} | ${getMemberArea(member) || "-"}`,
+        status: "حاضر",
+        notes: ""
     });
-    renderServantsMeetingTable();
+    renderGeneralMeetingSearchResults();
+    renderGeneralMeetingAttendeesTable();
+}
+
+function removeGeneralMeetingAttendee(idx) {
+    currentServantsMeetingList.splice(idx, 1);
+    renderGeneralMeetingAttendeesTable();
+    renderGeneralMeetingSearchResults();
+}
+
+function renderGeneralMeetingAttendeesTable() {
+    const tbody = document.getElementById('servantsMeetingTableBody');
+    const emptyNotice = document.getElementById('servantsMeetingEmpty');
+    const badge = document.getElementById('generalMeetingCountBadge');
+    const recCount = document.getElementById('recordCount');
+    if (badge) badge.innerText = `الحاضرون اليوم: ${currentServantsMeetingList.length}`;
+    if (recCount) recCount.innerText = `${currentServantsMeetingList.length} حاضر`;
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    if (currentServantsMeetingList.length === 0) {
+        if (emptyNotice) {
+            emptyNotice.innerText = "ابحث عن أسماء الحاضرين بالأعلى لإضافتهم إلى كشف الاجتماع ثم اضغط «حفظ حضور الاجتماع»";
+            emptyNotice.classList.remove('hidden');
+        }
+        return;
+    }
+    emptyNotice?.classList.add('hidden');
+
+    currentServantsMeetingList.forEach((p, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+        tr.innerHTML = `
+            <td class="p-3 text-center font-bold text-slate-400">${idx + 1}</td>
+            <td class="p-3 font-black text-slate-800">${p.name}</td>
+            <td class="p-3 text-[11px] text-slate-600">${p.scope}</td>
+            <td class="p-3 font-mono text-xs text-slate-600" dir="ltr">${p.phone}</td>
+            <td class="p-3 text-center"><span class="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-black text-[11px]">✓ حاضر</span></td>
+            <td class="p-3"><input type="text" placeholder="ملاحظة..." value="${p.notes}" oninput="currentServantsMeetingList[${idx}].notes = this.value" class="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none"></td>
+            <td class="p-3 text-center"><button type="button" onclick="removeGeneralMeetingAttendee(${idx})" class="text-rose-600 hover:bg-rose-50 px-2 py-1 rounded-lg font-black text-xs">✕</button></td>
+        `;
+        tbody.appendChild(tr);
+    });
 }
 
 function renderServantsMeetingTable() {
@@ -2052,16 +2244,17 @@ function setServantMeetingStatus(index, status) { currentServantsMeetingList[ind
 function markAllServantsMeeting(status) { currentServantsMeetingList.forEach(s => s.status = status); renderServantsMeetingTable(); }
 
 async function saveServantsMeetingBatchAttendance() {
-    if (currentServantsMeetingList.length === 0) { alert("لا يوجد خدام في الكشف للحفظ!"); return; }
-    const meetingName = (document.getElementById('servantsMeetingName')?.value || "").trim() || "اجتماع الخدام الأسبوعي", meetingDate = (document.getElementById('servantsMeetingDate')?.value || "").trim();
-    if (!meetingDate) { alert("يرجى كتابة تاريخ الاجتماع أولاً!"); return; }
+    if (currentServantsMeetingList.length === 0) { alert("لا يوجد أسماء في كشف الحضور للحفظ!"); return; }
+    const meetingName = (document.getElementById('servantsMeetingName')?.value || "").trim() || "اجتماع الخدام الأسبوعي";
+    const meetingDate = formatDisplayDate(document.getElementById('servantsMeetingDate')?.value || "");
+    if (!meetingDate || !isValidCalendarDate(meetingDate)) { alert("يرجى كتابة تاريخ الاجتماع بصيغة صحيحة (DD/MM/YYYY)!"); return; }
 
-    // فحص منع تكرار رصد حضور نفس الاجتماع في نفس التاريخ
     const alreadyRecorded = rawData.some(r => String(r["MeetingDate"] || "").trim() === meetingDate && normalizeArabic(r["MeetingName"]) === normalizeArabic(meetingName));
     if (alreadyRecorded) {
-        if (!confirm(`⚠️ تنبيه: تم رصد حضور "${meetingName}" بتاريخ ${meetingDate} مسبقاً!\nهل تريد الحفظ مرة أخرى؟`)) return;
+        if (!confirm(`⚠️ تنبيه: تم رصد حضور "${meetingName}" بتاريخ ${meetingDate} مسبقاً!
+هل تريد الحفظ مرة أخرى؟`)) return;
     } else {
-        if (!confirm(`هل أنت متأكد من حفظ حضور (${currentServantsMeetingList.length}) خادم لاجتماع: ${meetingName} بتاريخ: ${meetingDate}؟`)) return;
+        if (!confirm(`هل أنت متأكد من حفظ حضور (${currentServantsMeetingList.length}) فرد لاجتماع: ${meetingName} بتاريخ: ${meetingDate}؟`)) return;
     }
 
     const btn = document.getElementById('btnSaveServantsMeetingBatch'); if (btn) { btn.disabled = true; btn.innerHTML = `جاري الحفظ بالسجلات...`; }
@@ -2069,7 +2262,7 @@ async function saveServantsMeetingBatchAttendance() {
     try {
         const data = await apiPost({ sheet: "Meetings_Attendance", action: "batch_add", data: payload });
         if (data.status === "success") {
-            sendAuditLog("رصد حضور اجتماع الخدام", "Meetings_Attendance", `تم حفظ كشف (${payload.length}) خادم - ${meetingName} بتاريخ ${meetingDate}`);
+            sendAuditLog("رصد حضور اجتماع", "Meetings_Attendance", `تم حفظ كشف (${payload.length}) فرد - ${meetingName} بتاريخ ${meetingDate}`);
             alert("✓ " + data.message);
             loadData();
         } else alert("خطأ أثناء الحفظ: " + data.message);
@@ -2077,9 +2270,286 @@ async function saveServantsMeetingBatchAttendance() {
     finally { if (btn) { btn.disabled = false; btn.innerHTML = `💾 حفظ حضور الاجتماع`; } }
 }
 
+// ==================== سجل الاجتماعات السابقة (جدول أسبوعي وشهري) ====================
+function initMeetingsHistoryView() {
+    const allowed = getAllowedMeetingsForUser(currentUser);
+    const typeFilter = document.getElementById('meetingsHistoryTypeFilter');
+    if (typeFilter) {
+        const prev = typeFilter.value;
+        const distinctNames = new Set(allowed.map(m => m.name));
+        rawData.forEach(r => {
+            const mName = String(r["MeetingName"] || "").trim();
+            if (mName && isMeetingAllowedForUser(mName, allowed)) distinctNames.add(mName);
+        });
+        typeFilter.innerHTML = `<option value="">كل الاجتماعات المصرح بها</option>` + Array.from(distinctNames).map(n => `<option value="${n}">${n}</option>`).join('');
+        if (prev && Array.from(distinctNames).includes(prev)) typeFilter.value = prev;
+    }
+    document.getElementById('meetingSessionDetailPanel')?.classList.add('hidden');
+    renderMeetingsHistoryView();
+}
+
+function isMeetingAllowedForUser(meetingName, allowedList) {
+    if (isPriestOrAdminUser()) return true;
+    const normM = normalizeArabic(meetingName).toLowerCase();
+    return allowedList.some(m => {
+        if (normalizeArabic(m.name).toLowerCase() === normM) return true;
+        return m.keywords.some(kw => normM.includes(normalizeArabic(kw).toLowerCase()));
+    });
+}
+
+function renderMeetingsHistoryView() {
+    const mode = document.getElementById('meetingsHistoryMode')?.value || "weekly";
+    const typeFilter = (document.getElementById('meetingsHistoryTypeFilter')?.value || "").trim();
+    const yearFilter = (document.getElementById('meetingsHistoryYearFilter')?.value || "").trim();
+    const kpiEl = document.getElementById('meetingsHistoryKpiCards');
+    const tableCont = document.getElementById('meetingsHistoryTableContainer');
+    if (!tableCont) return;
+
+    const allowed = getAllowedMeetingsForUser(currentUser);
+    const filteredRecords = rawData.filter(r => {
+        const mName = String(r["MeetingName"] || "").trim();
+        const mDate = formatDisplayDate(r["MeetingDate"]) || String(r["MeetingDate"] || "").trim();
+        if (!mName || !mDate) return false;
+        if (!isMeetingAllowedForUser(mName, allowed)) return false;
+        if (typeFilter && normalizeArabic(mName) !== normalizeArabic(typeFilter)) return false;
+        if (yearFilter) {
+            const parts = mDate.split("/");
+            if (parts.length !== 3 || parts[2] !== yearFilter) return false;
+        }
+        return true;
+    });
+
+    // تجميع حسب (اسم الاجتماع + التاريخ)
+    const sessionsMap = {};
+    filteredRecords.forEach(r => {
+        const mName = String(r["MeetingName"] || "").trim();
+        const mDate = formatDisplayDate(r["MeetingDate"]) || String(r["MeetingDate"] || "").trim();
+        const key = `${mName}__${mDate}`;
+        if (!sessionsMap[key]) {
+            sessionsMap[key] = { key, meetingName: mName, date: mDate, present: 0, excused: 0, absent: 0, total: 0, records: [] };
+        }
+        const st = String(r["Status"] || "").trim();
+        if (st === "حاضر") sessionsMap[key].present++;
+        else if (st === "معتذر") sessionsMap[key].excused++;
+        else sessionsMap[key].absent++;
+        sessionsMap[key].total++;
+        sessionsMap[key].records.push(r);
+    });
+
+    const weeklyRows = Object.values(sessionsMap).sort((a, b) => parseDateForSort(b.date) - parseDateForSort(a.date));
+    const totalSessions = weeklyRows.length;
+    const sumPresent = weeklyRows.reduce((acc, s) => acc + s.present, 0);
+    const avgPresent = totalSessions > 0 ? Math.round(sumPresent / totalSessions) : 0;
+    const sumTotal = weeklyRows.reduce((acc, s) => acc + s.total, 0);
+    const avgPct = sumTotal > 0 ? Math.round((sumPresent / sumTotal) * 100) : 0;
+
+    const recCount = document.getElementById('recordCount');
+    if (recCount) recCount.innerText = `${totalSessions} اجتماع مسجل`;
+
+    if (kpiEl) {
+        kpiEl.innerHTML = `
+            <div class="bg-white/95 p-4 rounded-2xl border border-amber-200 shadow-sm text-center"><span class="block text-xs font-bold text-slate-500 mb-1">عدد الاجتماعات المنعقدة</span><span class="text-2xl font-black text-amber-700">${totalSessions}</span></div>
+            <div class="bg-white/95 p-4 rounded-2xl border border-emerald-200 shadow-sm text-center"><span class="block text-xs font-bold text-slate-500 mb-1">متوسط الحضور / اجتماع</span><span class="text-2xl font-black text-emerald-600">${avgPresent}</span></div>
+            <div class="bg-white/95 p-4 rounded-2xl border border-blue-200 shadow-sm text-center"><span class="block text-xs font-bold text-slate-500 mb-1">إجمالي الحضور</span><span class="text-2xl font-black text-blue-600">${sumPresent}</span></div>
+            <div class="bg-white/95 p-4 rounded-2xl border border-indigo-200 shadow-sm text-center"><span class="block text-xs font-bold text-slate-500 mb-1">متوسط نسبة الحضور</span><span class="text-2xl font-black text-indigo-600">${avgPct}%</span></div>
+        `;
+    }
+
+    if (weeklyRows.length === 0) {
+        currentMeetingsHistoryRows = [];
+        tableCont.innerHTML = `<div class="text-center py-14 text-slate-400 font-bold text-xs">لا توجد اجتماعات مسجلة مطابقة للفلتر المحدد</div>`;
+        return;
+    }
+
+    if (mode === "weekly") {
+        currentMeetingsHistoryRows = weeklyRows;
+        tableCont.innerHTML = `
+            <div class="overflow-x-auto nice-scrollbar">
+                <table class="w-full text-right text-xs">
+                    <thead class="bg-slate-100 text-slate-700 font-black border-b border-slate-200">
+                        <tr>
+                            <th class="p-3 w-10 text-center">م</th>
+                            <th class="p-3">اسم الاجتماع</th>
+                            <th class="p-3 text-center">التاريخ</th>
+                            <th class="p-3 text-center text-emerald-700">حاضر</th>
+                            <th class="p-3 text-center text-amber-700">معتذر</th>
+                            <th class="p-3 text-center text-rose-700">غائب</th>
+                            <th class="p-3 text-center">نسبة الحضور</th>
+                            <th class="p-3 text-center">التفاصيل</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 font-bold">
+                        ${weeklyRows.map((s, idx) => {
+                            const pct = s.total > 0 ? Math.round((s.present / s.total) * 100) : 0;
+                            return `
+                                <tr class="hover:bg-slate-50">
+                                    <td class="p-3 text-center text-slate-400">${idx + 1}</td>
+                                    <td class="p-3 font-black text-slate-800">${s.meetingName}</td>
+                                    <td class="p-3 text-center font-mono" dir="ltr">${s.date}</td>
+                                    <td class="p-3 text-center text-emerald-700 font-black">${s.present}</td>
+                                    <td class="p-3 text-center text-amber-700">${s.excused}</td>
+                                    <td class="p-3 text-center text-rose-600">${s.absent}</td>
+                                    <td class="p-3 text-center"><span class="px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 font-black">${pct}%</span></td>
+                                    <td class="p-3 text-center">
+                                        <button type="button" onclick="openMeetingSessionDetails(${idx})" class="bg-amber-50 hover:bg-amber-600 text-amber-800 hover:text-white border border-amber-200 px-3 py-1 rounded-xl text-[11px] font-black transition cursor-pointer">👁️ عرض</button>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } else {
+        // ملخص شهري (مجمّع بالشهر واسم الاجتماع)
+        const monthNamesAr = ["", "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+        const monthlyMap = {};
+        weeklyRows.forEach(s => {
+            const parts = s.date.split("/");
+            const mKey = parts.length === 3 ? `${parts[2]}-${parts[1]}` : "غير محدد";
+            const mLabel = parts.length === 3 ? `${monthNamesAr[parseInt(parts[1], 10)] || parts[1]} ${parts[2]}` : "غير محدد";
+            const key = `${mKey}__${s.meetingName}`;
+            if (!monthlyMap[key]) {
+                monthlyMap[key] = { sortKey: mKey, monthLabel: mLabel, meetingName: s.meetingName, sessionsCount: 0, present: 0, excused: 0, absent: 0, total: 0 };
+            }
+            monthlyMap[key].sessionsCount++;
+            monthlyMap[key].present += s.present;
+            monthlyMap[key].excused += s.excused;
+            monthlyMap[key].absent += s.absent;
+            monthlyMap[key].total += s.total;
+        });
+
+        const monthlyRows = Object.values(monthlyMap).sort((a, b) => b.sortKey.localeCompare(a.sortKey));
+        currentMeetingsHistoryRows = monthlyRows;
+
+        tableCont.innerHTML = `
+            <div class="overflow-x-auto nice-scrollbar">
+                <table class="w-full text-right text-xs">
+                    <thead class="bg-slate-100 text-slate-700 font-black border-b border-slate-200">
+                        <tr>
+                            <th class="p-3 w-10 text-center">م</th>
+                            <th class="p-3">الشهر</th>
+                            <th class="p-3">اسم الاجتماع</th>
+                            <th class="p-3 text-center">عدد المرات</th>
+                            <th class="p-3 text-center text-emerald-700">متوسط الحضور</th>
+                            <th class="p-3 text-center text-blue-700">إجمالي الحضور</th>
+                            <th class="p-3 text-center">نسبة الحضور</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 font-bold">
+                        ${monthlyRows.map((m, idx) => {
+                            const avgP = m.sessionsCount > 0 ? Math.round(m.present / m.sessionsCount) : 0;
+                            const pct = m.total > 0 ? Math.round((m.present / m.total) * 100) : 0;
+                            return `
+                                <tr class="hover:bg-slate-50">
+                                    <td class="p-3 text-center text-slate-400">${idx + 1}</td>
+                                    <td class="p-3 font-black text-amber-900">${m.monthLabel}</td>
+                                    <td class="p-3 font-black text-slate-800">${m.meetingName}</td>
+                                    <td class="p-3 text-center">${m.sessionsCount}</td>
+                                    <td class="p-3 text-center text-emerald-700 font-black">${avgP}</td>
+                                    <td class="p-3 text-center text-blue-700">${m.present}</td>
+                                    <td class="p-3 text-center"><span class="px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 font-black">${pct}%</span></td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+}
+
+function openMeetingSessionDetails(idx) {
+    const session = currentMeetingsHistoryRows[idx];
+    const panel = document.getElementById('meetingSessionDetailPanel');
+    if (!session || !panel || !session.records) return;
+
+    panel.innerHTML = `
+        <div class="p-4 bg-amber-50 border-b border-amber-200 flex flex-wrap justify-between items-center gap-2">
+            <div>
+                <h4 class="text-sm font-black text-amber-950">📋 تفاصيل: ${session.meetingName} — بتاريخ ${session.date}</h4>
+                <p class="text-[11px] font-bold text-amber-800">حاضر: ${session.present} | معتذر: ${session.excused} | غائب: ${session.absent}</p>
+            </div>
+            <button type="button" onclick="document.getElementById('meetingSessionDetailPanel')?.classList.add('hidden')" class="px-3 py-1.5 rounded-xl bg-white border border-amber-200 text-xs font-bold text-slate-700">✕ إغلاق</button>
+        </div>
+        <div class="overflow-x-auto nice-scrollbar max-h-80">
+            <table class="w-full text-right text-xs">
+                <thead class="bg-slate-100 text-slate-700 font-black border-b border-slate-200">
+                    <tr><th class="p-2.5 w-10 text-center">م</th><th class="p-2.5">الاسم</th><th class="p-2.5 text-center">الحالة</th><th class="p-2.5">ملاحظات</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-semibold">
+                    ${session.records.map((r, i) => `
+                        <tr>
+                            <td class="p-2.5 text-center text-slate-400">${i + 1}</td>
+                            <td class="p-2.5 font-bold text-slate-800">${r.MemberName || '-'}</td>
+                            <td class="p-2.5 text-center font-black ${r.Status==='حاضر'?'text-emerald-700':r.Status==='معتذر'?'text-amber-700':'text-rose-600'}">${r.Status || '-'}</td>
+                            <td class="p-2.5 text-slate-500">${r.Notes || '-'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    panel.classList.remove('hidden');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function exportMeetingsHistoryPdf() {
+    if (!currentMeetingsHistoryRows || currentMeetingsHistoryRows.length === 0) {
+        alert("لا توجد بيانات في سجل الاجتماعات لتصديرها!");
+        return;
+    }
+    const mode = document.getElementById('meetingsHistoryMode')?.value || "weekly";
+    if (mode === "weekly") {
+        const rowsHtml = currentMeetingsHistoryRows.map((s, idx) => {
+            const pct = s.total > 0 ? Math.round((s.present / s.total) * 100) : 0;
+            return `<tr><td style="text-align:center;font-weight:800;">${idx + 1}</td><td style="font-weight:800;">${s.meetingName}</td><td style="text-align:center;font-family:monospace;" dir="ltr">${s.date}</td><td style="text-align:center;font-weight:900;color:#047857;">${s.present}</td><td style="text-align:center;color:#b45309;">${s.excused}</td><td style="text-align:center;color:#be123c;">${s.absent}</td><td style="text-align:center;font-weight:900;">${pct}%</td></tr>`;
+        }).join('');
+        const tableHtml = `<table class="pdf-table"><thead><tr><th style="width:6%;text-align:center;">م</th><th style="width:32%;">اسم الاجتماع</th><th style="width:16%;text-align:center;">التاريخ</th><th style="width:11%;text-align:center;">حاضر</th><th style="width:11%;text-align:center;">معتذر</th><th style="width:11%;text-align:center;">غائب</th><th style="width:13%;text-align:center;">النسبة</th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
+        openOfficialPdfPreview("تقرير سجل الاجتماعات الأسبوعية", `إجمالي الاجتماعات: ${currentMeetingsHistoryRows.length}`, tableHtml);
+    } else {
+        const rowsHtml = currentMeetingsHistoryRows.map((m, idx) => {
+            const avgP = m.sessionsCount > 0 ? Math.round(m.present / m.sessionsCount) : 0;
+            const pct = m.total > 0 ? Math.round((m.present / m.total) * 100) : 0;
+            return `<tr><td style="text-align:center;font-weight:800;">${idx + 1}</td><td style="font-weight:800;">${m.monthLabel}</td><td style="font-weight:800;">${m.meetingName}</td><td style="text-align:center;">${m.sessionsCount}</td><td style="text-align:center;font-weight:900;color:#047857;">${avgP}</td><td style="text-align:center;">${m.present}</td><td style="text-align:center;font-weight:900;">${pct}%</td></tr>`;
+        }).join('');
+        const tableHtml = `<table class="pdf-table"><thead><tr><th style="width:6%;text-align:center;">م</th><th style="width:18%;">الشهر</th><th style="width:30%;">اسم الاجتماع</th><th style="width:11%;text-align:center;">عدد المرات</th><th style="width:12%;text-align:center;">متوسط الحضور</th><th style="width:12%;text-align:center;">إجمالي الحضور</th><th style="width:11%;text-align:center;">النسبة</th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
+        openOfficialPdfPreview("الملخص الشهري لحضور الاجتماعات", `إجمالي السجلات الشهرية: ${currentMeetingsHistoryRows.length}`, tableHtml);
+    }
+}
+
+function shareMeetingsHistoryWhatsApp() {
+    if (!currentMeetingsHistoryRows || currentMeetingsHistoryRows.length === 0) {
+        alert("لا توجد بيانات للمشاركة!");
+        return;
+    }
+    const mode = document.getElementById('meetingsHistoryMode')?.value || "weekly";
+    let text = mode === "weekly" ? `*سجل الاجتماعات الأسبوعية*
+
+` : `*الملخص الشهري للاجتماعات*
+
+`;
+    currentMeetingsHistoryRows.forEach((r, idx) => {
+        if (mode === "weekly") {
+            const pct = r.total > 0 ? Math.round((r.present / r.total) * 100) : 0;
+            text += `${idx + 1}. *${r.meetingName}* (${r.date})
+✅ حاضر: ${r.present} | ⚠️ معتذر: ${r.excused} | ❌ غائب: ${r.absent} (${pct}%)
+──────────
+`;
+        } else {
+            const avgP = r.sessionsCount > 0 ? Math.round(r.present / r.sessionsCount) : 0;
+            text += `${idx + 1}. *${r.monthLabel}* — ${r.meetingName}
+📅 انعقد: ${r.sessionsCount} مرة | ✅ متوسط الحضور: ${avgP}
+──────────
+`;
+        }
+    });
+    shareToWhatsApp(text);
+}
+
 function printServantsMeetingRoster() {
     const meetingName = document.getElementById('servantsMeetingName')?.value || "اجتماع الخدام الأسبوعي", meetingDate = document.getElementById('servantsMeetingDate')?.value || "";
-    if (currentServantsMeetingList.length === 0) { alert("لا يوجد خدام في الكشف للمشاركة!"); return; }
+    if (currentServantsMeetingList.length === 0) { alert("لا يوجد أسماء في الكشف للمشاركة!"); return; }
     let text = `*كشف حضور: ${meetingName}*
 التاريخ: ${meetingDate}
 
@@ -3424,7 +3894,7 @@ async function loadData(force = false) {
                     else if (currentSSView === 'charts') initSSChartsView();
                     else renderStandardCards();
                 } else if (currentTab === 'Meetings_Attendance') {
-                    if (currentMeetingsView === 'live') initServantsMeetingLiveView(); else renderStandardCards();
+                    if (currentMeetingsView === 'live') initServantsMeetingLiveView(); else initMeetingsHistoryView();
                 } else if (currentTab === 'Visitations') {
                     visitationsData = rawData;
                     if (currentVisitView === 'dashboard') initVisitationsDashboard();
@@ -3462,7 +3932,7 @@ function showLoader(s) {
         else document.getElementById('standardCardsContainer')?.classList.toggle('hidden', s);
     } else if (currentTab === 'Meetings_Attendance') {
         if (currentMeetingsView === 'live') document.getElementById('servantsMeetingLiveSection')?.classList.toggle('hidden', s);
-        else document.getElementById('standardCardsContainer')?.classList.toggle('hidden', s);
+        else document.getElementById('meetingsHistorySection')?.classList.toggle('hidden', s);
     } else if (currentTab === 'Visitations') {
         if (currentVisitView === 'dashboard') document.getElementById('visitationDashboardSection')?.classList.toggle('hidden', s);
         else if (currentVisitView === 'reports') document.getElementById('visitationReportsSection')?.classList.toggle('hidden', s);
