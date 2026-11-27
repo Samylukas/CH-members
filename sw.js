@@ -1,9 +1,9 @@
-// Service Worker - منظومة الخدمة والرعاية الكنسية (v41 Smart Role-Based Visitations + Reports)
-const CACHE_NAME = 'church-system-cache-v41';
+// Service Worker - منظومة الخدمة والرعاية الكنسية (v42 Visitations Progress & Cancel Followup)
+const CACHE_NAME = 'church-system-cache-v42';
 const APP_SHELL = [
     './',
     './index.html',
-    './app.js?v=41',
+    './app.js?v=42',
     './style.css',
     './logo.png',
     './manifest.json'

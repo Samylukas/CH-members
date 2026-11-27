@@ -2274,18 +2274,23 @@ function getLatestVisitRecordForMember(memberId, memberName, familyHead = "") {
 function renderVisitationWorkspace() {
     const listEl = document.getElementById('visitUrgentList');
     const countBadge = document.getElementById('visitUrgentCount');
+    const progressBadge = document.getElementById('visitProgressBadge');
     const headingEl = document.getElementById('visitListHeading');
     if (!listEl) return;
     listEl.innerHTML = "";
 
     const now = new Date();
     const cards = [];
+    let activeStatusFilter = "all";
+    let totalInScope = 0;
+    let visitedInScope = 0;
 
     if (isPriestOrAdminUser()) {
         const areaQ = (document.getElementById('visitFilterArea')?.value || "").trim();
         const searchQ = normalizeArabic(document.getElementById('visitSearchInput')?.value || "").toLowerCase();
         const targetMode = document.getElementById('visitTargetMode')?.value || "families";
-        const statusFilter = document.getElementById('visitStatusFilterPriest')?.value || "overdue";
+        const statusFilter = document.getElementById('visitStatusFilterPriest')?.value || "all";
+        activeStatusFilter = statusFilter;
 
         if (targetMode === "families") {
             const familiesMap = {};
@@ -2308,10 +2313,14 @@ function renderVisitationWorkspace() {
                     if (!blob.includes(searchQ)) return;
                 }
 
-                const lastDateStr = getLastFamilyVisitDate(members);
-                const isNever = (lastDateStr === "لم يُفتقد بعد" || lastDateStr === "لا يوجد سجل");
-                const daysSince = isNever ? 9999 : Math.floor((now - parseDateForSort(lastDateStr)) / (1000 * 60 * 60 * 24));
+                const lastDateRaw = getLastFamilyVisitDate(members);
+                const isNever = (lastDateRaw === "لم يُفتقد بعد" || lastDateRaw === "لا يوجد سجل");
+                const lastDateShort = isNever ? "" : (formatDisplayDate(lastDateRaw) || lastDateRaw);
+                const daysSince = isNever ? 9999 : Math.floor((now - parseDateForSort(lastDateShort)) / (1000 * 60 * 60 * 24));
                 const isOverdue = isNever || daysSince > 90;
+
+                totalInScope++;
+                if (!isOverdue) visitedInScope++;
 
                 if (statusFilter === "overdue" && !isOverdue) return;
                 if (statusFilter === "visited" && isOverdue) return;
@@ -2321,7 +2330,8 @@ function renderVisitationWorkspace() {
                     name: headName,
                     sub: `🏠 أسرة (${members.length} أفراد) | 📍 ${area}`,
                     phone: headRec?.["هاتف الاسرة"] || headRec?.["تليفون العمل/المحمول"] || "-",
-                    lastDateStr: isNever ? "لم تُفتقد بعد" : lastDateStr,
+                    lastDateShort,
+                    isNever,
                     daysSince,
                     isOverdue,
                     area
@@ -2339,8 +2349,12 @@ function renderVisitationWorkspace() {
                 }
                 const latestV = getLatestVisitRecordForMember(m["ID"], m["الاسم ثلاثي"], m["اسم رب الاسرة"]);
                 const isNever = !latestV;
-                const daysSince = isNever ? 9999 : Math.floor((now - parseDateForSort(latestV["VisitDate"])) / (1000 * 60 * 60 * 24));
+                const lastDateShort = isNever ? "" : (formatDisplayDate(latestV["VisitDate"]) || latestV["VisitDate"]);
+                const daysSince = isNever ? 9999 : Math.floor((now - parseDateForSort(lastDateShort)) / (1000 * 60 * 60 * 24));
                 const isOverdue = isNever || daysSince > 90;
+
+                totalInScope++;
+                if (!isOverdue) visitedInScope++;
 
                 if (statusFilter === "overdue" && !isOverdue) return;
                 if (statusFilter === "visited" && isOverdue) return;
@@ -2350,7 +2364,8 @@ function renderVisitationWorkspace() {
                     name: m["الاسم ثلاثي"] || "-",
                     sub: `🏠 أسرة: ${m["اسم رب الاسرة"] || "-"} | 📍 ${area}`,
                     phone: m["تليفون العمل/المحمول"] || m["هاتف الاسرة"] || "-",
-                    lastDateStr: isNever ? "لم يُفتقد بعد" : `${latestV["VisitDate"]} (${latestV["VisitType"] || ""})`,
+                    lastDateShort,
+                    isNever,
                     daysSince,
                     isOverdue,
                     area
@@ -2364,6 +2379,7 @@ function renderVisitationWorkspace() {
         const grade = document.getElementById('visitSSGrade')?.value || "";
         const searchQ = normalizeArabic(document.getElementById('visitSSSearchInput')?.value || "").toLowerCase();
         const statusFilter = document.getElementById('visitStatusFilterSS')?.value || "all";
+        activeStatusFilter = statusFilter;
         const assignedClsNorm = normalizeArabic(currentUser.AssignedClass || "");
         const forcedGender = (currentUser.Role === "Class_Servant" || currentUser.Role === "Stage_Leader")
             ? (assignedClsNorm === "بنين" ? "ذكر" : assignedClsNorm === "بنات" ? "انثي" : "")
@@ -2381,8 +2397,12 @@ function renderVisitationWorkspace() {
 
             const latestV = getLatestVisitRecordForMember(kid["ID"], kid["الاسم ثلاثي"], kid["اسم رب الاسرة"]);
             const isNever = !latestV;
-            const daysSince = isNever ? 9999 : Math.floor((now - parseDateForSort(latestV["VisitDate"])) / (1000 * 60 * 60 * 24));
+            const lastDateShort = isNever ? "" : (formatDisplayDate(latestV["VisitDate"]) || latestV["VisitDate"]);
+            const daysSince = isNever ? 9999 : Math.floor((now - parseDateForSort(lastDateShort)) / (1000 * 60 * 60 * 24));
             const isOverdue = isNever || daysSince > 30;
+
+            totalInScope++;
+            if (!isOverdue) visitedInScope++;
 
             if (statusFilter === "overdue" && !isOverdue) return;
             if (statusFilter === "visited" && isOverdue) return;
@@ -2392,7 +2412,8 @@ function renderVisitationWorkspace() {
                 name: kid["الاسم ثلاثي"] || "-",
                 sub: `🎓 ${kid["المرحلة"] || ""} - ${kid["الصف"] || ""} | 🏠 ${kid["اسم رب الاسرة"] || "-"}`,
                 phone: kid["تليفون العمل/المحمول"] || kid["هاتف الاسرة"] || "-",
-                lastDateStr: isNever ? "لم يُفتقد بعد" : `${latestV["VisitDate"]} (${latestV["VisitType"] || ""})`,
+                lastDateShort,
+                isNever,
                 daysSince,
                 isOverdue,
                 area: getMemberArea(kid) || "-"
@@ -2401,8 +2422,24 @@ function renderVisitationWorkspace() {
         if (headingEl) headingEl.innerText = `قائمة افتقاد: ${stage} ${grade ? '- ' + grade : ''}`;
     }
 
-    cards.sort((a, b) => b.daysSince - a.daysSince || a.name.localeCompare(b.name, 'ar'));
+    // في وضع "الكل": ترتيب أبجدي ثابت عشان تقدر تكمل المنطقة على أكتر من يوم وتعرف وصلت لفين
+    if (activeStatusFilter === "all") {
+        cards.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+    } else if (activeStatusFilter === "visited") {
+        cards.sort((a, b) => a.daysSince - b.daysSince || a.name.localeCompare(b.name, 'ar'));
+    } else {
+        cards.sort((a, b) => b.daysSince - a.daysSince || a.name.localeCompare(b.name, 'ar'));
+    }
+
     if (countBadge) countBadge.innerText = `${cards.length}`;
+    if (progressBadge) {
+        if (totalInScope > 0) {
+            progressBadge.innerText = `✓ تم افتقاد ${visitedInScope} من ${totalInScope}`;
+            progressBadge.classList.remove('hidden');
+        } else {
+            progressBadge.classList.add('hidden');
+        }
+    }
     const recCount = document.getElementById('recordCount');
     if (recCount) recCount.innerText = `${cards.length} حالة`;
 
@@ -2411,20 +2448,36 @@ function renderVisitationWorkspace() {
         return;
     }
 
-    const slice = cards.slice(0, 80);
+    const slice = cards.slice(0, 200);
     let html = slice.map(rec => {
-        const delayLabel = rec.daysSince === 9999 ? "لم يُفتقد أبدًا" : (rec.isOverdue ? `متأخر منذ ${rec.daysSince} يوم` : `تم منذ ${rec.daysSince} يوم`);
-        const badgeCls = rec.isOverdue ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-emerald-50 text-emerald-700 border-emerald-200";
-        const safeName = rec.name.replace(/'/g, "\'");
+        let statusLabel = "";
+        let badgeCls = "";
+        let cardCls = "";
+
+        if (rec.isNever) {
+            statusLabel = "لم يُفتقد أبدًا";
+            badgeCls = "bg-rose-50 text-rose-700 border-rose-200";
+            cardCls = "bg-slate-50/70 border-rose-200";
+        } else if (!rec.isOverdue) {
+            statusLabel = `✓ تم افتقاده بتاريخ ${rec.lastDateShort}`;
+            badgeCls = "bg-emerald-100 text-emerald-800 border-emerald-300";
+            cardCls = "bg-emerald-50/40 border-emerald-300";
+        } else {
+            statusLabel = `متأخر — آخر افتقاد: ${rec.lastDateShort}`;
+            badgeCls = "bg-amber-50 text-amber-800 border-amber-300";
+            cardCls = "bg-amber-50/30 border-amber-200";
+        }
+
+        const safeName = String(rec.name || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
         return `
-            <div class="bg-slate-50/70 p-3.5 rounded-2xl border ${rec.isOverdue ? 'border-rose-200' : 'border-slate-200'} flex flex-col justify-between gap-2.5">
+            <div class="${cardCls} p-3.5 rounded-2xl border flex flex-col justify-between gap-2.5 transition">
                 <div class="flex justify-between items-start gap-2">
                     <div class="min-w-0">
                         <h4 class="text-sm font-black text-slate-800 truncate">${rec.name}</h4>
                         <p class="text-[11px] text-slate-500 font-semibold mt-0.5">${rec.sub}</p>
                         <p class="text-[11px] text-slate-600 font-mono mt-0.5" dir="ltr">📞 ${rec.phone}</p>
                     </div>
-                    <span class="shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full border ${badgeCls}">${delayLabel}</span>
+                    <span class="shrink-0 text-[10px] font-black px-2.5 py-0.5 rounded-full border ${badgeCls}">${statusLabel}</span>
                 </div>
                 <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/70 flex-wrap">
                     <div class="flex items-center gap-1.5">${renderContactButtons(rec.phone)}</div>
@@ -2437,8 +2490,8 @@ function renderVisitationWorkspace() {
         `;
     }).join('');
 
-    if (cards.length > 80) {
-        html += `<div class="md:col-span-2 text-center py-2 text-[11px] text-slate-500 font-bold">يتم عرض أول 80 نتيجة من إجمالي ${cards.length} — استخدم البحث أو المنطقة للتخصيص</div>`;
+    if (cards.length > 200) {
+        html += `<div class="md:col-span-2 text-center py-2 text-[11px] text-slate-500 font-bold">يتم عرض أول 200 نتيجة من إجمالي ${cards.length} — استخدم البحث أو اختر المنطقة للتخصيص</div>`;
     }
     listEl.innerHTML = html;
 }
@@ -2469,15 +2522,46 @@ function renderVisitationFollowups() {
         return;
     }
     banner.classList.remove('hidden');
-    followupList.innerHTML = upcoming.map(rec => `
-        <div class="bg-white p-3 rounded-xl border border-indigo-200 flex justify-between items-center gap-2">
-            <div>
-                <h4 class="text-xs sm:text-sm font-black text-slate-800">${rec.MemberName}</h4>
+    followupList.innerHTML = upcoming.map(rec => {
+        const idKey = Object.keys(rec)[0];
+        const visitId = rec[idKey];
+        const safeName = String(rec.MemberName || '').replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+        return `
+        <div class="bg-white p-3 rounded-xl border border-indigo-200 flex justify-between items-center gap-2 flex-wrap">
+            <div class="min-w-0">
+                <h4 class="text-xs sm:text-sm font-black text-slate-800 truncate">${rec.MemberName}</h4>
                 <p class="text-[11px] text-slate-500 font-semibold">👤 ${rec.VisitorName} | 🗓️ <strong class="text-indigo-700">${rec.FollowUpDate}</strong></p>
             </div>
-            <button onclick="quickAddVisitation('${rec.MemberID}', '${String(rec.MemberName || '').replace(/'/g, "\'")}', '${rec.VisitType || 'منزلي'}')" class="bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white px-3 py-1.5 rounded-xl text-[11px] font-black transition shrink-0">+ متابعة</button>
+            <div class="flex items-center gap-1.5 shrink-0">
+                <button type="button" onclick="quickAddVisitation('${rec.MemberID}', '${safeName}', '${rec.VisitType || 'منزلي'}')" class="bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white px-3 py-1.5 rounded-xl text-[11px] font-black transition cursor-pointer">+ متابعة</button>
+                <button type="button" onclick="cancelScheduledFollowup('${visitId}', '${safeName}')" class="bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white border border-rose-200 px-2.5 py-1.5 rounded-xl text-[11px] font-black transition cursor-pointer">✕ إلغاء</button>
+            </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
+}
+
+async function cancelScheduledFollowup(visitId, memberName) {
+    if (!confirm(`هل أنت متأكد من إلغاء موعد المتابعة المجدولة لـ "${memberName}"؟`)) return;
+    const rec = visitationsData.find(v => String(v[Object.keys(v)[0]]) === String(visitId));
+    if (!rec) return;
+    const idKey = Object.keys(rec)[0];
+    const updatedPayload = { ...rec, [idKey]: Number(visitId), FollowUpDate: "" };
+    delete updatedPayload._searchIdx;
+    try {
+        const res = await apiPost({ sheet: "Visitations", action: "update", data: updatedPayload });
+        if (res.status === "success") {
+            rec["FollowUpDate"] = "";
+            const rawMatch = rawData.find(r => String(r[Object.keys(r)[0]]) === String(visitId));
+            if (rawMatch) rawMatch["FollowUpDate"] = "";
+            sendAuditLog("إلغاء متابعة مجدولة", "Visitations", `تم إلغاء موعد المتابعة لـ ${memberName} (#${visitId})`);
+            renderVisitationFollowups();
+        } else {
+            alert("تعذر إلغاء المتابعة: " + (res.message || ""));
+        }
+    } catch (e) {
+        alert("حدث خطأ أثناء إلغاء المتابعة.");
+    }
 }
 
 function quickAddVisitation(memberId, memberName, visitType = "منزلي") {
