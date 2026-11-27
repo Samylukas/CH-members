@@ -1917,10 +1917,13 @@ async function generateAndPrintClassRoster() {
 // 9. قسم رصد حضور الاجتماعات (اجتماع الخدام + الشباب + درس الكتاب + السيدات + الأسرة + جدول أسبوعي وشهري)
 const MEETINGS_CATALOG = [
     { key: "servants", name: "اجتماع الخدام الأسبوعي", audience: "servants", keywords: ["خدام", "مدارس الاحد"] },
-    { key: "youth", name: "اجتماع الشباب والجامعة", audience: "general", keywords: ["شباب", "جامع", "خريج"] },
+    { key: "servants", name: "اجتماع الخدام الشهري", audience: "servants", keywords: ["خدام", "مدارس الاحد"] },
+    { key: "youth", name: "اجتماع الشباب والجامعة", audience: "general", keywords: ["شباب", "جامعة", "خريج"] },
     { key: "bible", name: "اجتماع درس الكتاب", audience: "general", keywords: ["درس الكتاب", "كتاب", "الاجتماعات"] },
     { key: "women", name: "اجتماع السيدات", audience: "general", keywords: ["سيدات", "السيدات"] },
-    { key: "family", name: "اجتماع الأسرة العام", audience: "general", keywords: ["اسره", "الاسرة", "الاجتماعات"] }
+    { key: "family", name: "اجتماع الأسرة العام", audience: "general", keywords: ["اسره", "الاسرة", "الاجتماعات"] },
+    { key: "deacons", name: "اجتماع الشمامسة", audience: "general", keywords: ["شمامسه", "الشمامسه"] }
+    { key: "family", name: "اجتماع الصلاه", audience: "general", keywords: ["اسره", "الاسرة", "الاجتماعات"] },
 ];
 
 let currentSelectedMeetingKey = "servants";
