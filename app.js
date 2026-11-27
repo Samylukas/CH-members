@@ -4995,18 +4995,19 @@ let isSyncingQueue = false;
 let connectivityCheckTimer = null;
 let isCheckingConnectivity = false;
 let lastRenderedConnState = null;
+let consecutivePingFailures = 0;
 
 async function checkRealConnectivity() {
     if (isCheckingConnectivity) return isAppOnline;
     if (!navigator.onLine) {
+        consecutivePingFailures = 2;
         updateConnectionIndicator(false);
         return false;
     }
     isCheckingConnectivity = true;
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timeoutId = controller ? setTimeout(() => controller.abort(), 1800) : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 4500) : null;
     try {
-        // فحص اتصال إنترنت خارجي حقيقي (لا يتأثر بالملفات المحلية داخل APK الأندرويد أو كاش المتصفح)
         await fetch(`https://clients3.google.com/generate_204?ping=${Date.now()}`, {
             method: 'GET',
             mode: 'no-cors',
@@ -5014,17 +5015,22 @@ async function checkRealConnectivity() {
             signal: controller ? controller.signal : undefined
         });
         if (timeoutId) clearTimeout(timeoutId);
+        consecutivePingFailures = 0;
         const wasOffline = !isAppOnline;
         updateConnectionIndicator(true);
         if (wasOffline) {
             loadServantsListForLogin();
-            if (currentUser) syncOfflineQueue(false);
+            if (currentUser && !isSyncingQueue) syncOfflineQueue(false);
         }
         return true;
     } catch (e) {
         if (timeoutId) clearTimeout(timeoutId);
-        updateConnectionIndicator(false);
-        return false;
+        consecutivePingFailures++;
+        // عدم التحول إلى "غير متصل" إلا بعد فشل محاولتين متتاليتين لتجنب التذبذب على شبكات الموبايل
+        if (consecutivePingFailures >= 2 || !navigator.onLine) {
+            updateConnectionIndicator(false);
+        }
+        return isAppOnline;
     } finally {
         isCheckingConnectivity = false;
     }
@@ -5059,7 +5065,7 @@ function initOfflineSupport() {
         if (document.visibilityState === 'visible') {
             checkRealConnectivity();
         }
-    }, 2000);
+    }, 3000);
 }
 
 function updateConnectionIndicator(onlineState) {
@@ -5739,6 +5745,90 @@ function closeOfficialPdfPreview() {
     const modal = document.getElementById('officialPdfPreviewModal');
     if (modal) modal.classList.add('hidden');
     document.body.classList.remove('pdf-print-mode');
+}
+
+function ensureHtml2PdfLoaded() {
+    return new Promise((resolve, reject) => {
+        if (typeof html2pdf !== 'undefined') return resolve();
+        const s = document.createElement('script');
+        s.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error("تعذر تحميل مكتبة تصدير PDF، تأكد من الاتصال بالإنترنت."));
+        document.head.appendChild(s);
+    });
+}
+
+function getOfficialPdfOptions(filename) {
+    return {
+        margin: [10, 8, 10, 8],
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.96 },
+        html2canvas: { scale: 2, useCORS: true, logging: false, letterRendering: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+}
+
+async function downloadOfficialPdfFile() {
+    const el = document.getElementById('officialPdfContent');
+    const titleEl = document.getElementById('officialPdfModalTitle');
+    const btn = document.getElementById('btnDownloadPdfReal');
+    if (!el) return;
+
+    const safeTitle = String(titleEl?.innerText || 'تقرير_الكنيسة').replace(/[\\/:*?"<>|]/g, '_').trim();
+    const filename = `${safeTitle}_${new Date().toISOString().slice(0, 10)}.pdf`;
+
+    if (btn) { btn.disabled = true; btn.innerText = "⏳ جاري تجهيز PDF..."; }
+    try {
+        await ensureHtml2PdfLoaded();
+        await html2pdf().set(getOfficialPdfOptions(filename)).from(el).save();
+    } catch (err) {
+        alert("⚠️ " + (err.message || "حدث خطأ أثناء تجهيز ملف PDF"));
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerText = "📥 تحميل PDF"; }
+    }
+}
+
+async function shareOfficialPdfFile() {
+    const el = document.getElementById('officialPdfContent');
+    const titleEl = document.getElementById('officialPdfModalTitle');
+    const btn = document.getElementById('btnSharePdfReal');
+    if (!el) return;
+
+    const safeTitle = String(titleEl?.innerText || 'تقرير_الكنيسة').replace(/[\\/:*?"<>|]/g, '_').trim();
+    const filename = `${safeTitle}_${new Date().toISOString().slice(0, 10)}.pdf`;
+
+    if (btn) { btn.disabled = true; btn.innerText = "⏳ جاري التجهيز..."; }
+    try {
+        await ensureHtml2PdfLoaded();
+        const pdfBlob = await html2pdf().set(getOfficialPdfOptions(filename)).from(el).outputPdf('blob');
+        const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+        if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+            await navigator.share({
+                title: safeTitle,
+                text: safeTitle,
+                files: [pdfFile]
+            });
+        } else {
+            // احتياطي: تحميل الملف مباشرة إذا لم يدعم الجهاز مشاركة الملفات
+            const url = URL.createObjectURL(pdfBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+        }
+    } catch (err) {
+        if (err && err.name !== 'AbortError') {
+            alert("⚠️ تعذر مشاركة ملف PDF، جاري تحميله بدلاً من ذلك.");
+            downloadOfficialPdfFile();
+        }
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerText = "📤 مشاركة PDF"; }
+    }
 }
 
 function triggerOfficialPdfPrint() {

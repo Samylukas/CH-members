@@ -1,16 +1,17 @@
-// Service Worker - منظومة الخدمة والرعاية الكنسية (v44 Admin Manage Meetings + Sat Prayer & Deacons)
-const CACHE_NAME = 'church-system-cache-v44';
+// Service Worker - منظومة الخدمة والرعاية الكنسية (v45 Mobile PDF + Stable Connectivity)
+const CACHE_NAME = 'church-system-cache-v45';
 const APP_SHELL = [
     './',
     './index.html',
-    './app.js?v=44',
+    './app.js?v=45',
     './style.css',
     './logo.png',
     './manifest.json'
 ];
 const EXTERNAL_ASSETS = [
     'https://cdn.tailwindcss.com',
-    'https://cdn.jsdelivr.net/npm/chart.js'
+    'https://cdn.jsdelivr.net/npm/chart.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'
 ];
 
 self.addEventListener('install', (event) => {

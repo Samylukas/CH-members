@@ -6,6 +6,7 @@
     <title>منظومة الخدمة والرعاية الكنسية</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/png" href="logo.png?v=37">
     <link rel="shortcut icon" type="image/png" href="logo.png?v=37">
@@ -1056,12 +1057,14 @@ function togglePasswordVisibilityInline() {
             <span class="text-lg">📄</span>
             <div>
                 <p id="officialPdfModalTitle" class="text-xs sm:text-sm font-black text-slate-800">معاينة التقرير الرسمي</p>
-                <p class="text-[10px] text-slate-500 font-bold">اضغط «حفظ كملف PDF / طباعة» ثم اختر (Save as PDF / حفظ بتنسيق PDF)</p>
+                <p class="text-[10px] text-slate-500 font-bold">اضغط «📥 تحميل PDF» لحفظ الملف مباشرة على الموبايل أو «📤 مشاركة PDF» لإرساله واتساب</p>
             </div>
         </div>
-        <div class="flex items-center gap-2">
-            <button type="button" onclick="triggerOfficialPdfPrint()" class="px-4 py-2 rounded-xl bg-red-700 hover:bg-red-800 text-white font-black text-xs shadow-md transition cursor-pointer">🖨️ حفظ كملف PDF / طباعة</button>
-            <button type="button" onclick="closeOfficialPdfPreview()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer">✕ إغلاق</button>
+        <div class="flex items-center gap-1.5 flex-wrap">
+            <button type="button" id="btnDownloadPdfReal" onclick="downloadOfficialPdfFile()" class="px-3.5 py-2 rounded-xl bg-red-700 hover:bg-red-800 text-white font-black text-xs shadow-md transition cursor-pointer">📥 تحميل PDF</button>
+            <button type="button" id="btnSharePdfReal" onclick="shareOfficialPdfFile()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition cursor-pointer">📤 مشاركة PDF</button>
+            <button type="button" onclick="triggerOfficialPdfPrint()" class="hidden sm:inline-flex px-3.5 py-2 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs shadow-sm transition cursor-pointer">🖨️ طباعة</button>
+            <button type="button" onclick="closeOfficialPdfPreview()" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer">✕ إغلاق</button>
         </div>
     </div>
     <div id="officialPdfPaper" class="max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 sm:p-8 text-right">
@@ -1069,6 +1072,6 @@ function togglePasswordVisibilityInline() {
     </div>
 </div>
 
-<script src="app.js?v=44"></script>
+<script src="app.js?v=45"></script>
 </body>
 </html>
