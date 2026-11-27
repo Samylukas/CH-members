@@ -1,9 +1,9 @@
-// Service Worker - منظومة الخدمة والرعاية الكنسية (v40 Official PDF Reports + Header Fix)
-const CACHE_NAME = 'church-system-cache-v40';
+// Service Worker - منظومة الخدمة والرعاية الكنسية (v41 Smart Role-Based Visitations + Reports)
+const CACHE_NAME = 'church-system-cache-v41';
 const APP_SHELL = [
     './',
     './index.html',
-    './app.js?v=40',
+    './app.js?v=41',
     './style.css',
     './logo.png',
     './manifest.json'

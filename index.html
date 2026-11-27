@@ -313,9 +313,10 @@ function togglePasswordVisibilityInline() {
                 <button id="btnMeetingsHistory" onclick="switchMeetingsView('history')" class="px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900">🗃️ سجل الاجتماعات السابقة</button>
             </div>
 
-            <div id="visitationsViewSwitcher" class="flex items-center gap-2 bg-slate-200/80 p-1 rounded-xl hidden">
-                <button id="btnVisitDashboard" onclick="switchVisitationsView('dashboard')" class="px-4 py-2 rounded-lg text-xs font-black transition bg-white text-rose-700 shadow-sm">🚨 الحالات العاجلة والمتابعات</button>
-                <button id="btnVisitHistory" onclick="switchVisitationsView('history')" class="px-4 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900">🗃️ سجل الزيارات الكامل</button>
+            <div id="visitationsViewSwitcher" class="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-xl hidden flex-wrap">
+                <button id="btnVisitDashboard" onclick="switchVisitationsView('dashboard')" class="px-3.5 py-2 rounded-lg text-xs font-black transition bg-white text-rose-700 shadow-sm">🎯 الافتقاد المباشر</button>
+                <button id="btnVisitReports" onclick="switchVisitationsView('reports')" class="px-3.5 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900">📊 تقارير الإنجاز والمناطق</button>
+                <button id="btnVisitHistory" onclick="switchVisitationsView('history')" class="px-3.5 py-2 rounded-lg text-xs font-black transition text-slate-600 hover:text-slate-900">🗃️ سجل الزيارات الكامل</button>
             </div>
 
             <div id="servantsViewSwitcher" class="flex items-center gap-2 bg-slate-200/80 p-1 rounded-xl hidden">
@@ -564,24 +565,119 @@ function togglePasswordVisibilityInline() {
             </div>
         </div>
 
-        <!-- 4. قسم الافتقاد -->
-        <div id="visitationDashboardSection" class="hidden space-y-6 no-print">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-white/95 p-5 rounded-2xl border border-rose-200 shadow-sm">
-                    <div class="flex justify-between items-center mb-4 pb-2 border-b border-rose-100">
-                        <h3 class="text-sm font-black text-rose-700 flex items-center gap-1.5"><span>🚨</span> أسر بحاجة للافتقاد عاجلاً (+90 يوماً)</h3>
-                        <span id="visitUrgentCount" class="bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full text-xs font-black">0</span>
+        <!-- 4. قسم الافتقاد المباشر (ذكي حسب الصلاحية: كاهن/أدمن بالمناطق والأسر والأفراد، أمين مرحلة بمرحلته، خادم فصل بفصله) -->
+        <div id="visitationDashboardSection" class="hidden space-y-5 no-print">
+            <!-- شريط الفلاتر والبحث الذكي -->
+            <div class="bg-white/95 p-5 rounded-2xl border border-rose-200 shadow-sm space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                    <div>
+                        <h3 id="visitWorkspaceTitle" class="text-sm sm:text-base font-black text-rose-900 flex items-center gap-1.5"><span>🎯</span> الافتقاد المباشر</h3>
+                        <p id="visitWorkspaceSubtitle" class="text-[11px] text-slate-500 font-bold mt-0.5">اختر الحالة وسجّل الافتقاد التليفوني أو المنزلي بضغطة واحدة</p>
                     </div>
-                    <div id="visitUrgentList" class="space-y-3 max-h-[480px] overflow-y-auto nice-scrollbar"></div>
+                    <span id="visitScopeBadge" class="text-[11px] font-black bg-rose-50 text-rose-700 border border-rose-200 px-3 py-1 rounded-xl"></span>
                 </div>
-                <div class="bg-white/95 p-5 rounded-2xl border border-indigo-200 shadow-sm">
-                    <div class="flex justify-between items-center mb-4 pb-2 border-b border-indigo-100">
-                        <h3 class="text-sm font-black text-indigo-700 flex items-center gap-1.5"><span>🗓️</span> متابعات مجدولة للأسبوع القادم</h3>
-                        <span id="visitFollowupCount" class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-black">0</span>
+
+                <!-- فلاتر الكهنة والأدمن (المنطقة + بحث أسرة/فرد + نوع العرض + الحالة) -->
+                <div id="visitPriestFilters" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">المنطقة السكنية</label>
+                        <select id="visitFilterArea" onchange="renderVisitationWorkspace()" class="w-full p-2.5 bg-blue-50/40 border border-blue-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-rose-500">
+                            <option value="">كل المناطق السكنية</option>
+                        </select>
                     </div>
-                    <div id="visitFollowupList" class="space-y-3 max-h-[480px] overflow-y-auto nice-scrollbar"></div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">بحث باسم الأسرة أو الفرد أو المحمول</label>
+                        <input type="text" id="visitSearchInput" oninput="onVisitSearchInput()" placeholder="🔍 اكتب اسم الأسرة أو الفرد..." class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-rose-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">نطاق البحث</label>
+                        <select id="visitTargetMode" onchange="renderVisitationWorkspace()" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-rose-500">
+                            <option value="families">🏠 عرض بالأسر (أرباب الأسر)</option>
+                            <option value="individuals">👤 عرض بالأفراد (كل الأعضاء)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">حالة الافتقاد</label>
+                        <select id="visitStatusFilterPriest" onchange="renderVisitationWorkspace()" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-rose-500">
+                            <option value="overdue">🚨 بحاجة للافتقاد (+90 يوم أو لم يُفتقد)</option>
+                            <option value="all">الكل (مرتّب بالأكثر تأخيراً)</option>
+                            <option value="visited">✓ تم افتقادهم مؤخراً (آخر 90 يوم)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- فلاتر خدام مدارس الأحد وأمناء المراحل -->
+                <div id="visitServantFilters" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">المرحلة الدراسية</label>
+                        <select id="visitSSStage" onchange="onVisitSSStageChange(this.value)" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-rose-500"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">الصف الدراسي</label>
+                        <select id="visitSSGrade" onchange="renderVisitationWorkspace()" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-rose-500"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">بحث باسم المخدوم</label>
+                        <input type="text" id="visitSSSearchInput" oninput="onVisitSearchInput()" placeholder="🔍 اكتب اسم المخدوم أو المحمول..." class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-rose-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">حالة افتقاد الفصل</label>
+                        <select id="visitStatusFilterSS" onchange="renderVisitationWorkspace()" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-rose-500">
+                            <option value="all">كل مخدومي الفصل (بالأولوية)</option>
+                            <option value="overdue">🚨 يحتاجون افتقاد (+30 يوم أو لم يُفتقد)</option>
+                            <option value="visited">✓ تم افتقادهم خلال آخر 30 يوم</option>
+                        </select>
+                    </div>
                 </div>
             </div>
+
+            <!-- شريط المتابعات المجدولة للأسبوع القادم (يظهر فقط إن وجدت متابعات) -->
+            <div id="visitFollowupBanner" class="hidden bg-indigo-50/80 p-4 rounded-2xl border border-indigo-200 space-y-2.5">
+                <div class="flex justify-between items-center">
+                    <h4 class="text-xs sm:text-sm font-black text-indigo-900 flex items-center gap-1.5"><span>🗓️</span> متابعات مجدولة للأسبوع القادم</h4>
+                    <span id="visitFollowupCount" class="bg-indigo-600 text-white px-2.5 py-0.5 rounded-full text-[11px] font-black">0</span>
+                </div>
+                <div id="visitFollowupList" class="grid grid-cols-1 md:grid-cols-2 gap-2.5"></div>
+            </div>
+
+            <!-- قائمة الحالات للافتقاد المباشر -->
+            <div class="bg-white/95 p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-100">
+                    <h4 id="visitListHeading" class="text-xs sm:text-sm font-black text-slate-800">قائمة الافتقاد</h4>
+                    <span id="visitUrgentCount" class="bg-rose-100 text-rose-700 px-2.5 py-0.5 rounded-full text-xs font-black">0</span>
+                </div>
+                <div id="visitUrgentList" class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[600px] overflow-y-auto nice-scrollbar"></div>
+            </div>
+        </div>
+
+        <!-- 4.1 قسم تقارير إنجاز الافتقاد (بالمناطق للكهنة والأدمن، وبالمراحل والخدام لأمناء المراحل) -->
+        <div id="visitationReportsSection" class="hidden space-y-5 no-print">
+            <div class="bg-white/95 p-5 rounded-2xl border border-rose-200 shadow-sm">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 pb-4 mb-4 border-b border-slate-100">
+                    <div>
+                        <h3 id="visitRepMainTitle" class="text-base font-black text-rose-900 flex items-center gap-2"><span>📊</span> تقارير إنجاز الافتقاد</h3>
+                        <p id="visitRepSubTitle" class="text-[11px] text-slate-500 font-bold mt-0.5">متابعة ما تم إنجازه من زيارات منزلية وافتقاد تليفوني</p>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button type="button" onclick="exportVisitAchievementPdf()" class="bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm transition flex items-center gap-1.5">📄 تصدير PDF رسمي</button>
+                        <button type="button" onclick="shareVisitAchievementWhatsApp()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm transition flex items-center gap-1.5">💬 إرسال واتساب</button>
+                        <button type="button" onclick="exportVisitAchievementExcel()" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm transition flex items-center gap-1.5">📥 تصدير Excel</button>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-black text-slate-600">الفترة الزمنية:</span>
+                    <select id="visitReportPeriod" onchange="renderVisitationReports()" class="p-2.5 bg-rose-50/50 border border-rose-200 rounded-xl text-xs font-black text-rose-900 outline-none focus:ring-2 focus:ring-rose-500">
+                        <option value="month">هذا الشهر</option>
+                        <option value="3months" selected>آخر 3 شهور</option>
+                        <option value="year">هذه السنة الميلادية</option>
+                        <option value="all">كل السجلات</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="visitRepKpiCards" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
+
+            <div id="visitRepTablesContainer" class="space-y-5"></div>
         </div>
 
                 <!-- 4.5 قسم سجل الاعترافات (مخصص للآباء الكهنة فقط - لأبنائهم فقط) -->
@@ -833,6 +929,6 @@ function togglePasswordVisibilityInline() {
     </div>
 </div>
 
-<script src="app.js?v=40"></script>
+<script src="app.js?v=41"></script>
 </body>
 </html>
